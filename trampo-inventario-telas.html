@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRAMPO — Inventário de Telas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FFFFFF; --ink:#18181B; --muted:#71717A; --faint:#A1A1AA;
+    --line:#ECECEE; --line-2:#E4E4E7; --accent:#2563EB;
+    --success:#16A34A; --warning:#EA580C; --danger:#DC2626; --code:#FAFAFA;
+    --display:'Bricolage Grotesque',sans-serif; --body:'Hanken Grotesk',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{font-family:var(--body);background:var(--paper);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;}
+  .layout{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:240px 1fr;}
+
+  aside{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 22px;border-right:1px solid var(--line);}
+  .brand{font-family:var(--display);font-weight:800;font-size:25px;letter-spacing:-0.03em;margin-bottom:4px;}
+  .brand .d{color:var(--accent);}
+  .brand-sub{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--faint);margin-bottom:30px;}
+  .toc-label{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--faint);margin:22px 0 10px;}
+  nav a{display:block;font-size:13.5px;color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:7px;border-left:2px solid transparent;transition:.15s;}
+  nav a:hover{background:var(--code);color:var(--ink);border-left-color:var(--accent);}
+  nav a .n{font-family:var(--mono);font-size:11px;color:var(--faint);margin-right:8px;}
+
+  main{padding:48px 52px 96px;min-width:0;}
+  .doc-head{padding-bottom:30px;border-bottom:1px solid var(--line);margin-bottom:46px;}
+  .doc-tag{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);margin-bottom:16px;}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(32px,5vw,48px);letter-spacing:-0.035em;line-height:1.0;margin-bottom:14px;}
+  .doc-lede{font-size:17px;color:var(--muted);max-width:660px;}
+  .doc-facts{display:flex;flex-wrap:wrap;gap:6px 26px;margin-top:22px;font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .doc-facts b{color:var(--ink);font-weight:500;}
+
+  section{margin-bottom:54px;scroll-margin-top:24px;}
+  .s-kick{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;}
+  .s-kick .num{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:500;}
+  h2{font-family:var(--display);font-weight:700;font-size:28px;letter-spacing:-0.025em;line-height:1.1;}
+  .s-intro{color:var(--muted);font-size:15px;margin:10px 0 26px;max-width:680px;}
+  h3{font-family:var(--display);font-weight:600;font-size:17px;letter-spacing:-0.01em;margin:28px 0 12px;}
+  p{font-size:15px;color:var(--muted);margin-bottom:13px;}
+  p b{color:var(--ink);font-weight:600;}
+  code{font-family:var(--mono);font-size:12.5px;color:var(--ink);}
+
+  /* tokens */
+  .swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(116px,1fr));gap:10px;margin-bottom:8px;}
+  .sw{border:1px solid var(--line-2);border-radius:11px;overflow:hidden;}
+  .sw .chip{height:52px;}
+  .sw .meta{padding:8px 10px;}
+  .sw .nm{font-size:11.5px;font-weight:600;}
+  .sw .hex{font-family:var(--mono);font-size:10.5px;color:var(--faint);}
+
+  .tok-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px;}
+  .tok{border:1px solid var(--line-2);border-radius:11px;padding:14px 16px;}
+  .tok h5{font-family:var(--display);font-weight:600;font-size:14px;margin-bottom:8px;}
+  .tok .ln{font-family:var(--mono);font-size:11.5px;color:var(--muted);padding:2px 0;display:flex;justify-content:space-between;gap:10px;}
+  .tok .ln b{color:var(--ink);font-weight:500;}
+
+  table{width:100%;border-collapse:collapse;margin:6px 0 8px;}
+  th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--faint);font-weight:500;padding:0 12px 10px 0;border-bottom:1px solid var(--line-2);}
+  td{padding:11px 12px 11px 0;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line);vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  td.k{font-family:var(--mono);font-size:12.5px;color:var(--accent);white-space:nowrap;font-weight:500;}
+  td code{font-family:var(--mono);font-size:11.5px;}
+  td .v{font-family:var(--mono);font-size:10.5px;color:var(--faint);display:inline-block;margin:1px 4px 1px 0;}
+  td .v.on{color:var(--accent);} td .v.gr{color:var(--success);} td .v.wr{color:var(--warning);} td .v.dg{color:var(--danger);}
+
+  .tree{background:var(--code);border:1px solid var(--line-2);border-radius:10px;padding:20px 22px;font-family:var(--mono);font-size:12.5px;line-height:1.85;color:var(--muted);white-space:pre;overflow-x:auto;}
+  .tree .dir{color:var(--accent);} .tree .cm{color:var(--faint);} .tree .file{color:var(--ink);}
+
+  .note{padding-left:18px;border-left:2px solid var(--accent);margin:18px 0;}
+  .note.warn{border-left-color:var(--warning);}
+  .note .nl{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;}
+  .note:not(.warn) .nl{color:var(--accent);} .note.warn .nl{color:var(--warning);}
+  .note p{font-size:14px;margin-bottom:0;}
+
+  .pill{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:5px;background:var(--code);border:1px solid var(--line-2);color:var(--muted);white-space:nowrap;}
+
+  footer{margin-top:40px;padding-top:26px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:0.04em;}
+
+  .rv{opacity:0;transform:translateY(10px);animation:rise .6s cubic-bezier(.16,1,.3,1) forwards;}
+  @keyframes rise{to{opacity:1;transform:translateY(0);}}
+
+  @media(max-width:900px){
+    .layout{grid-template-columns:1fr;}
+    aside{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);}
+    nav{display:flex;flex-wrap:wrap;gap:4px;}
+    nav a{border-left:none;}
+    main{padding:36px 22px 72px;}
+    .tok-grid{grid-template-columns:1fr;}
+    table{font-size:12px;}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <aside>
+    <div class="brand">TRAMPO<span class="d">.</span></div>
+    <div class="brand-sub">Design Handoff</div>
+    <div class="toc-label">Conteúdo</div>
+    <nav>
+      <a href="#tokens"><span class="n">01</span>Tokens</a>
+      <a href="#components"><span class="n">02</span>Design system</a>
+      <a href="#screens"><span class="n">03</span>Inventário de telas</a>
+      <a href="#nav"><span class="n">04</span>Navegação</a>
+      <a href="#states"><span class="n">05</span>Estados &amp; dados</a>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="doc-head rv">
+      <div class="doc-tag">Handoff — design para desenvolvimento</div>
+      <h1>Inventário de telas</h1>
+      <p class="doc-lede">As 16 telas do MVP traduzidas para o que importa na implementação: tokens, componentes reutilizáveis, rotas Expo Router, procedures tRPC e estados. A ponte entre o mockup e o código.</p>
+      <div class="doc-facts">
+        <span><b>16</b> telas</span>
+        <span><b>2</b> roles (cliente · tasker)</span>
+        <span><b>~21</b> componentes base</span>
+        <span>Expo Router + NativeWind</span>
+      </div>
+    </div>
+
+    <!-- 01 TOKENS -->
+    <section id="tokens">
+      <div class="s-kick rv"><span class="num">01</span><h2>Tokens</h2></div>
+      <p class="s-intro rv">A base do design system. Definir como tema NativeWind / constantes antes de qualquer tela. Tudo deriva daqui.</p>
+
+      <h3 class="rv">Cores — paleta Slate</h3>
+      <div class="swatches rv">
+        <div class="sw"><div class="chip" style="background:#FAFAFA;border-bottom:1px solid var(--line-2)"></div><div class="meta"><div class="nm">background</div><div class="hex">#FAFAFA</div></div></div>
+        <div class="sw"><div class="chip" style="background:#FFFFFF;border-bottom:1px solid var(--line-2)"></div><div class="meta"><div class="nm">surface</div><div class="hex">#FFFFFF</div></div></div>
+        <div class="sw"><div class="chip" style="background:#18181B"></div><div class="meta"><div class="nm">ink</div><div class="hex">#18181B</div></div></div>
+        <div class="sw"><div class="chip" style="background:#2563EB"></div><div class="meta"><div class="nm">accent</div><div class="hex">#2563EB</div></div></div>
+        <div class="sw"><div class="chip" style="background:#16A34A"></div><div class="meta"><div class="nm">success</div><div class="hex">#16A34A</div></div></div>
+        <div class="sw"><div class="chip" style="background:#EA580C"></div><div class="meta"><div class="nm">warning</div><div class="hex">#EA580C</div></div></div>
+        <div class="sw"><div class="chip" style="background:#DC2626"></div><div class="meta"><div class="nm">danger</div><div class="hex">#DC2626</div></div></div>
+        <div class="sw"><div class="chip" style="background:#E4E4E7"></div><div class="meta"><div class="nm">border</div><div class="hex">#E4E4E7</div></div></div>
+      </div>
+      <div class="note rv"><div class="nl">Semântica de cor</div><p><b>Azul</b> = ação primária. <b>Verde</b> = dinheiro (ganho líquido, escrow liberado). <b>Laranja</b> = urgência e escrow retido. <b>Vermelho</b> = destrutivo (cancelar). Cor só onde decide algo.</p></div>
+
+      <div class="tok-grid rv">
+        <div class="tok">
+          <h5>Tipografia</h5>
+          <div class="ln"><span>Display / valores</span><b>Bricolage Grotesque 800</b></div>
+          <div class="ln"><span>UI / corpo</span><b>Hanken Grotesk 400-700</b></div>
+          <div class="ln"><span>Título tela</span><b>23 / 800</b></div>
+          <div class="ln"><span>Valor (R$)</span><b>20-38 / 800</b></div>
+          <div class="ln"><span>Corpo</span><b>13-15 / 400-600</b></div>
+          <div class="ln"><span>Label/caps</span><b>10-11 / 700</b></div>
+        </div>
+        <div class="tok">
+          <h5>Espaço &amp; forma</h5>
+          <div class="ln"><span>Escala</span><b>4 · 8 · 12 · 16 · 20</b></div>
+          <div class="ln"><span>Padding tela</span><b>18px</b></div>
+          <div class="ln"><span>Raio card</span><b>14-16px</b></div>
+          <div class="ln"><span>Raio botão</span><b>14px</b></div>
+          <div class="ln"><span>Raio chip</span><b>99px (pill)</b></div>
+          <div class="ln"><span>Sombra</span><b>quase nula (clean)</b></div>
+        </div>
+      </div>
+      <div class="note warn rv"><div class="nl">Fontes em React Native</div><p>Carregar via <code>expo-font</code>. As famílias do mockup são sugestão — se preferir reduzir peso do bundle, uma única grotesque variável resolve display + UI. Decisão sua.</p></div>
+    </section>
+
+    <!-- 02 COMPONENTS -->
+    <section id="components">
+      <div class="s-kick rv"><span class="num">02</span><h2>Design system</h2></div>
+      <p class="s-intro rv">Os componentes que se repetem entre telas. Construir essa camada primeiro: cada tela vira composição, não CSS do zero. Nomes sugeridos em PascalCase para o código.</p>
+
+      <h3 class="rv">Primitivos</h3>
+      <table class="rv">
+        <thead><tr><th>Componente</th><th>Variantes</th><th>Props-chave</th><th>Aparece em</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Screen</td><td>scroll · fixed</td><td><code>safeArea</code> · <code>bottomNav?</code></td><td>todas</td></tr>
+          <tr><td class="k">Button</td><td><span class="v on">primary</span><span class="v gr">success</span><span class="v">ghost</span><span class="v">disabled</span></td><td><code>label</code> · <code>icon?</code> · <code>onPress</code></td><td>quase todas</td></tr>
+          <tr><td class="k">Field</td><td>text · address · readonly</td><td><code>label</code> · <code>value</code> · <code>placeholder</code></td><td>Postar, KYC</td></tr>
+          <tr><td class="k">Chip</td><td>filter (on/off) · tag</td><td><code>label</code> · <code>active</code></td><td>Feed, Postar, Perfil, Avaliar</td></tr>
+          <tr><td class="k">Toggle</td><td>default</td><td><code>label</code> · <code>sublabel</code> · <code>value</code></td><td>Postar (urgência)</td></tr>
+          <tr><td class="k">Avatar</td><td>sm · lg · +verified</td><td><code>initials</code> · <code>verified?</code></td><td>várias</td></tr>
+          <tr><td class="k">Stars</td><td>display · input</td><td><code>value</code> · <code>editable?</code></td><td>Aceite, Perfil, Avaliar</td></tr>
+          <tr><td class="k">Badge</td><td><span class="v on">progress</span><span class="v gr">done/released</span><span class="v wr">held/urgent</span></td><td><code>label</code> · <code>tone</code></td><td>Feed, Ganhos, Histórico</td></tr>
+          <tr><td class="k">Callout</td><td><span class="v on">info</span><span class="v gr">escrow</span><span class="v wr">warning</span></td><td><code>icon</code> · <code>tone</code> · children</td><td>Pagamento, Status, KYC, Aceite</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="rv">Compostos</h3>
+      <table class="rv">
+        <thead><tr><th>Componente</th><th>Composição</th><th>Aparece em</th></tr></thead>
+        <tbody>
+          <tr><td class="k">TaskCard</td><td>categoria + título + distância/tempo + preço + badge urgência</td><td>Feed, Meus trampos (variante)</td></tr>
+          <tr><td class="k">CategoryCard</td><td>ícone + label, estado selecionável</td><td>Postar, Home</td></tr>
+          <tr><td class="k">PriceBreakdown</td><td>linhas (valor, taxa) + total destacado</td><td>Postar</td></tr>
+          <tr><td class="k">BottomNav</td><td>4 itens tasker · 3 itens cliente</td><td>telas raiz de cada role</td></tr>
+          <tr><td class="k">StatusTracker</td><td>steps done/now/pending com linha conectora</td><td>Acompanhar</td></tr>
+          <tr><td class="k">KycChecklist</td><td>itens done/now/pending</td><td>KYC início</td></tr>
+          <tr><td class="k">CameraCapture</td><td>moldura documento · oval selfie</td><td>KYC doc, KYC selfie</td></tr>
+          <tr><td class="k">EarningsHero</td><td>card escuro: saldo + CTA saque</td><td>Ganhos</td></tr>
+          <tr><td class="k">StatCard</td><td>label + valor (held/available)</td><td>Ganhos</td></tr>
+          <tr><td class="k">HistoryRow</td><td>ícone + título/sub + valor + badge</td><td>Ganhos, Meus trampos</td></tr>
+          <tr><td class="k">MenuItem</td><td>ícone + label + chevron</td><td>Perfil</td></tr>
+          <tr><td class="k">QRCode</td><td>código Pix renderizado + copia-e-cola</td><td>Pagamento</td></tr>
+          <tr><td class="k">PersonCard</td><td>avatar + nome + rating + verificado</td><td>Aceite, Tasker aceitou</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 03 SCREENS -->
+    <section id="screens">
+      <div class="s-kick rv"><span class="num">03</span><h2>Inventário de telas</h2></div>
+      <p class="s-intro rv">As 16 telas com rota, role, dados que consomem e estados a tratar. Procedures referenciam o relatório de arquitetura do backend.</p>
+
+      <h3 class="rv">Compartilhada</h3>
+      <table class="rv">
+        <thead><tr><th>Tela</th><th>Rota</th><th>Procedure</th><th>Estados</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Entrar (OTP)</td><td><code>(auth)/phone</code> · <code>verify</code></td><td><code>auth.requestOtp</code> · <code>verifyOtp</code></td><td><span class="pill">enviando</span> <span class="pill">erro código</span> <span class="pill">reenvio timer</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="rv">Tasker — lado da oferta</h3>
+      <table class="rv">
+        <thead><tr><th>Tela</th><th>Rota</th><th>Procedure</th><th>Estados</th></tr></thead>
+        <tbody>
+          <tr><td class="k">KYC início</td><td><code>(onboarding)/kyc</code></td><td><code>kyc.getStatus</code></td><td><span class="pill">checklist parcial</span></td></tr>
+          <tr><td class="k">KYC documento</td><td><code>(onboarding)/kyc/document</code></td><td><code>kyc.uploadDoc</code></td><td><span class="pill">capturando</span> <span class="pill">enviando</span></td></tr>
+          <tr><td class="k">KYC selfie</td><td><code>(onboarding)/kyc/selfie</code></td><td><code>kyc.uploadDoc</code></td><td><span class="pill">capturando</span> <span class="pill">enviando</span></td></tr>
+          <tr><td class="k">KYC em análise</td><td><code>(onboarding)/kyc/pending</code></td><td><code>kyc.submitKyc</code></td><td><span class="pill">pendente</span> <span class="pill">aprovado</span> <span class="pill">recusado</span></td></tr>
+          <tr><td class="k">Feed</td><td><code>(tasker)/feed</code></td><td><code>feed.nearby</code> · <code>byCategory</code></td><td><span class="pill">loading</span> <span class="pill">vazio (sem trampos perto)</span> <span class="pill">erro geo</span></td></tr>
+          <tr><td class="k">Detalhe &amp; aceite</td><td><code>task/[id]</code></td><td><code>tasks.getById</code> · <code>matching.accept</code></td><td><span class="pill">loading</span> <span class="pill">já aceito (lock)</span> <span class="pill">aceitando</span></td></tr>
+          <tr><td class="k">Executar / status</td><td><code>task/[id]/track</code></td><td><code>matching.start</code> · <code>complete</code></td><td><span class="pill">por etapa de estado</span></td></tr>
+          <tr><td class="k">Perfil</td><td><code>(tasker)/profile</code></td><td><code>profiles.getMe</code></td><td><span class="pill">loading</span></td></tr>
+          <tr><td class="k">Ganhos</td><td><code>(tasker)/earnings</code></td><td><code>payments.listForTasker</code></td><td><span class="pill">loading</span> <span class="pill">vazio (sem ganhos)</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="rv">Cliente — lado da demanda</h3>
+      <table class="rv">
+        <thead><tr><th>Tela</th><th>Rota</th><th>Procedure</th><th>Estados</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Início</td><td><code>(client)/home</code></td><td><code>tasks.listMine</code></td><td><span class="pill">loading</span> <span class="pill">sem trampo ativo</span></td></tr>
+          <tr><td class="k">Postar trampo</td><td><code>(client)/post</code></td><td><code>pricing.quote</code> · <code>tasks.create</code></td><td><span class="pill">abaixo do mínimo</span> <span class="pill">publicando</span></td></tr>
+          <tr><td class="k">Pagamento Pix</td><td><code>task/[id]/payment</code></td><td><code>payments.createCharge</code> · <code>getStatus</code></td><td><span class="pill">aguardando Pix</span> <span class="pill">confirmado</span> <span class="pill">expirado</span></td></tr>
+          <tr><td class="k">Tasker aceitou</td><td><code>task/[id]</code> <span class="v">(role cliente)</span></td><td><code>tasks.getById</code></td><td><span class="pill">aguardando aceite</span> <span class="pill">aceito</span></td></tr>
+          <tr><td class="k">Avaliar</td><td><code>task/[id]/review</code></td><td><code>reviews.submit</code></td><td><span class="pill">enviando</span> <span class="pill">já avaliado</span></td></tr>
+          <tr><td class="k">Meus trampos</td><td><code>(client)/tasks</code></td><td><code>tasks.listMine</code></td><td><span class="pill">loading</span> <span class="pill">vazio</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="note rv"><div class="nl">Tela role-aware</div><p><code>task/[id]</code> é a mesma rota com renderização condicional por role: o <b>tasker</b> vê o botão de aceite; o <b>cliente</b> vê quem aceitou e o status. Compartilham o fetch de <code>tasks.getById</code>, divergem na UI.</p></div>
+    </section>
+
+    <!-- 04 NAV -->
+    <section id="nav">
+      <div class="s-kick rv"><span class="num">04</span><h2>Navegação</h2></div>
+      <p class="s-intro rv">Estrutura Expo Router com grupos por role e gating de acesso. O root layout decide o stack pelo estado de auth e pelo role do usuário.</p>
+
+      <div class="tree rv"><span class="dir">app/</span>
+├── <span class="file">_layout.tsx</span>          <span class="cm"># gate: auth? → role? → kyc aprovado?</span>
+├── <span class="dir">(auth)/</span>
+│   ├── <span class="file">phone.tsx</span>
+│   └── <span class="file">verify.tsx</span>
+├── <span class="dir">(onboarding)/</span>        <span class="cm"># só tasker, antes de liberar o app</span>
+│   └── <span class="dir">kyc/</span> <span class="file">index · document · selfie · pending</span>
+├── <span class="dir">(tasker)/</span>             <span class="cm"># tabs: feed, trampos, perfil</span>
+│   ├── <span class="file">feed.tsx</span>
+│   ├── <span class="file">earnings.tsx</span>
+│   └── <span class="file">profile.tsx</span>
+├── <span class="dir">(client)/</span>             <span class="cm"># tabs: início, meus trampos, perfil</span>
+│   ├── <span class="file">home.tsx</span>
+│   ├── <span class="file">post.tsx</span>
+│   ├── <span class="file">tasks.tsx</span>
+│   └── <span class="file">profile.tsx</span>
+└── <span class="dir">task/[id]/</span>           <span class="cm"># stack modal, role-aware</span>
+    ├── <span class="file">index.tsx</span>        <span class="cm"># detalhe/aceite | tasker aceitou</span>
+    ├── <span class="file">track.tsx</span>        <span class="cm"># status / executar</span>
+    ├── <span class="file">payment.tsx</span>      <span class="cm"># Pix + escrow</span>
+    └── <span class="file">review.tsx</span></div>
+
+      <div class="note warn rv"><div class="nl">Decisão de arquitetura</div><p>Cliente e tasker são quase dois apps. Grupos de rota separados (<code>(tasker)</code> / <code>(client)</code>) compartilhando os componentes base mantêm a navegação limpa sem duplicar o design system. O gating de KYC vive no <code>_layout</code>, não espalhado por tela.</p></div>
+    </section>
+
+    <!-- 05 STATES -->
+    <section id="states">
+      <div class="s-kick rv"><span class="num">05</span><h2>Estados &amp; dados</h2></div>
+      <p class="s-intro rv">Estados transversais que toda tela de dados precisa tratar. Mockup mostra o estado "cheio" — implementação precisa dos outros três.</p>
+
+      <table class="rv">
+        <thead><tr><th>Estado</th><th>Quando</th><th>Tratamento</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Loading</td><td>fetch em andamento</td><td>Skeleton dos cards, não spinner solto. Mantém layout estável.</td></tr>
+          <tr><td class="k">Empty</td><td>feed sem trampos perto · sem ganhos · sem histórico</td><td>Ilustração leve + texto + CTA. Crítico no feed: "amplie o raio" ou "volte mais tarde".</td></tr>
+          <tr><td class="k">Error</td><td>falha de rede · geo negada · pagamento expirado</td><td>Mensagem clara + botão "tentar de novo". Geo negada tem fluxo próprio (pedir permissão).</td></tr>
+          <tr><td class="k">Success</td><td>aceite, pagamento, avaliação confirmados</td><td>Feedback imediato + transição de estado. Sem deixar o usuário em dúvida se funcionou.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note rv"><div class="nl">Prioridade de implementação</div><p>O <b>empty do feed</b> é o estado mais importante do app no início: com pouca liquidez no beta, o tasker vai abrir e ver pouco ou nada. Essa tela precisa segurar o usuário, não frustrar. Não deixe pra depois.</p></div>
+
+      <div class="note warn rv"><div class="nl">Tempo real</div><p>Feed, status do trampo e "tasker aceitou" atualizam via Supabase Realtime. Na UI, isso significa que o estado pode mudar <b>sem ação do usuário</b> — desenhe as transições (ex: card some do feed quando outro tasker aceita) para não parecer bug.</p></div>
+    </section>
+
+    <footer>TRAMPO · Inventário de Telas · Sevyn Labs · Diego Freitas · Uberlândia/MG</footer>
+
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRAMPO — Telas Core</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAFAFA; --surface:#FFFFFF; --ink:#18181B; --muted:#71717A; --faint:#A1A1AA;
+    --accent:#2563EB; --success:#16A34A; --warning:#EA580C; --danger:#DC2626;
+    --border:#E4E4E7; --line:#F1F1F3;
+    --ui:'Hanken Grotesk',sans-serif; --display:'Bricolage Grotesque',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:var(--ui);background:#F4F4F5;color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;
+    background-image:radial-gradient(circle, #E4E4E7 1px, transparent 1px);background-size:26px 26px;}
+
+  .page{max-width:1240px;margin:0 auto;padding:64px 32px 96px;}
+  .doc-head{margin-bottom:56px;max-width:640px;}
+  .brand{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-0.03em;margin-bottom:8px;}
+  .brand .d{color:var(--accent);}
+  .kick{font-family:var(--ui);font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--faint);margin-bottom:20px;}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(32px,5vw,46px);letter-spacing:-0.035em;line-height:1.0;margin-bottom:16px;}
+  .lede{font-size:17px;color:var(--muted);}
+
+  .frames{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:48px 32px;justify-items:center;}
+  .frame-wrap{width:300px;}
+  .frame-label{display:flex;align-items:baseline;gap:8px;margin-bottom:14px;}
+  .frame-label .n{font-family:var(--ui);font-size:11px;font-weight:700;color:var(--accent);}
+  .frame-label .t{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:-0.015em;}
+  .frame-note{font-size:13px;color:var(--muted);margin-top:12px;line-height:1.45;}
+
+  /* PHONE */
+  .phone{
+    width:300px;height:640px;background:var(--bg);border-radius:38px;
+    border:9px solid #18181B;position:relative;overflow:hidden;
+    box-shadow:0 30px 60px -20px rgba(24,24,27,.35), 0 0 0 1px rgba(24,24,27,.06);
+  }
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:26px;background:#18181B;border-radius:0 0 16px 16px;z-index:50;}
+  .statusbar{height:44px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;font-size:12px;font-weight:600;}
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;}
+  .scroll{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+
+  /* generic UI atoms */
+  .ph{padding:0 18px;}
+  .scr-title{font-family:var(--display);font-weight:800;font-size:23px;letter-spacing:-0.025em;line-height:1.1;}
+  .scr-sub{font-size:13px;color:var(--muted);margin-top:3px;}
+  .row{display:flex;align-items:center;}
+  .ic{width:18px;height:18px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .ic-sm{width:14px;height:14px;}
+
+  .chip-row{display:flex;gap:7px;overflow:hidden;}
+  .chip{font-size:12px;font-weight:600;padding:7px 13px;border-radius:99px;background:var(--surface);border:1px solid var(--border);color:var(--muted);white-space:nowrap;}
+  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  /* task card */
+  .tcard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:10px;}
+  .tcard .cat{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--accent);margin-bottom:7px;}
+  .tcard .ttl{font-weight:700;font-size:15px;letter-spacing:-0.01em;line-height:1.25;margin-bottom:9px;}
+  .tcard .info{display:flex;gap:13px;color:var(--muted);font-size:12px;margin-bottom:12px;}
+  .tcard .info .row{gap:4px;}
+  .tcard .foot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:11px;}
+  .price{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-0.02em;}
+  .price small{font-size:11px;font-weight:600;color:var(--faint);font-family:var(--ui);}
+  .urg{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--warning);background:rgba(234,88,12,.1);padding:4px 8px;border-radius:7px;}
+  .pill-go{font-size:12px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:3px;}
+
+  /* bottom nav */
+  .bnav{height:62px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;padding-bottom:6px;}
+  .bnav a{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--faint);font-size:9.5px;font-weight:600;}
+  .bnav a.on{color:var(--accent);}
+
+  /* button */
+  .btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:var(--accent);color:#fff;font-weight:700;font-size:15px;padding:15px;border-radius:14px;}
+  .btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--border);}
+  .btn.success{background:var(--success);}
+
+  /* form field */
+  .field{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:13px 14px;margin-bottom:10px;}
+  .field .lab{font-size:11px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--faint);margin-bottom:5px;}
+  .field .val{font-size:14px;color:var(--ink);font-weight:500;}
+  .field .val.ph{color:var(--faint);font-weight:400;}
+  .cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+  .cat-card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:13px 8px;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11.5px;font-weight:600;color:var(--muted);}
+  .cat-card.on{border-color:var(--accent);color:var(--accent);background:rgba(37,99,235,.04);}
+  .cat-card svg{width:20px;height:20px;}
+
+  /* toggle */
+  .toggle{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:13px 14px;margin-bottom:10px;}
+  .toggle .tl{font-size:13.5px;font-weight:600;}
+  .toggle .ts{font-size:11px;color:var(--muted);margin-top:1px;}
+  .sw{width:42px;height:25px;border-radius:99px;background:var(--warning);position:relative;flex-shrink:0;}
+  .sw::after{content:"";position:absolute;top:3px;right:3px;width:19px;height:19px;border-radius:50%;background:#fff;}
+
+  /* price breakdown */
+  .bk{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;}
+  .bk .ln{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:4px 0;}
+  .bk .ln.tot{border-top:1px solid var(--line);margin-top:6px;padding-top:11px;color:var(--ink);font-weight:700;font-size:15px;}
+  .bk .ln.tot .v{font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:-0.02em;}
+  .bk .ln .accent{color:var(--accent);}
+
+  /* status tracker */
+  .track{padding:4px 0;}
+  .step{display:flex;gap:13px;position:relative;padding-bottom:22px;}
+  .step:last-child{padding-bottom:0;}
+  .step .marker{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:2;color:var(--faint);}
+  .step.done .marker{background:var(--success);border-color:var(--success);color:#fff;}
+  .step.now .marker{border-color:var(--accent);color:var(--accent);}
+  .step .line{position:absolute;left:11px;top:24px;bottom:0;width:2px;background:var(--border);}
+  .step.done .line{background:var(--success);}
+  .step .st-c .sl{font-size:14px;font-weight:700;letter-spacing:-0.01em;}
+  .step.pending .st-c .sl{color:var(--faint);}
+  .step .st-c .ss{font-size:11.5px;color:var(--muted);margin-top:1px;}
+
+  /* auth */
+  .auth-logo{font-family:var(--display);font-weight:800;font-size:38px;letter-spacing:-0.04em;}
+  .auth-logo .d{color:var(--accent);}
+  .otp-row{display:flex;gap:8px;justify-content:center;}
+  .otp{width:38px;height:48px;border:1.5px solid var(--border);border-radius:11px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:21px;}
+  .otp.fill{border-color:var(--accent);color:var(--ink);}
+  .otp.cursor{border-color:var(--accent);}
+
+  .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#2563EB,#1E40AF);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+  .stars{display:flex;gap:2px;color:var(--warning);}
+  .stars svg{width:13px;height:13px;fill:currentColor;stroke:none;}
+
+  @media(max-width:560px){.page{padding:40px 16px 72px;}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-head">
+    <div class="brand">TRAMPO<span class="d">.</span></div>
+    <div class="kick">UX — Telas core do MVP</div>
+    <h1>O app tomando forma</h1>
+    <p class="lede">As 5 telas que contam a história do produto, na paleta Slate. Valor em destaque, taxa transparente, uma ação primária por tela.</p>
+  </div>
+
+  <div class="frames">
+
+    <!-- 1 — AUTH -->
+    <div class="frame-wrap">
+      <div class="frame-label"><span class="n">01</span><span class="t">Entrar</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>5G</span></div>
+          <div class="scroll" style="justify-content:center;align-items:center;padding:0 28px;text-align:center;">
+            <div class="auth-logo" style="margin-bottom:10px">TRAMPO<span class="d">.</span></div>
+            <div class="scr-sub" style="margin-bottom:36px;font-size:14px">Confirme o código que enviamos<br>para <b style="color:var(--ink)">(34) 9 9999-1234</b></div>
+            <div class="otp-row" style="margin-bottom:30px">
+              <div class="otp fill">4</div><div class="otp fill">8</div><div class="otp fill">2</div>
+              <div class="otp cursor">1</div><div class="otp"></div><div class="otp"></div>
+            </div>
+            <div class="btn" style="margin-bottom:14px">Confirmar</div>
+            <div style="font-size:12.5px;color:var(--muted)">Reenviar código em <b style="color:var(--ink)">0:24</b></div>
+          </div>
+        </div>
+      </div>
+      <p class="frame-note">OTP por SMS (Twilio). Sem senha. Onboarding em segundos — fricção mínima na entrada.</p>
+    </div>
+
+    <!-- 2 — FEED TASKER -->
+    <div class="frame-wrap">
+      <div class="frame-label"><span class="n">02</span><span class="t">Feed do tasker</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>5G</span></div>
+          <div class="scroll">
+            <div class="ph" style="padding-top:4px;padding-bottom:12px">
+              <div class="scr-title">Trampos perto</div>
+              <div class="row" style="gap:4px;margin-top:3px;color:var(--muted);font-size:13px">
+                <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-11a7 7 0 1114 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                Uberlândia · 10 km
+              </div>
+            </div>
+            <div class="ph" style="padding-bottom:12px">
+              <div class="chip-row">
+                <div class="chip on">Todos</div><div class="chip">Limpeza</div><div class="chip">Reparos</div><div class="chip">Entregas</div>
+              </div>
+            </div>
+            <div class="ph" style="flex:1;overflow:hidden">
+              <div class="tcard">
+                <span class="cat"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>Reparos</span>
+                <div class="ttl">Montar guarda-roupa 6 portas</div>
+                <div class="info">
+                  <span class="row"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-11a7 7 0 1114 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>1,2 km</span>
+                  <span class="row"><svg class="ic ic-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hoje, 14h</span>
+                </div>
+                <div class="foot"><div class="price">R$ 102<small> líquido</small></div><span class="pill-go">Ver<svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span></div>
+              </div>
+              <div class="tcard">
+                <span class="cat" style="color:var(--warning)"><svg class="ic ic-sm" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l3-4h12l3 4"/></svg>Entregas</span>
+                <div class="ttl">Levar documentos ao centro</div>
+                <div class="info">
+                  <span class="row"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-11a7 7 0 1114 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>0,8 km</span>
+                  <span class="urg"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>Urgente</span>
+                </div>
+                <div class="foot"><div class="price">R$ 55<small> líquido</small></div><span class="pill-go">Ver<svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span></div>
+              </div>
+            </div>
+          </div>
+          <div class="bnav">
+            <a class="on"><svg class="ic" viewBox="0 0 24 24"><path d="M3 12l9-8 9 8M5 10v10h14V10"/></svg>Feed</a>
+            <a><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>Buscar</a>
+            <a><svg class="ic" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Trampos</a>
+            <a><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</a>
+          </div>
+        </div>
+      </div>
+      <p class="frame-note">A tela mais importante. Valor líquido (já com -15%) em destaque, distância e urgência primeiro. Card laranja = trampo urgente (+30%).</p>
+    </div>
+
+    <!-- 3 — POSTAR -->
+    <div class="frame-wrap">
+      <div class="frame-label"><span class="n">03</span><span class="t">Postar trampo</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>5G</span></div>
+          <div class="scroll">
+            <div class="ph" style="padding-top:4px;padding-bottom:14px">
+              <div class="scr-title">O que você precisa?</div>
+              <div class="scr-sub">Publique em 30 segundos</div>
+            </div>
+            <div class="ph" style="flex:1;overflow:hidden">
+              <div class="cat-grid">
+                <div class="cat-card on"><svg viewBox="0 0 24 24" class="ic" style="stroke:currentColor"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>Reparos</div>
+                <div class="cat-card"><svg viewBox="0 0 24 24" class="ic"><path d="M19 5l-3 3M14 10l-9 9-2-2 9-9M9 5l2 2"/></svg>Limpeza</div>
+                <div class="cat-card"><svg viewBox="0 0 24 24" class="ic"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l3-4h12l3 4"/></svg>Entregas</div>
+              </div>
+              <div class="field"><div class="lab">Descrição</div><div class="val">Montar guarda-roupa 6 portas</div></div>
+              <div class="field"><div class="lab">Endereço</div><div class="val">Rua Goiás, 120 · Centro</div></div>
+              <div class="toggle"><div><div class="tl">Urgente</div><div class="ts">Para menos de 1 hora · +30%</div></div><div class="sw"></div></div>
+              <div class="field"><div class="lab">Valor do trampo</div><div class="val">R$ 120,00</div></div>
+            </div>
+            <div class="ph" style="padding-top:10px;padding-bottom:14px">
+              <div class="bk" style="margin-bottom:12px">
+                <div class="ln"><span>Valor do trampo</span><span>R$ 120,00</span></div>
+                <div class="ln"><span>Taxa de serviço (5%)</span><span class="accent">R$ 6,00</span></div>
+                <div class="ln tot"><span>Você paga</span><span class="v">R$ 126,00</span></div>
+              </div>
+              <div class="btn">Publicar trampo</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="frame-note">Taxa de 5% explícita, sem letra miúda. O cliente vê exatamente o que paga antes de confirmar — confiança vira conversão.</p>
+    </div>
+
+    <!-- 4 — ACEITE -->
+    <div class="frame-wrap">
+      <div class="frame-label"><span class="n">04</span><span class="t">Detalhe &amp; aceite</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>5G</span></div>
+          <div class="scroll">
+            <div class="ph" style="padding-top:8px;flex:1;overflow:hidden">
+              <div class="row" style="justify-content:space-between;margin-bottom:16px">
+                <svg class="ic" viewBox="0 0 24 24" style="width:22px;height:22px"><path d="M15 18l-6-6 6-6"/></svg>
+                <span class="cat" style="color:var(--accent);margin:0"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>Reparos</span>
+              </div>
+              <div class="scr-title" style="font-size:21px;margin-bottom:12px">Montar guarda-roupa 6 portas</div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;height:118px;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:12px;margin-bottom:14px;position:relative;overflow:hidden">
+                <svg class="ic" viewBox="0 0 24 24" style="width:26px;height:26px;color:var(--accent)"><path d="M12 21s-7-6.3-7-11a7 7 0 1114 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                <span style="position:absolute;bottom:10px;font-weight:600;color:var(--muted)">1,2 km · ~6 min de carro</span>
+              </div>
+              <div style="font-size:13.5px;color:var(--muted);line-height:1.5;margin-bottom:14px">Guarda-roupa Madesa, 6 portas. Já está no quarto, na caixa. Tenho furadeira.</div>
+              <div class="row" style="gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:11px">
+                <div class="avatar">MR</div>
+                <div style="flex:1"><div style="font-weight:700;font-size:13.5px">Marina R.</div><div class="row" style="gap:4px"><div class="stars"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 22l2-7L2 9h7z"/></svg></div><span style="font-size:11.5px;color:var(--muted)">4,9 · 23 trampos</span></div></div>
+              </div>
+            </div>
+            <div class="ph" style="padding-top:12px;padding-bottom:14px">
+              <div class="row" style="justify-content:space-between;margin-bottom:12px">
+                <div><div style="font-size:11px;color:var(--faint);font-weight:600;text-transform:uppercase;letter-spacing:0.04em">Você recebe</div><div class="price" style="color:var(--success)">R$ 102,00</div></div>
+                <div style="text-align:right;font-size:11px;color:var(--muted);line-height:1.5">Trampo R$ 120<br>Comissão −15%</div>
+              </div>
+              <div class="btn success">Aceitar trampo</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="frame-note">O tasker vê o líquido em verde (já com -15%) e o cliente com reputação antes de aceitar. Botão verde = dinheiro. Uma decisão, um toque.</p>
+    </div>
+
+    <!-- 5 — STATUS -->
+    <div class="frame-wrap">
+      <div class="frame-label"><span class="n">05</span><span class="t">Acompanhar</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>5G</span></div>
+          <div class="scroll">
+            <div class="ph" style="padding-top:8px;flex:1;overflow:hidden">
+              <div class="scr-title" style="font-size:20px">Montar guarda-roupa</div>
+              <div class="scr-sub" style="margin-bottom:22px">Marina R. · R$ 120,00</div>
+              <div class="track">
+                <div class="step done">
+                  <div class="marker"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
+                  <div class="line"></div>
+                  <div class="st-c"><div class="sl">Aceito</div><div class="ss">Você aceitou às 13h02</div></div>
+                </div>
+                <div class="step done">
+                  <div class="marker"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
+                  <div class="line"></div>
+                  <div class="st-c"><div class="sl">A caminho</div><div class="ss">Confirmado às 13h40</div></div>
+                </div>
+                <div class="step now">
+                  <div class="marker"><svg class="ic ic-sm" viewBox="0 0 24 24" style="stroke-width:2.5"><circle cx="12" cy="12" r="4"/></svg></div>
+                  <div class="line" style="background:var(--border)"></div>
+                  <div class="st-c"><div class="sl" style="color:var(--accent)">Em andamento</div><div class="ss">Iniciado às 14h08</div></div>
+                </div>
+                <div class="step pending">
+                  <div class="marker"></div>
+                  <div class="st-c"><div class="sl">Concluído</div><div class="ss">Aguardando finalização</div></div>
+                </div>
+              </div>
+              <div style="background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.15);border-radius:12px;padding:12px 13px;margin-top:18px;display:flex;gap:9px">
+                <svg class="ic ic-sm" viewBox="0 0 24 24" style="color:var(--accent);flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <span style="font-size:11.5px;color:var(--muted);line-height:1.45">O pagamento fica retido e é liberado <b style="color:var(--ink)">1h após a finalização</b>.</span>
+              </div>
+            </div>
+            <div class="ph" style="padding-top:12px;padding-bottom:14px;display:flex;gap:8px">
+              <div class="btn ghost" style="flex:0 0 auto;width:52px;padding:14px"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+              <div class="btn success">Marcar finalizado</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="frame-note">A máquina de estados vira jornada visível. O aviso de escrow (liberação em 1h) aparece aqui — expectativa clara reduz suporte.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

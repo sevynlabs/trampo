@@ -1,0 +1,77 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment variables - NEVER commit these
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+*.env
+
+# Expo
+.expo/
+dist/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Native builds
+*.hprof
+android/
+ios/
+*.apk
+*.aab
+*.ipa
+
+# Build outputs
+.turbo/
+build/
+.next/
+out/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Prisma
+packages/db/prisma/*.db
+packages/db/prisma/*.db-journal
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Sensitive files - CRITICAL
+credentials.json
+service-account*.json
+google-services.json
+GoogleService-Info.plist
+*.pem
+*.crt
+secrets/
+.secrets/
+
+# Supabase local
+.supabase/
+
+# EAS Build
+.easignore

@@ -1,0 +1,302 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [pgcrypto, postgis]
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  CLIENT
+  TASKER
+  BOTH
+}
+
+enum KycStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum TaskStatus {
+  OPEN
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  RELEASED
+  CANCELLED
+  DISPUTED
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  HELD
+  RELEASED
+  REFUNDED
+  DISPUTED
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phone         String    @unique
+  cpfEncrypted  Bytes?    @map("cpf_encrypted") // Encrypted with pgcrypto
+  cpfHash       String?   @unique @map("cpf_hash") // For lookups
+  name          String?
+  email         String?
+  avatarUrl     String?   @map("avatar_url")
+  role          UserRole  @default(CLIENT)
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  taskerProfile   TaskerProfile?
+  tasksAsClient   Task[]          @relation("ClientTasks")
+  assignments     TaskAssignment[]
+  sentMessages    Message[]       @relation("SentMessages")
+  reviewsGiven    Review[]        @relation("ReviewsGiven")
+  reviewsReceived Review[]        @relation("ReviewsReceived")
+  payments        Payment[]
+
+  @@map("users")
+}
+
+model TaskerProfile {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String    @unique @map("user_id") @db.Uuid
+  bio             String?
+  kycStatus       KycStatus @default(PENDING) @map("kyc_status")
+  kycSubmittedAt  DateTime? @map("kyc_submitted_at")
+  kycApprovedAt   DateTime? @map("kyc_approved_at")
+  kycRejectedAt   DateTime? @map("kyc_rejected_at")
+  kycRejectReason String?   @map("kyc_reject_reason")
+
+  // KYC Documents (stored in Supabase Storage, only paths here)
+  documentFrontPath String?  @map("document_front_path")
+  documentBackPath  String?  @map("document_back_path")
+  selfiePath        String?  @map("selfie_path")
+
+  // Stats
+  rating          Float     @default(0)
+  totalTasks      Int       @default(0) @map("total_tasks")
+  totalEarnings   Int       @default(0) @map("total_earnings") // In centavos
+
+  // Location for feed
+  currentLocation Unsupported("geography(Point, 4326)")? @map("current_location")
+  serviceRadius   Int       @default(10000) @map("service_radius") // In meters
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories TaskerProfileCategory[]
+
+  @@index([currentLocation], type: Gist)
+  @@map("tasker_profiles")
+}
+
+model Category {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug        String  @unique
+  name        String
+  icon        String? // Icon name for mobile app
+  description String?
+  isActive    Boolean @default(true) @map("is_active")
+  sortOrder   Int     @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  tasks          Task[]
+  taskerProfiles TaskerProfileCategory[]
+
+  @@map("categories")
+}
+
+model TaskerProfileCategory {
+  id              String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskerProfileId String @map("tasker_profile_id") @db.Uuid
+  categoryId      String @map("category_id") @db.Uuid
+
+  taskerProfile TaskerProfile @relation(fields: [taskerProfileId], references: [id], onDelete: Cascade)
+  category      Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([taskerProfileId, categoryId])
+  @@map("tasker_profile_categories")
+}
+
+model Task {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId      String     @map("client_id") @db.Uuid
+  categoryId    String     @map("category_id") @db.Uuid
+
+  title         String
+  description   String?
+
+  // Location
+  address       String
+  location      Unsupported("geography(Point, 4326)")
+
+  // Scheduling
+  scheduledAt   DateTime?  @map("scheduled_at")
+  isUrgent      Boolean    @default(false) @map("is_urgent") // <1h = +30%
+
+  // Pricing (all in centavos)
+  baseValue     Int        @map("base_value")      // Original value
+  urgencyFee    Int        @default(0) @map("urgency_fee")  // +30% if urgent
+  serviceFee    Int        @map("service_fee")     // 5% client fee
+  totalValue    Int        @map("total_value")     // What client pays
+  taskerValue   Int        @map("tasker_value")    // What tasker receives (after 15%)
+
+  status        TaskStatus @default(OPEN)
+
+  // Timestamps
+  acceptedAt    DateTime?  @map("accepted_at")
+  startedAt     DateTime?  @map("started_at")
+  completedAt   DateTime?  @map("completed_at")
+  releasedAt    DateTime?  @map("released_at")
+  cancelledAt   DateTime?  @map("cancelled_at")
+
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  client      User            @relation("ClientTasks", fields: [clientId], references: [id])
+  category    Category        @relation(fields: [categoryId], references: [id])
+  assignment  TaskAssignment?
+  messages    Message[]
+  reviews     Review[]
+  payment     Payment?
+
+  @@index([location], type: Gist)
+  @@index([status, createdAt])
+  @@index([clientId])
+  @@map("tasks")
+}
+
+model TaskAssignment {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskId    String   @unique @map("task_id") @db.Uuid
+  taskerId  String   @map("tasker_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tasker User @relation(fields: [taskerId], references: [id])
+
+  @@index([taskerId])
+  @@map("task_assignments")
+}
+
+model Message {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskId    String   @map("task_id") @db.Uuid
+  senderId  String   @map("sender_id") @db.Uuid
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  sender User @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([taskId, createdAt])
+  @@map("messages")
+}
+
+model Review {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskId     String   @map("task_id") @db.Uuid
+  reviewerId String   @map("reviewer_id") @db.Uuid
+  revieweeId String   @map("reviewee_id") @db.Uuid
+  rating     Int      // 1-5
+  comment    String?
+  tags       String[] // ["Pontual", "Caprichoso", etc]
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  task     Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reviewer User @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  reviewee User @relation("ReviewsReceived", fields: [revieweeId], references: [id])
+
+  @@unique([taskId, reviewerId]) // One review per user per task
+  @@index([revieweeId])
+  @@map("reviews")
+}
+
+model Payment {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskId          String        @unique @map("task_id") @db.Uuid
+  userId          String        @map("user_id") @db.Uuid // The payer (client)
+
+  // Asaas
+  asaasId         String?       @unique @map("asaas_id") // For idempotency
+  asaasPaymentId  String?       @map("asaas_payment_id")
+  pixCode         String?       @map("pix_code")
+  pixQrCode       String?       @map("pix_qr_code")
+
+  // Values (centavos)
+  amount          Int           // Total charged
+  platformFee     Int           @map("platform_fee") // 20% total (15% tasker + 5% client)
+  taskerAmount    Int           @map("tasker_amount") // What tasker receives
+
+  status          PaymentStatus @default(PENDING)
+
+  paidAt          DateTime?     @map("paid_at")
+  heldAt          DateTime?     @map("held_at")
+  releasedAt      DateTime?     @map("released_at")
+  refundedAt      DateTime?     @map("refunded_at")
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([status])
+  @@map("payments")
+}
+
+model Cancellation {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskId        String   @map("task_id") @db.Uuid
+  cancelledById String   @map("cancelled_by_id") @db.Uuid
+  reason        String?
+
+  // Penalty (centavos)
+  penaltyAmount Int      @default(0) @map("penalty_amount")
+  wasPenalized  Boolean  @default(false) @map("was_penalized")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("cancellations")
+}
+
+// ============================================
+// SERVICE AREAS (for regional coverage)
+// ============================================
+
+model ServiceArea {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   // Uberlandia, Uberaba, Araguari
+  slug      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+
+  // Polygon for the service area
+  boundary  Unsupported("geography(Polygon, 4326)")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([boundary], type: Gist)
+  @@map("service_areas")
+}

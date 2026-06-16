@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRAMPO — Relatório de Arquitetura do Backend</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAFAFA; --surface:#FFFFFF; --ink:#18181B; --ink-soft:#52525B; --ink-faint:#A1A1AA;
+    --accent:#2563EB; --success:#16A34A; --warning:#EA580C; --danger:#DC2626;
+    --border:#E4E4E7; --border-strong:#D4D4D8;
+    --code-bg:#18181B; --code-ink:#E4E4E7;
+    --display:'Bricolage Grotesque',sans-serif; --body:'Hanken Grotesk',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{font-family:var(--body);background:var(--bg);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;}
+
+  .layout{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:248px 1fr;gap:0;}
+
+  /* ---------- SIDEBAR / TOC ---------- */
+  aside{
+    position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+    padding:40px 24px;border-right:1px solid var(--border);
+  }
+  .brand{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-0.03em;margin-bottom:4px;}
+  .brand .dot{color:var(--accent);}
+  .brand-sub{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:32px;}
+  .toc-label{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);margin:24px 0 10px;}
+  nav a{
+    display:block;font-size:13.5px;color:var(--ink-soft);text-decoration:none;
+    padding:6px 10px;border-radius:7px;border-left:2px solid transparent;transition:.15s;
+  }
+  nav a:hover{background:var(--surface);color:var(--ink);border-left-color:var(--accent);}
+  nav a .n{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-right:8px;}
+
+  /* ---------- MAIN ---------- */
+  main{padding:48px 56px 96px;min-width:0;}
+
+  .doc-head{padding-bottom:32px;border-bottom:1px solid var(--border);margin-bottom:48px;}
+  .doc-tag{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);margin-bottom:16px;}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,5vw,52px);letter-spacing:-0.035em;line-height:1.0;margin-bottom:16px;}
+  .doc-lede{font-size:18px;color:var(--ink-soft);max-width:680px;}
+  .doc-facts{display:flex;flex-wrap:wrap;gap:8px 28px;margin-top:24px;font-family:var(--mono);font-size:12px;color:var(--ink-soft);}
+  .doc-facts b{color:var(--ink);font-weight:600;}
+
+  section{margin-bottom:56px;scroll-margin-top:24px;}
+  .sec-kicker{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;}
+  .sec-kicker .num{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:700;}
+  h2{font-family:var(--display);font-weight:700;font-size:30px;letter-spacing:-0.025em;line-height:1.1;}
+  .sec-intro{color:var(--ink-soft);font-size:15.5px;margin:12px 0 28px;max-width:720px;}
+
+  h3{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:-0.01em;margin:30px 0 12px;}
+  p{font-size:15px;color:var(--ink-soft);margin-bottom:14px;}
+  p b, li b{color:var(--ink);font-weight:600;}
+
+  /* layered architecture diagram */
+  .stack{display:flex;flex-direction:column;gap:8px;margin:8px 0 28px;}
+  .stack-row{
+    background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:16px 20px;
+    display:flex;align-items:center;gap:18px;
+  }
+  .stack-row .lbl{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-faint);width:130px;flex-shrink:0;}
+  .stack-row .items{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--border-strong);border-radius:7px;padding:5px 11px;color:var(--ink);}
+  .chip.acc{border-color:var(--accent);color:var(--accent);}
+  .chip.grn{border-color:var(--success);color:var(--success);}
+  .chip.wrn{border-color:var(--warning);color:var(--warning);}
+
+  /* sprint block */
+  .sprint-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:var(--surface);margin-top:20px;}
+  .sprint-top{padding:22px 26px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .sprint-id{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:-0.02em;}
+  .sprint-id span{color:var(--ink-faint);font-family:var(--mono);font-size:12px;font-weight:500;margin-left:10px;letter-spacing:0.04em;}
+  .sprint-goal{font-size:13.5px;color:var(--ink-soft);max-width:420px;}
+  .sprint-body{padding:24px 26px;}
+
+  .mod-table{width:100%;border-collapse:collapse;margin:6px 0 4px;}
+  .mod-table th{
+    text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;padding:0 12px 10px;border-bottom:1px solid var(--border);
+  }
+  .mod-table td{padding:11px 12px;font-size:13px;color:var(--ink-soft);border-bottom:1px solid var(--border);vertical-align:top;}
+  .mod-table tr:last-child td{border-bottom:none;}
+  .mod-table td.mod{font-family:var(--mono);font-size:12.5px;color:var(--accent);font-weight:600;white-space:nowrap;}
+  .mod-table td code{font-family:var(--mono);font-size:11.5px;color:var(--ink);background:var(--bg);padding:1px 5px;border-radius:4px;}
+  .tbl-tag{font-family:var(--mono);font-size:10.5px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--ink-soft);display:inline-block;margin:1px 2px 1px 0;}
+
+  .integ-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;padding-top:18px;border-top:1px dashed var(--border-strong);}
+  .integ-row .il{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint);width:100%;margin-bottom:4px;}
+
+  /* code */
+  pre{
+    background:var(--code-bg);border-radius:12px;padding:20px 22px;overflow-x:auto;margin:8px 0 22px;
+    font-family:var(--mono);font-size:12.5px;line-height:1.65;color:var(--code-ink);
+  }
+  pre .c{color:#71717A;}     /* comment */
+  pre .k{color:#93C5FD;}     /* keyword */
+  pre .s{color:#86EFAC;}     /* string */
+  pre .f{color:#FCD34D;}     /* func/name */
+  pre .p{color:#F9A8D4;}     /* punctuation-ish */
+
+  .note{
+    background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);
+    border-radius:10px;padding:16px 20px;margin:8px 0 22px;
+  }
+  .note.warn{border-left-color:var(--danger);}
+  .note .nt{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;margin-bottom:6px;}
+  .note.warn .nt{color:var(--danger);}
+  .note:not(.warn) .nt{color:var(--accent);}
+  .note p{font-size:14px;margin-bottom:0;color:var(--ink-soft);}
+
+  ul.clean{list-style:none;margin:4px 0 18px;}
+  ul.clean li{font-size:14.5px;color:var(--ink-soft);padding:5px 0 5px 20px;position:relative;}
+  ul.clean li::before{content:"";position:absolute;left:0;top:12px;width:6px;height:6px;border-radius:2px;background:var(--accent);}
+
+  .tree{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px 24px;
+    font-family:var(--mono);font-size:12.5px;line-height:1.85;color:var(--ink-soft);white-space:pre;overflow-x:auto;
+  }
+  .tree .dir{color:var(--accent);font-weight:600;}
+  .tree .cm{color:var(--ink-faint);}
+
+  footer{margin-top:40px;padding-top:28px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);}
+
+  .reveal{opacity:0;transform:translateY(14px);animation:rise .6s cubic-bezier(.16,1,.3,1) forwards;}
+  @keyframes rise{to{opacity:1;transform:translateY(0);}}
+
+  @media(max-width:920px){
+    .layout{grid-template-columns:1fr;}
+    aside{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border);}
+    nav{display:flex;flex-wrap:wrap;gap:4px;}
+    nav a{border-left:none;}
+    main{padding:36px 24px 72px;}
+    .stack-row{flex-direction:column;align-items:flex-start;gap:10px;}
+    .stack-row .lbl{width:auto;}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="brand">TRAMPO<span class="dot">.</span></div>
+    <div class="brand-sub">Backend Architecture</div>
+    <div class="toc-label">Conteúdo</div>
+    <nav>
+      <a href="#macro"><span class="n">01</span>Visão macro</a>
+      <a href="#camadas"><span class="n">02</span>Camadas</a>
+      <a href="#s0"><span class="n">S0</span>Spikes de risco</a>
+      <a href="#s1"><span class="n">S1</span>Fundação</a>
+      <a href="#s2"><span class="n">S2</span>Oferta &amp; descoberta</a>
+      <a href="#s3"><span class="n">S3</span>Conexão</a>
+      <a href="#s4"><span class="n">S4</span>Dinheiro</a>
+      <a href="#cross"><span class="n">03</span>Camadas transversais</a>
+      <a href="#tree"><span class="n">04</span>Estrutura de pastas</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <div class="doc-head reveal">
+      <div class="doc-tag">Relatório técnico &middot; Tech Lead</div>
+      <h1>Arquitetura do Backend, sprint a sprint</h1>
+      <p class="doc-lede">Como o backend do TRAMPO é construído ao longo das 4 sprints — módulos tRPC, tabelas tocadas, integrações externas e jobs. Monolito modular, não microserviços. Otimizado para um dev solo com Claude Code.</p>
+      <div class="doc-facts">
+        <span><b>Runtime</b> Node.js + Hono</span>
+        <span><b>API</b> tRPC v11</span>
+        <span><b>ORM</b> Prisma</span>
+        <span><b>DB</b> PostgreSQL + PostGIS</span>
+        <span><b>Cache/filas</b> Redis (Upstash)</span>
+        <span><b>Host</b> Railway</span>
+      </div>
+    </div>
+
+    <!-- 01 MACRO -->
+    <section id="macro">
+      <div class="sec-kicker"><span class="num">01</span><h2>Visão macro</h2></div>
+      <p class="sec-intro">Uma única aplicação Node (<code>apps/api</code>) servida pelo Hono, expondo um router tRPC. Toda regra de negócio vive numa camada de domínio testável, separada do transporte e do banco. Microserviços ficam fora de discussão: para founder solo, custo operacional não se paga.</p>
+
+      <div class="note">
+        <div class="nt">Princípio</div>
+        <p>O backend é um <b>monolito modular</b>. Cada domínio (auth, tasks, payments...) é um módulo isolado com seu próprio router, services e tipos. Eles se comunicam por chamadas diretas de função, não por rede. Se um dia precisar quebrar, a fronteira já está desenhada.</p>
+      </div>
+    </section>
+
+    <!-- 02 CAMADAS -->
+    <section id="camadas">
+      <div class="sec-kicker"><span class="num">02</span><h2>Camadas da aplicação</h2></div>
+      <p class="sec-intro">Cinco camadas, do request à persistência. Dependência sempre aponta para baixo: o router chama o service, o service chama o repositório e as integrações. Nunca o contrário.</p>
+
+      <div class="stack">
+        <div class="stack-row reveal">
+          <div class="lbl">Transporte</div>
+          <div class="items"><span class="chip">Hono</span><span class="chip">tRPC adapter</span><span class="chip">CORS</span><span class="chip">JWT verify</span></div>
+        </div>
+        <div class="stack-row reveal" style="animation-delay:.05s">
+          <div class="lbl">Router (tRPC)</div>
+          <div class="items"><span class="chip">procedures</span><span class="chip">zod input</span><span class="chip">middleware auth</span><span class="chip">rate limit</span></div>
+        </div>
+        <div class="stack-row reveal" style="animation-delay:.1s">
+          <div class="lbl">Domínio</div>
+          <div class="items"><span class="chip acc">pricing engine</span><span class="chip acc">state machine</span><span class="chip acc">escrow logic</span><span class="chip">validações</span></div>
+        </div>
+        <div class="stack-row reveal" style="animation-delay:.15s">
+          <div class="lbl">Dados</div>
+          <div class="items"><span class="chip">Prisma</span><span class="chip">PostGIS raw</span><span class="chip">transações</span><span class="chip wrn">row locks</span></div>
+        </div>
+        <div class="stack-row reveal" style="animation-delay:.2s">
+          <div class="lbl">Integrações</div>
+          <div class="items"><span class="chip grn">Asaas</span><span class="chip">Twilio</span><span class="chip">Resend</span><span class="chip">FCM</span><span class="chip">Supabase Storage</span><span class="chip">Realtime</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SPRINT 0 -->
+    <section id="s0">
+      <div class="sec-kicker"><span class="num">S0</span><h2>Spikes de risco</h2></div>
+      <p class="sec-intro">Antes de qualquer linha de produto: provar que o que pode matar o projeto funciona. Nada de código de feature aqui — só validação.</p>
+
+      <div class="sprint-card reveal">
+        <div class="sprint-top">
+          <div class="sprint-id">Sprint 0<span>3-4 DIAS</span></div>
+          <div class="sprint-goal">Validar Asaas e PostGIS antes de comprometer o cronograma.</div>
+        </div>
+        <div class="sprint-body">
+          <ul class="clean">
+            <li>Conta sandbox Asaas: cobrança Pix, <b>split agendado</b>, estorno e webhook chegando.</li>
+            <li>Prova de conceito PostGIS: inserir pontos, query por raio com <code>ST_DWithin</code>, ordenar por distância usando índice GiST.</li>
+            <li>Decisão fechada de escrow: <b>split com retenção</b>, nunca carteira intermediária.</li>
+          </ul>
+          <div class="note warn">
+            <div class="nt">Por quê primeiro</div>
+            <p>Descobrir um bloqueio do Asaas em 3 dias custa 3 dias. Descobrir na semana 7 custa o projeto. O risco entra na frente, sempre.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SPRINT 1 -->
+    <section id="s1">
+      <div class="sec-kicker"><span class="num">S1</span><h2>Fundação</h2></div>
+      <p class="sec-intro">Setup do monorepo e a espinha dorsal de identidade: autenticação, perfis e KYC. Sem isso, nada mais existe.</p>
+
+      <div class="sprint-card reveal">
+        <div class="sprint-top">
+          <div class="sprint-id">Sprint 1<span>SEM 1-2</span></div>
+          <div class="sprint-goal">Usuário cria conta, faz login, completa KYC e tem perfil.</div>
+        </div>
+        <div class="sprint-body">
+          <table class="mod-table">
+            <thead><tr><th>Módulo</th><th>Procedures principais</th><th>Tabelas</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="mod">auth</td>
+                <td><code>requestOtp</code> · <code>verifyOtp</code> · <code>session</code> · <code>refresh</code></td>
+                <td><span class="tbl-tag">users</span></td>
+              </tr>
+              <tr>
+                <td class="mod">profiles</td>
+                <td><code>getMe</code> · <code>updateProfile</code> · <code>setRole</code></td>
+                <td><span class="tbl-tag">users</span><span class="tbl-tag">tasker_profiles</span></td>
+              </tr>
+              <tr>
+                <td class="mod">kyc</td>
+                <td><code>uploadDoc</code> · <code>submitKyc</code> · <code>getKycStatus</code></td>
+                <td><span class="tbl-tag">users</span><span class="tbl-tag">tasker_profiles</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="integ-row">
+            <span class="il">Integrações ativadas</span>
+            <span class="chip">Supabase Auth (JWT)</span>
+            <span class="chip">Twilio Verify (OTP)</span>
+            <span class="chip">Supabase Storage (bucket privado)</span>
+          </div>
+          <div class="note">
+            <div class="nt">Contrato de exemplo — auth.verifyOtp</div>
+            <p>Toda procedure valida input com zod. O contexto tRPC carrega o usuário autenticado a partir do JWT já verificado no transporte.</p>
+          </div>
+<pre><span class="k">export const</span> <span class="f">authRouter</span> = <span class="f">router</span>({
+  <span class="f">verifyOtp</span>: <span class="f">publicProcedure</span>
+    .<span class="f">input</span>(<span class="f">z</span>.<span class="f">object</span>({ <span class="p">phone</span>: <span class="f">z</span>.<span class="f">string</span>(), <span class="p">code</span>: <span class="f">z</span>.<span class="f">string</span>().<span class="f">length</span>(<span class="s">6</span>) }))
+    .<span class="f">mutation</span>(<span class="k">async</span> ({ input }) => {
+      <span class="c">// 1. valida o código no Twilio Verify</span>
+      <span class="k">await</span> <span class="f">twilio</span>.<span class="f">checkVerification</span>(input.phone, input.code);
+      <span class="c">// 2. cria/retorna sessão Supabase + emite JWT</span>
+      <span class="k">return</span> <span class="f">authService</span>.<span class="f">issueSession</span>(input.phone);
+    }),
+});</pre>
+          <div class="note warn">
+            <div class="nt">LGPD desde o dia 1</div>
+            <p>CPF entra criptografado (pgcrypto). Documentos de KYC vão para bucket <b>privado</b>, acessados só por signed URL de expiração curta. Nada de documento em URL pública, nunca.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SPRINT 2 -->
+    <section id="s2">
+      <div class="sec-kicker"><span class="num">S2</span><h2>Oferta &amp; descoberta</h2></div>
+      <p class="sec-intro">O lado da oferta: postar um trampo com o pricing correto e o feed geográfico que mostra trampos próximos. Aqui entram as regras imutáveis de preço.</p>
+
+      <div class="sprint-card reveal">
+        <div class="sprint-top">
+          <div class="sprint-id">Sprint 2<span>SEM 3-4</span></div>
+          <div class="sprint-goal">Cliente posta trampo; tasker vê trampos próximos ordenados por distância.</div>
+        </div>
+        <div class="sprint-body">
+          <table class="mod-table">
+            <thead><tr><th>Módulo</th><th>Procedures principais</th><th>Tabelas</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="mod">tasks</td>
+                <td><code>create</code> · <code>getById</code> · <code>listMine</code> · <code>update</code></td>
+                <td><span class="tbl-tag">tasks</span></td>
+              </tr>
+              <tr>
+                <td class="mod">feed</td>
+                <td><code>nearby</code> · <code>byCategory</code> · <code>search</code></td>
+                <td><span class="tbl-tag">tasks</span> <span class="tbl-tag">PostGIS</span></td>
+              </tr>
+              <tr>
+                <td class="mod">pricing</td>
+                <td><code>quote</code> <span class="tbl-tag">domínio puro</span></td>
+                <td><span class="tbl-tag">—</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="integ-row">
+            <span class="il">Integrações ativadas</span>
+            <span class="chip">Redis (cache de feed)</span>
+            <span class="chip">PostHog (eventos de funil)</span>
+          </div>
+
+          <h3>Pricing engine — regras imutáveis no código</h3>
+          <p>O cálculo de preço é domínio puro, sem efeito colateral, 100% testável. As regras de negócio viram constantes em um único lugar.</p>
+<pre><span class="c">// valores travados pelas regras de negócio</span>
+<span class="k">const</span> <span class="p">MIN_VALUE</span>      = <span class="s">5000</span>; <span class="c">// R$ 50,00 em centavos</span>
+<span class="k">const</span> <span class="p">TASKER_FEE</span>     = <span class="s">0.15</span>; <span class="c">// comissão tasker</span>
+<span class="k">const</span> <span class="p">CLIENT_FEE</span>     = <span class="s">0.05</span>; <span class="c">// taxa de serviço cliente</span>
+<span class="k">const</span> <span class="p">URGENCY_FEE</span>    = <span class="s">0.30</span>; <span class="c">// + se &lt; 1h</span>
+
+<span class="k">export function</span> <span class="f">quote</span>(baseCents: <span class="k">number</span>, isUrgent: <span class="k">boolean</span>) {
+  <span class="k">if</span> (baseCents &lt; <span class="p">MIN_VALUE</span>) <span class="k">throw new</span> <span class="f">DomainError</span>(<span class="s">"abaixo do mínimo"</span>);
+  <span class="k">const</span> base    = isUrgent ? <span class="f">Math</span>.<span class="f">round</span>(baseCents * (<span class="s">1</span> + <span class="p">URGENCY_FEE</span>)) : baseCents;
+  <span class="k">const</span> service = <span class="f">Math</span>.<span class="f">round</span>(base * <span class="p">CLIENT_FEE</span>);   <span class="c">// paga o cliente</span>
+  <span class="k">const</span> commission = <span class="f">Math</span>.<span class="f">round</span>(base * <span class="p">TASKER_FEE</span>); <span class="c">// desconta do tasker</span>
+  <span class="k">return</span> { base, service, commission, <span class="p">total</span>: base + service };
+}</pre>
+          <div class="note">
+            <div class="nt">Dinheiro</div>
+            <p>Tudo em <b>centavos inteiros</b>. Nunca <code>float</code>. Take rate de ~20% sem erro de arredondamento que vira disputa com tasker.</p>
+          </div>
+
+          <h3>Feed geográfico — query que usa o índice</h3>
+<pre><span class="c">-- raw query via Prisma; usa o índice GiST, responde em ms</span>
+<span class="k">SELECT</span> *, <span class="f">ST_Distance</span>(location, $1) <span class="k">AS</span> dist
+<span class="k">FROM</span> tasks
+<span class="k">WHERE</span> status = <span class="s">'open'</span>
+  <span class="k">AND</span> <span class="f">ST_DWithin</span>(location, $1, <span class="s">10000</span>)  <span class="c">-- 10km</span>
+<span class="k">ORDER BY</span> dist
+<span class="k">LIMIT</span> <span class="s">50</span>;</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- SPRINT 3 -->
+    <section id="s3">
+      <div class="sec-kicker"><span class="num">S3</span><h2>Conexão</h2></div>
+      <p class="sec-intro">Onde os dois lados se encontram: aceite de trampo, chat, ciclo de status e avaliação bilateral. O aceite é o ponto técnico mais delicado da sprint.</p>
+
+      <div class="sprint-card reveal">
+        <div class="sprint-top">
+          <div class="sprint-id">Sprint 3<span>SEM 5-6</span></div>
+          <div class="sprint-goal">Tasker aceita, conversa, atualiza status; ambos avaliam ao fim.</div>
+        </div>
+        <div class="sprint-body">
+          <table class="mod-table">
+            <thead><tr><th>Módulo</th><th>Procedures principais</th><th>Tabelas</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="mod">matching</td>
+                <td><code>accept</code> · <code>start</code> · <code>complete</code></td>
+                <td><span class="tbl-tag">tasks</span><span class="tbl-tag">task_assignments</span></td>
+              </tr>
+              <tr>
+                <td class="mod">chat</td>
+                <td><code>send</code> · <code>listByTask</code></td>
+                <td><span class="tbl-tag">messages</span></td>
+              </tr>
+              <tr>
+                <td class="mod">reviews</td>
+                <td><code>submit</code> · <code>listForUser</code></td>
+                <td><span class="tbl-tag">reviews</span><span class="tbl-tag">tasker_profiles</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="integ-row">
+            <span class="il">Integrações ativadas</span>
+            <span class="chip">Supabase Realtime (chat + status)</span>
+            <span class="chip">FCM (push de aceite)</span>
+          </div>
+
+          <h3>Aceite de trampo — lock contra duplo-aceite</h3>
+          <p>Dois taskers clicam "aceitar" no mesmo segundo. Sem lock, o trampo é aceito por dois. A solução é um <b>update condicional dentro de transação</b>: só vence quem encontrar o status ainda <code>open</code>.</p>
+<pre><span class="k">async function</span> <span class="f">accept</span>(taskId: <span class="k">string</span>, taskerId: <span class="k">string</span>) {
+  <span class="k">return</span> <span class="f">prisma</span>.<span class="f">$transaction</span>(<span class="k">async</span> (tx) => {
+    <span class="c">// update condicional: vence quem achar status = 'open'</span>
+    <span class="k">const</span> { count } = <span class="k">await</span> tx.task.<span class="f">updateMany</span>({
+      <span class="p">where</span>: { <span class="p">id</span>: taskId, <span class="p">status</span>: <span class="s">'open'</span> },
+      <span class="p">data</span>:  { <span class="p">status</span>: <span class="s">'accepted'</span> },
+    });
+    <span class="k">if</span> (count === <span class="s">0</span>) <span class="k">throw new</span> <span class="f">DomainError</span>(<span class="s">"trampo já aceito"</span>);
+    <span class="k">await</span> tx.taskAssignment.<span class="f">create</span>({ <span class="p">data</span>: { taskId, taskerId } });
+  });
+}</pre>
+
+          <h3>Máquina de estados — transições forçadas</h3>
+          <p>Status nunca é string solta. Cada transição válida é declarada; qualquer outra é rejeitada pelo domínio antes de tocar o banco.</p>
+<pre><span class="k">const</span> <span class="p">TRANSITIONS</span> = {
+  <span class="p">open</span>:        [<span class="s">'accepted'</span>, <span class="s">'cancelled'</span>],
+  <span class="p">accepted</span>:    [<span class="s">'in_progress'</span>, <span class="s">'cancelled'</span>],
+  <span class="p">in_progress</span>: [<span class="s">'completed'</span>, <span class="s">'disputed'</span>],
+  <span class="p">completed</span>:   [<span class="s">'released'</span>, <span class="s">'disputed'</span>],
+};
+<span class="k">function</span> <span class="f">assertTransition</span>(from, to) {
+  <span class="k">if</span> (!<span class="p">TRANSITIONS</span>[from]?.<span class="f">includes</span>(to))
+    <span class="k">throw new</span> <span class="f">DomainError</span>(<span class="s">`transição inválida: ${from} → ${to}`</span>);
+}</pre>
+          <div class="note warn">
+            <div class="nt">Regra de integridade</div>
+            <p>Review só é aceito se existir um trampo <b>concluído</b> entre as duas partes. Sem trampo, sem avaliação — corta avaliação falsa na raiz.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SPRINT 4 -->
+    <section id="s4">
+      <div class="sec-kicker"><span class="num">S4</span><h2>Dinheiro</h2></div>
+      <p class="sec-intro">A parte que não pode falhar: pagamento Pix, escrow, split do take rate e multa de cancelamento. Tudo amarrado em webhooks e jobs agendados.</p>
+
+      <div class="sprint-card reveal">
+        <div class="sprint-top">
+          <div class="sprint-id">Sprint 4<span>SEM 7-8</span></div>
+          <div class="sprint-goal">Fluxo completo de dinheiro no ar. Beta lançado em Uberlândia.</div>
+        </div>
+        <div class="sprint-body">
+          <table class="mod-table">
+            <thead><tr><th>Módulo</th><th>Procedures / handlers</th><th>Tabelas</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="mod">payments</td>
+                <td><code>createCharge</code> · <code>getStatus</code> · <code>release</code></td>
+                <td><span class="tbl-tag">payments</span><span class="tbl-tag">tasks</span></td>
+              </tr>
+              <tr>
+                <td class="mod">webhooks</td>
+                <td><code>POST /webhooks/asaas</code> <span class="tbl-tag">Hono route</span></td>
+                <td><span class="tbl-tag">payments</span></td>
+              </tr>
+              <tr>
+                <td class="mod">cancellations</td>
+                <td><code>cancel</code> · <code>computePenalty</code></td>
+                <td><span class="tbl-tag">cancellations</span><span class="tbl-tag">payments</span></td>
+              </tr>
+              <tr>
+                <td class="mod">jobs</td>
+                <td><code>escrowRelease</code> <span class="tbl-tag">worker Redis</span></td>
+                <td><span class="tbl-tag">payments</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="integ-row">
+            <span class="il">Integrações ativadas</span>
+            <span class="chip grn">Asaas (Pix + split)</span>
+            <span class="chip">Redis (fila de release)</span>
+            <span class="chip">Resend (recibos)</span>
+            <span class="chip">FCM (push de pagamento)</span>
+          </div>
+
+          <h3>Webhook Asaas — assinatura validada</h3>
+          <p>Roda direto no Hono, fora do tRPC (é um POST externo). <b>Validar a assinatura antes de tudo</b>: um webhook falso de "pago" sem verificação libera serviço sem dinheiro ter entrado.</p>
+<pre><span class="f">app</span>.<span class="f">post</span>(<span class="s">'/webhooks/asaas'</span>, <span class="k">async</span> (c) => {
+  <span class="k">const</span> sig = c.<span class="f">req</span>.<span class="f">header</span>(<span class="s">'asaas-access-token'</span>);
+  <span class="k">if</span> (sig !== <span class="f">env</span>.<span class="p">ASAAS_WEBHOOK_TOKEN</span>) <span class="k">return</span> c.<span class="f">text</span>(<span class="s">'unauthorized'</span>, <span class="s">401</span>);
+  <span class="k">const</span> evt = <span class="k">await</span> c.<span class="f">req</span>.<span class="f">json</span>();
+  <span class="k">await</span> <span class="f">paymentService</span>.<span class="f">handleEvent</span>(evt); <span class="c">// idempotente por asaas_id</span>
+  <span class="k">return</span> c.<span class="f">text</span>(<span class="s">'ok'</span>);
+});</pre>
+
+          <h3>Escrow — release agendado via fila</h3>
+          <p>Quando o tasker marca "finalizado", o pagamento entra em <code>held</code> e um job é agendado para <b>1 hora depois</b>. O worker libera o split. Sem cron frágil: fila Redis com delay.</p>
+<pre><span class="c">// ao concluir o trampo</span>
+<span class="k">await</span> <span class="f">queue</span>.<span class="f">add</span>(<span class="s">'escrow-release'</span>, { paymentId }, { <span class="p">delay</span>: <span class="s">3_600_000</span> });
+
+<span class="c">// worker</span>
+<span class="f">worker</span>.<span class="f">process</span>(<span class="s">'escrow-release'</span>, <span class="k">async</span> ({ paymentId }) => {
+  <span class="k">const</span> p = <span class="k">await</span> <span class="f">getPayment</span>(paymentId);
+  <span class="k">if</span> (p.status !== <span class="s">'held'</span>) <span class="k">return</span>; <span class="c">// disputado? não libera</span>
+  <span class="k">await</span> <span class="f">asaas</span>.<span class="f">releaseSplit</span>(p.asaasId); <span class="c">// repassa ao tasker, retém ~20%</span>
+  <span class="k">await</span> <span class="f">setStatus</span>(paymentId, <span class="s">'released'</span>);
+});</pre>
+          <div class="note warn">
+            <div class="nt">Janela e multa</div>
+            <p>Cancelamento grátis até 30 min antes do horário agendado. Depois, multa de 20% calculada no domínio e aplicada via estorno parcial no Asaas. Idempotência por <code>asaas_id</code> impede processar o mesmo evento duas vezes.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 CROSS-CUTTING -->
+    <section id="cross">
+      <div class="sec-kicker"><span class="num">03</span><h2>Camadas transversais</h2></div>
+      <p class="sec-intro">Preocupações que cruzam todos os módulos. Implementadas como middleware tRPC ou utilitários compartilhados — escritas uma vez, aplicadas em tudo.</p>
+
+      <table class="mod-table">
+        <thead><tr><th>Preocupação</th><th>Implementação</th><th>Onde entra</th></tr></thead>
+        <tbody>
+          <tr><td class="mod">Auth</td><td>Middleware tRPC lê JWT do contexto, injeta <code>ctx.user</code></td><td>S1, em toda procedure privada</td></tr>
+          <tr><td class="mod">RLS</td><td>Row Level Security no Postgres em todas as tabelas</td><td>S1, reforça em cada sprint</td></tr>
+          <tr><td class="mod">Rate limit</td><td>Redis por telefone/IP — OTP, login, postagem</td><td>S1 (OTP), S2 (postagem)</td></tr>
+          <tr><td class="mod">Erros</td><td><code>DomainError</code> tipado → mapeado para código tRPC</td><td>Transversal</td></tr>
+          <tr><td class="mod">Observabilidade</td><td>Sentry (exceções) + PostHog (eventos de produto)</td><td>S2 em diante</td></tr>
+          <tr><td class="mod">Validação</td><td>Schemas zod compartilhados em <code>packages/contracts</code></td><td>Todas</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        <div class="nt">Nota sobre IA</div>
+        <p>Claude API entra como camada de apoio (classificação de categoria, triagem de suporte, pricing dinâmico) — <b>fora do caminho crítico</b> do MVP. Nada de fluxo de dinheiro ou aceite depende de IA. É melhoria pós-beta, não dependência de lançamento.</p>
+      </div>
+    </section>
+
+    <!-- 04 TREE -->
+    <section id="tree">
+      <div class="sec-kicker"><span class="num">04</span><h2>Estrutura de pastas</h2></div>
+      <p class="sec-intro">O backend dentro do monorepo Turborepo. Cada módulo de domínio é uma pasta autocontida com router, service e testes.</p>
+
+      <div class="tree reveal"><span class="dir">apps/api/</span>
+├── src/
+│   ├── <span class="dir">index.ts</span>            <span class="cm"># Hono app + tRPC adapter + webhooks</span>
+│   ├── <span class="dir">trpc.ts</span>             <span class="cm"># router base, context, middlewares</span>
+│   ├── <span class="dir">modules/</span>
+│   │   ├── <span class="dir">auth/</span>           <span class="cm"># router · service · otp</span>
+│   │   ├── <span class="dir">profiles/</span>
+│   │   ├── <span class="dir">kyc/</span>
+│   │   ├── <span class="dir">tasks/</span>
+│   │   ├── <span class="dir">feed/</span>          <span class="cm"># raw PostGIS queries</span>
+│   │   ├── <span class="dir">matching/</span>      <span class="cm"># accept lock + state machine</span>
+│   │   ├── <span class="dir">chat/</span>
+│   │   ├── <span class="dir">reviews/</span>
+│   │   ├── <span class="dir">payments/</span>      <span class="cm"># Asaas + escrow</span>
+│   │   └── <span class="dir">cancellations/</span>
+│   ├── <span class="dir">domain/</span>            <span class="cm"># pricing, state machine, errors (puro)</span>
+│   ├── <span class="dir">integrations/</span>      <span class="cm"># asaas, twilio, resend, fcm, storage</span>
+│   ├── <span class="dir">jobs/</span>              <span class="cm"># workers Redis (escrow release)</span>
+│   └── <span class="dir">lib/</span>               <span class="cm"># redis, prisma client, env</span>
+│
+<span class="dir">packages/</span>
+├── <span class="dir">db/</span>                   <span class="cm"># Prisma schema + migrations</span>
+└── <span class="dir">contracts/</span>            <span class="cm"># zod schemas + tipos tRPC compartilhados</span></div>
+    </section>
+
+    <footer>
+      TRAMPO &middot; Relatório de Arquitetura do Backend &middot; Sevyn Labs &middot; Diego Freitas &middot; Uberlândia/MG
+    </footer>
+
+  </main>
+</div>
+</body>
+</html>

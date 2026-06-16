@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRAMPO — PRD de Desenvolvimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FFFFFF; --ink:#18181B; --muted:#71717A; --faint:#A1A1AA;
+    --line:#ECECEE; --line-2:#E4E4E7; --accent:#2563EB;
+    --success:#16A34A; --warning:#EA580C; --danger:#DC2626; --code:#FAFAFA;
+    --display:'Bricolage Grotesque',sans-serif; --body:'Hanken Grotesk',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{font-family:var(--body);background:var(--paper);color:var(--ink);line-height:1.65;-webkit-font-smoothing:antialiased;font-size:16px;}
+  .wrap{max-width:740px;margin:0 auto;padding:0 32px;}
+
+  header{padding:120px 0 64px;}
+  .kick{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--faint);margin-bottom:28px;}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(40px,7vw,66px);letter-spacing:-0.04em;line-height:0.96;margin-bottom:24px;}
+  .brand{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-0.03em;margin-bottom:8px;}
+  .brand .d{color:var(--accent);}
+  .lede{font-size:18px;color:var(--muted);max-width:580px;}
+  .facts{margin-top:36px;display:flex;flex-wrap:wrap;gap:6px 28px;font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .facts b{color:var(--ink);font-weight:500;}
+
+  /* sumário */
+  .toc{margin-top:44px;border-top:1px solid var(--line);padding-top:28px;}
+  .toc-l{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--faint);margin-bottom:14px;}
+  .toc ol{list-style:none;counter-reset:t;display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;}
+  .toc li{counter-increment:t;font-size:13.5px;}
+  .toc li::before{content:counter(t,decimal-leading-zero);font-family:var(--mono);font-size:11px;color:var(--accent);margin-right:10px;}
+  .toc a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent;transition:.2s;}
+  .toc a:hover{color:var(--ink);border-bottom-color:var(--line-2);}
+
+  section{padding:64px 0;border-top:1px solid var(--line);}
+  .s-num{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:0.1em;margin-bottom:16px;}
+  h2{font-family:var(--display);font-weight:700;font-size:31px;letter-spacing:-0.03em;line-height:1.05;margin-bottom:14px;}
+  .s-sub{font-size:15.5px;color:var(--muted);margin-bottom:36px;max-width:600px;}
+  h3{font-family:var(--display);font-weight:600;font-size:18px;letter-spacing:-0.015em;margin:36px 0 12px;color:var(--ink);}
+  h4{font-family:var(--mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--faint);margin:26px 0 12px;}
+  p{font-size:15px;color:var(--muted);margin-bottom:14px;}
+  p b{color:var(--ink);font-weight:600;}
+  ul.b,ol.b{margin:6px 0 18px;padding-left:0;list-style:none;}
+  ul.b li,ol.b li{font-size:14.5px;color:var(--muted);padding:6px 0 6px 22px;position:relative;border-bottom:1px solid var(--line);}
+  ul.b li:last-child,ol.b li:last-child{border-bottom:none;}
+  ul.b li::before{content:'';position:absolute;left:2px;top:14px;width:5px;height:5px;background:var(--accent);border-radius:50%;}
+  ol.b{counter-reset:o;}
+  ol.b li{counter-increment:o;}
+  ol.b li::before{content:counter(o);left:0;top:6px;font-family:var(--mono);font-size:11px;color:var(--accent);background:none;width:auto;height:auto;border-radius:0;}
+  li b{color:var(--ink);font-weight:600;}
+  code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--code);padding:1px 5px;border-radius:4px;border:1px solid var(--line-2);}
+
+  .note{padding-left:18px;border-left:2px solid var(--accent);margin:18px 0 24px;}
+  .note.warn{border-left-color:var(--danger);}
+  .note.win{border-left-color:var(--success);}
+  .note .nl{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;}
+  .note:not(.warn):not(.win) .nl{color:var(--accent);} .note.warn .nl{color:var(--danger);} .note.win .nl{color:var(--success);}
+  .note p{font-size:14.5px;margin-bottom:0;color:var(--muted);}
+  .note p b{color:var(--ink);}
+
+  table{width:100%;border-collapse:collapse;margin:8px 0 18px;}
+  th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--faint);font-weight:500;padding:0 12px 10px 0;border-bottom:1px solid var(--line-2);vertical-align:bottom;}
+  td{padding:11px 12px 11px 0;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line);vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  td.k{color:var(--ink);font-weight:600;white-space:nowrap;}
+  td.mono{font-family:var(--mono);font-size:12px;color:var(--accent);}
+  td .g{color:var(--success);} td .r{color:var(--danger);} td .o{color:var(--warning);}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:0.04em;padding:2px 7px;border-radius:5px;border:1px solid var(--line-2);color:var(--muted);}
+  .tag.a{color:var(--accent);border-color:var(--accent);} .tag.g{color:var(--success);border-color:var(--success);} .tag.r{color:var(--danger);border-color:var(--danger);} .tag.o{color:var(--warning);border-color:var(--warning);}
+
+  pre{background:var(--code);border:1px solid var(--line-2);border-radius:10px;padding:18px 20px;overflow-x:auto;margin:8px 0 22px;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--ink);}
+  pre .c{color:var(--faint);} pre .key{color:var(--accent);} pre .s{color:var(--success);}
+
+  /* cards */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0 22px;}
+  .card{border:1px solid var(--line-2);border-radius:12px;padding:18px 20px;}
+  .card .ct{font-family:var(--display);font-weight:600;font-size:16px;margin-bottom:6px;}
+  .card p{font-size:13.5px;margin-bottom:0;}
+  .card .cm{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--faint);margin-bottom:10px;}
+
+  .metric{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line-2);border:1px solid var(--line-2);border-radius:12px;overflow:hidden;margin:18px 0 22px;}
+  .metric div{background:var(--paper);padding:18px;}
+  .metric .mv{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:-0.02em;color:var(--ink);}
+  .metric .mv.acc{color:var(--accent);}
+  .metric .ml{font-family:var(--mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--faint);margin-top:4px;}
+
+  .layered{margin:14px 0 22px;}
+  .layered .row{display:grid;grid-template-columns:150px 1fr;gap:18px;padding:14px 0;border-bottom:1px solid var(--line);align-items:baseline;}
+  .layered .row:last-child{border-bottom:none;}
+  .layered .rl{font-family:var(--mono);font-size:11px;letter-spacing:0.04em;text-transform:uppercase;color:var(--accent);}
+  .layered .rc{font-size:13.5px;color:var(--muted);}
+  .layered .rc b{color:var(--ink);font-weight:600;}
+
+  footer{padding:56px 0 100px;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:0.04em;border-top:1px solid var(--line);}
+
+  .rv{opacity:0;transform:translateY(10px);animation:rise .7s cubic-bezier(.16,1,.3,1) forwards;}
+  @keyframes rise{to{opacity:1;transform:translateY(0);}}
+
+  @media(max-width:600px){
+    header{padding:80px 0 52px;}
+    .toc ol,.grid{grid-template-columns:1fr;}
+    .metric{grid-template-columns:1fr;}
+    .layered .row{grid-template-columns:1fr;gap:4px;}
+    table{font-size:12px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand rv">TRAMPO<span class="d">.</span></div>
+    <div class="kick rv" style="animation-delay:.03s">PRD de Desenvolvimento · v1.0 · Jun/2026</div>
+    <h1 class="rv" style="animation-delay:.06s">Product Requirements Document</h1>
+    <p class="lede rv" style="animation-delay:.1s">Marketplace P2P de serviços sob demanda para o Triângulo Mineiro. Documento mestre: viabilidade, mercado, escopo, requisitos e a arquitetura de segurança que blinda o app.</p>
+    <div class="facts rv" style="animation-delay:.15s">
+      <span><b>Sevyn Labs</b></span>
+      <span><b>Diego Freitas</b> · Uberlândia/MG</span>
+      <span>Dev solo + Claude Code</span>
+      <span>Beta em 8 semanas</span>
+    </div>
+
+    <nav class="toc rv" style="animation-delay:.2s">
+      <div class="toc-l">Conteúdo</div>
+      <ol>
+        <li><a href="#vis">Visão e problema</a></li>
+        <li><a href="#viab">Estudo de viabilidade</a></li>
+        <li><a href="#merc">Pesquisa de mercado BR</a></li>
+        <li><a href="#dif">Diferenciais defensáveis</a></li>
+        <li><a href="#escopo">Escopo do MVP</a></li>
+        <li><a href="#pers">Personas e jobs</a></li>
+        <li><a href="#req">Requisitos funcionais</a></li>
+        <li><a href="#rnf">Requisitos não-funcionais</a></li>
+        <li><a href="#seg">Arquitetura de segurança</a></li>
+        <li><a href="#metr">Métricas de sucesso</a></li>
+        <li><a href="#risco">Riscos e mitigação</a></li>
+        <li><a href="#dec">Decisões a confirmar</a></li>
+      </ol>
+    </nav>
+  </header>
+
+  <!-- 01 VISÃO -->
+  <section id="vis">
+    <div class="s-num rv">01</div>
+    <h2 class="rv">Visão e problema</h2>
+    <p class="s-sub rv">Antes do "como construir", o "qual problema resolve". O TRAMPO existe porque contratar serviço simples no Brasil ainda é uma novela.</p>
+
+    <h3>O problema, dos dois lados</h3>
+    <p><b>Cliente.</b> Precisa de uma faxina, um conserto, uma entrega — e cai no ciclo do "me indica alguém de confiança". Pede no grupo do prédio, espera horas, negocia preço no WhatsApp, paga em dinheiro sem garantia. Quando usa app, ou espera 24h por orçamento (Triider) ou é bombardeado por profissionais que pagaram para ter o contato dele (GetNinjas).</p>
+    <p><b>Tasker.</b> Quer renda. Hoje paga para receber "leads" que muitas vezes não fecham, ou depende de indicação boca a boca. Não tem previsibilidade nem ferramenta para captar trabalho perto de onde está, agora.</p>
+
+    <h3>A aposta</h3>
+    <p>Trazer para serviços o modelo que o Uber trouxe para mobilidade e o iFood para comida: <b>sob demanda, em tempo real, com pagamento e confiança embutidos no app</b>. Cliente posta em 30 segundos; tasker aceita em minutos; o dinheiro fica em escrow até a entrega; os dois se avaliam.</p>
+
+    <div class="note win rv">
+      <div class="nl">Job to be Done — Cliente</div>
+      <p>"Quando preciso resolver uma tarefa que não sei ou não quero fazer, quero contratar alguém confiável em minutos e pagar com segurança, para tirar isso da minha cabeça sem virar um projeto."</p>
+    </div>
+    <div class="note win rv">
+      <div class="nl">Job to be Done — Tasker</div>
+      <p>"Quando tenho tempo livre e preciso de renda, quero ver trabalho disponível perto de mim e aceitar na hora, para ganhar dinheiro hoje sem depender de indicação ou pagar por lead que não fecha."</p>
+    </div>
+  </section>
+
+  <!-- 02 VIABILIDADE -->
+  <section id="viab">
+    <div class="s-num rv">02</div>
+    <h2 class="rv">Estudo de viabilidade</h2>
+    <p class="s-sub rv">Quatro frentes: mercado, técnica, financeira e regulatória. Onde tem furo, está escrito.</p>
+
+    <h3>Viabilidade de mercado</h3>
+    <p>O mercado de serviços domésticos e reformas no Brasil é estimado entre <b>R$ 70 e R$ 100 bilhões/ano</b> — número que a própria MadeiraMadeira usou ao comprar a Triider em out/2025. É um mercado gigante, fragmentado e ainda majoritariamente informal. A penetração digital é baixa: os players consolidados juntos não chegam perto de capturar uma fração relevante disso.</p>
+    <p>O sinal mais forte: <b>o líder histórico saiu do jogo</b>. A GetNinjas foi absorvida por um grupo financeiro (Reag), passou por IPO reverso, virou holding de investimentos e parou de publicar demonstrações financeiras. A operação "segue normalmente", mas o foco da casa não é mais o marketplace. Some-se a Triider comprada pela MadeiraMadeira (que a quer dentro do "super app do lar") e a Parafuzo virando fornecedora de faxina para o varejo (Casas Bahia). <b>O topo do mercado está distraído, em digestão de M&A ou pivotando.</b> Isso abre janela para um produto novo e focado.</p>
+
+    <h3>Viabilidade técnica</h3>
+    <p>A stack é madura e adequada a dev solo: monolito modular em Hono+tRPC+Prisma, Postgres+PostGIS no Supabase, Expo no mobile, Asaas no pagamento. Nada exótico, tudo com documentação farta e baixa manutenção.</p>
+    <p>Os dois itens que poderiam matar o projeto já foram isolados num <b>Sprint 0 (3-4 dias)</b>: validar Asaas (Pix + split com retenção + estorno + webhook) e PostGIS (<code>ST_DWithin</code> com índice GiST). Validar isso antes de comprometer o cronograma é a decisão técnica mais inteligente do plano. <b>Risco técnico residual: baixo.</b></p>
+
+    <h3>Viabilidade financeira</h3>
+    <p>Orçamento até MVP: <b>~R$ 24K em 4 meses</b> (custo de oportunidade do solo + infra + ferramentas). A economia unitária é o ponto de atenção honesto:</p>
+    <div class="metric rv">
+      <div><div class="mv">R$ 50</div><div class="ml">Trampo mínimo</div></div>
+      <div><div class="mv acc">~R$ 10</div><div class="ml">Take médio / trampo (20%)</div></div>
+      <div><div class="mv">~2.400</div><div class="ml">Trampos p/ pagar o MVP*</div></div>
+    </div>
+    <p style="font-size:13px;">*Conta de padaria, ilustrativa: R$ 24K ÷ R$ 10 de take. Não é projeção financeira nem recomendação de investimento — serve só para dimensionar a ordem de grandeza. Com ticket médio acima do mínimo (uma reforma ou mudança passa fácil de R$ 200), esse número cai bastante. <b>O gargalo não é margem, é volume.</b> E volume, em marketplace, é problema de liquidez — ver seção 10.</p>
+
+    <h3>Viabilidade regulatória</h3>
+    <p>Aqui mora o risco mais subestimado de qualquer marketplace de trabalho no Brasil em 2026, e ele está em movimento:</p>
+    <ul class="b rv">
+      <li><b>PLP 152/2025</b> — cria a figura do "trabalhador autônomo plataformizado", sem vínculo CLT, com 5% de INSS, remuneração mínima e seguros. Foco atual em transporte e entregas, mas em discussão para abranger todos os serviços plataformizados. Voto do marco legal previsto para o 1º semestre de 2026.</li>
+      <li><b>STF — Tema 1.291 (RE 1.446.336, rel. Fachin)</b> — define se existe ou não vínculo empregatício entre trabalhador e plataforma. É a decisão que pode redesenhar todo o setor. Acompanhar de perto.</li>
+      <li><b>Transparência de repasse</b> — o governo já anunciou (mar/2026) obrigação de plataformas informarem ao consumidor quanto fica com o app e quanto vai para o trabalhador. Para o TRAMPO isso não é ameaça: a transparência 15% + 5% vira <b>feature</b>, não passivo.</li>
+      <li><b>LGPD + CDC</b> — base permanente. CPF, RG/CNH e selfie são dados sensíveis; tratamento exige base legal, minimização e segurança reforçada (seção 9).</li>
+    </ul>
+    <div class="note warn rv">
+      <div class="nl">Direção, não parecer jurídico</div>
+      <p>O TRAMPO deve se estruturar como <b>intermediação pura</b>: conecta autônomos a clientes, não emprega ninguém. Termos de uso precisam deixar explícito que não há vínculo. Isto é direção estratégica — <b>contrate um advogado trabalhista/digital antes do beta</b> para redigir Termos, Política de Privacidade e a estrutura de intermediação. Não é opcional.</p>
+    </div>
+  </section>
+
+  <!-- 03 MERCADO -->
+  <section id="merc">
+    <div class="s-num rv">03</div>
+    <h2 class="rv">Pesquisa de mercado brasileiro</h2>
+    <p class="s-sub rv">Existe coisa parecida? Existe. Mas o campo está mais aberto do que parece. Quem é quem, hoje.</p>
+
+    <table class="rv">
+      <thead><tr><th>Player</th><th>Modelo</th><th>Monetização</th><th>Cobertura</th><th>Status 2025-26</th></tr></thead>
+      <tbody>
+        <tr><td class="k">GetNinjas</td><td>Marketplace de leads (cliente posta, profissionais pagam p/ contatar)</td><td>Venda de "moedas" por lead ao profissional</td><td>Nacional</td><td><span class="r">Absorvido pela Reag, virou holding de investimentos. Foco saiu do marketplace.</span></td></tr>
+        <tr><td class="k">Triider</td><td>Orçamento sob demanda (resposta em ~24h, chat, escolha por preço/nota)</td><td>Comissão + pagamento via cartão (até 6x)</td><td>~7 cidades (POA, Curitiba, BH, SP, RJ, Floripa)</td><td><span class="o">Comprado pela MadeiraMadeira (out/25). Sendo puxado p/ "super app do lar".</span></td></tr>
+        <tr><td class="k">Parafuzo</td><td>Faxina/serviços domésticos agendados</td><td>Comissão + cartão</td><td>100+ cidades, 18 estados</td><td><span class="o">Pivot p/ B2B2C: fornece faxina dentro do varejo (Casas Bahia/Via).</span></td></tr>
+        <tr><td class="k">MadeiraMadeira</td><td>E-commerce de móveis + serviços de montagem/reforma</td><td>Margem de produto + serviço</td><td>225+ cidades (preço fixo)</td><td><span class="g">Consolidando: comprou Iguana Fix e Triider. Quer ser o "destino do lar".</span></td></tr>
+        <tr><td class="k">Singu</td><td>Beleza e bem-estar em casa (nicho)</td><td>Comissão + cartão</td><td>Capitais</td><td>Nicho vertical, fora de serviços gerais.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note rv">
+      <div class="nl">Leitura estratégica</div>
+      <p>Ninguém atende bem o <b>Triângulo Mineiro</b>. A Triider não chega lá. A Parafuzo entra de raspão via varejo, só faxina. O mercado nacional está focado em <b>lar e reforma</b>, modelo de <b>orçamento agendado</b> e pagamento por <b>cartão</b>. Há um espaço claro para um produto <b>sob demanda, real-time, Pix-nativo, multi-categoria e regional</b>. É exatamente a aposta do TRAMPO.</p>
+    </div>
+  </section>
+
+  <!-- 04 DIFERENCIAIS -->
+  <section id="dif">
+    <div class="s-num rv">04</div>
+    <h2 class="rv">Diferenciais defensáveis</h2>
+    <p class="s-sub rv">Diferencial bom não é "somos mais bonitos". É algo que o concorrente não copia sem dor. Estes são os do TRAMPO.</p>
+
+    <div class="grid rv">
+      <div class="card">
+        <div class="cm">01 · Incentivo alinhado</div>
+        <div class="ct">Comissão, não venda de lead</div>
+        <p>O GetNinjas cobra do profissional por contato, fechando ou não. O tasker paga e às vezes não trabalha — modelo historicamente odiado. No TRAMPO o tasker só paga quando ganha (15% do trabalho fechado). A plataforma só ganha se o tasker ganha.</p>
+      </div>
+      <div class="card">
+        <div class="cm">02 · Velocidade</div>
+        <div class="ct">Minutos, não 24 horas</div>
+        <p>Matching real-time com lock de aceite. O Triider responde orçamento em ~24h. O TRAMPO resolve a urgência — inclusive com taxa de +30% para trampos &lt; 1h, monetizando justamente a pressa.</p>
+      </div>
+      <div class="card">
+        <div class="cm">03 · Dinheiro</div>
+        <div class="ct">Pix-nativo + escrow in-app</div>
+        <p>Concorrentes operam no cartão parcelado. O TRAMPO usa Pix com escrow: cliente paga, dinheiro fica retido, libera 1h após a entrega. Sem cartão, sem dinheiro vivo, com garantia para os dois lados.</p>
+      </div>
+      <div class="card">
+        <div class="cm">04 · Foco geográfico</div>
+        <div class="ct">Dono do Triângulo Mineiro</div>
+        <p>Liquidez de marketplace é local. Vencer Uberlândia, Uberaba e Araguari antes de pensar em capital é mais fácil e mais defensável do que ser mais um app nacional raso. Densidade &gt; cobertura.</p>
+      </div>
+      <div class="card">
+        <div class="cm">05 · Escopo</div>
+        <div class="ct">8 categorias sob demanda</div>
+        <p>Não é só lar/reforma. Limpeza, reparos, mudança, entregas, pet care, aulas, eventos e beleza no mesmo app. Mais ocasiões de uso → mais recorrência → mais liquidez cruzada entre categorias.</p>
+      </div>
+      <div class="card">
+        <div class="cm">06 · Transparência</div>
+        <div class="ct">Split exposto = compliance</div>
+        <p>A nova exigência do governo (informar repasse ao consumidor) já nasce atendida. O que para os incumbentes é retrabalho, para o TRAMPO é design original.</p>
+      </div>
+    </div>
+
+    <div class="note warn rv">
+      <div class="nl">O furo honesto</div>
+      <p>Nenhum desses diferenciais é um <b>moat</b> sozinho — tecnologia se copia. O moat real é <b>liquidez local</b>: o primeiro a ter taskers e clientes suficientes numa cidade vence ali, porque os dois lados se atraem. A janela é agora, com os grandes distraídos. <b>Velocidade de execução é o verdadeiro diferencial.</b></p>
+    </div>
+  </section>
+
+  <!-- 05 ESCOPO -->
+  <section id="escopo">
+    <div class="s-num rv">05</div>
+    <h2 class="rv">Escopo do MVP</h2>
+    <p class="s-sub rv">O que entra, o que fica de fora e por quê. Disciplina de escopo é o que mantém 8 semanas em 8 semanas.</p>
+
+    <h3>Regras de negócio (imutáveis)</h3>
+    <table class="rv">
+      <thead><tr><th>Regra</th><th>Valor</th><th>Regra</th><th>Valor</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Comissão tasker</td><td>15%</td><td class="k">Escrow</td><td>libera 1h pós-conclusão</td></tr>
+        <tr><td class="k">Taxa cliente</td><td>5%</td><td class="k">Cancel. grátis</td><td>até 30min antes</td></tr>
+        <tr><td class="k">Take total</td><td>~20%</td><td class="k">Multa cancel.</td><td>20% do valor</td></tr>
+        <tr><td class="k">Trampo mínimo</td><td>R$ 50</td><td class="k">KYC tasker</td><td>CPF + RG/CNH + selfie</td></tr>
+        <tr><td class="k">Urgência &lt;1h</td><td>+30%</td><td class="k">KYC cliente</td><td>CPF + telefone</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Categorias — construir 8, acender o necessário</h3>
+    <p>O produto suporta as 8 categorias do MVP: <b>Limpeza, Reparos, Mudança, Entregas, Pet care, Aulas, Eventos e Beleza</b>. A recomendação de go-to-market é tratar a ativação como alavanca separada do código — abrir o beta com as categorias de maior frequência e menor atrito de execução para concentrar liquidez, e ligar o resto conforme a oferta de taskers aparece. (Quantas acender no dia 1 é uma decisão aberta — ver seção 12.)</p>
+
+    <h3>Cortes conscientes do MVP</h3>
+    <ul class="b rv">
+      <li><b>Fora:</b> pricing dinâmico por IA, suspensão automática de conta, pagamento por cartão, agendamento recorrente, programa de fidelidade, app web. Tudo pós-beta.</li>
+      <li><b>Moderação manual</b> via admin — sem ML de qualidade no MVP. Em 20 usuários, olho humano resolve.</li>
+      <li><b>IA fora do caminho crítico</b> — Claude API só apoia (classificação, suporte). Nada de dinheiro ou aceite depende de IA.</li>
+    </ul>
+
+    <h3>Cronograma — 4 sprints de 2 semanas</h3>
+    <div class="layered rv">
+      <div class="row"><div class="rl">S0 · 3-4 dias</div><div class="rc"><b>Spike de risco.</b> Asaas sandbox (Pix, split, estorno, webhook) + PoC PostGIS. Sem feature.</div></div>
+      <div class="row"><div class="rl">S1 · sem 1-2</div><div class="rc"><b>Fundação.</b> Setup monorepo, Supabase Auth, perfis, fluxo de KYC.</div></div>
+      <div class="row"><div class="rl">S2 · sem 3-4</div><div class="rc"><b>Oferta.</b> Postagem de trampo, feed geográfico (PostGIS), busca/filtros, pricing engine.</div></div>
+      <div class="row"><div class="rl">S3 · sem 5-6</div><div class="rc"><b>Conexão.</b> Matching + lock de aceite, chat realtime, máquina de estados, avaliação bilateral.</div></div>
+      <div class="row"><div class="rl">S4 · sem 7-8</div><div class="rc"><b>Dinheiro.</b> Integração Asaas, escrow (hold → release 1h), split 20% + multa, beta launch.</div></div>
+    </div>
+  </section>
+
+  <!-- 06 PERSONAS -->
+  <section id="pers">
+    <div class="s-num rv">06</div>
+    <h2 class="rv">Personas e jobs</h2>
+    <p class="s-sub rv">Dois lados, dois apps dentro do mesmo binário. 16 telas inventariadas, divididas por fluxo.</p>
+
+    <div class="grid rv">
+      <div class="card">
+        <div class="cm">Cliente · classe B/C · 25-55</div>
+        <div class="ct">Resolve, não administra</div>
+        <p>Urbano, tem celular como computador principal, valoriza Pix e rapidez. Não quer projeto: quer o trampo feito. Telas: home, postar tarefa, pagamento Pix, acompanhamento, avaliação, histórico.</p>
+      </div>
+      <div class="card">
+        <div class="cm">Tasker · renda extra/primária</div>
+        <div class="ct">Ganha hoje, perto daqui</div>
+        <p>Sem exigência de certificação. Quer ver trabalho próximo e aceitar na hora. Sensível a quanto sobra no bolso. Telas: feed, KYC, perfil, ganhos.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 REQUISITOS FUNCIONAIS -->
+  <section id="req">
+    <div class="s-num rv">07</div>
+    <h2 class="rv">Requisitos funcionais</h2>
+    <p class="s-sub rv">Épicos por sprint, com a regra crítica de cada um. O detalhe técnico está nos relatórios de backend e mapa de dados do projeto.</p>
+
+    <h4>S1 — Identidade e confiança</h4>
+    <ul class="b rv">
+      <li><b>RF-01 Auth.</b> Cadastro/login via telefone com OTP (Twilio Verify), sessão JWT (Supabase Auth). <span class="tag a">crítico</span></li>
+      <li><b>RF-02 Perfis.</b> Perfil distinto de cliente e tasker; um usuário pode ser os dois.</li>
+      <li><b>RF-03 KYC.</b> Tasker envia CPF + RG/CNH + selfie → fila de aprovação manual no admin. Cliente: CPF + telefone.</li>
+    </ul>
+
+    <h4>S2 — Oferta e descoberta</h4>
+    <ul class="b rv">
+      <li><b>RF-04 Postagem.</b> Cliente cria trampo: categoria, descrição, endereço (geo), data/hora ou "agora", valor (≥ R$ 50). Pricing engine calcula taxas no servidor. <span class="tag a">crítico</span></li>
+      <li><b>RF-05 Feed geográfico.</b> Tasker vê trampos próximos via <code>ST_DWithin</code> + índice GiST, ordenados por distância/recência. <span class="tag a">crítico</span></li>
+      <li><b>RF-06 Busca/filtros.</b> Por categoria, distância, faixa de valor.</li>
+    </ul>
+
+    <h4>S3 — Conexão e execução</h4>
+    <ul class="b rv">
+      <li><b>RF-07 Matching com lock.</b> Tasker aceita; <code>updateMany</code> condicional garante aceite único (anti-double-accept). <span class="tag r">crítico · concorrência</span></li>
+      <li><b>RF-08 Chat realtime.</b> Cliente ↔ tasker via Supabase Realtime, liberado após aceite.</li>
+      <li><b>RF-09 Máquina de estados.</b> Transições válidas: <code>aberto → aceito → em_andamento → finalizado → liberado</code>; ramos de cancelamento. Enforced no domínio. <span class="tag a">crítico</span></li>
+      <li><b>RF-10 Avaliação bilateral.</b> Os dois lados se avaliam após conclusão.</li>
+    </ul>
+
+    <h4>S4 — Dinheiro</h4>
+    <ul class="b rv">
+      <li><b>RF-11 Pagamento Pix.</b> Cliente paga via Asaas no aceite; valor recalculado no servidor, nunca confiado do client. <span class="tag r">crítico · dinheiro</span></li>
+      <li><b>RF-12 Escrow.</b> Hold do valor; release de split (retém ~20%) 1h após "finalizado" via job Redis. <span class="tag r">crítico · dinheiro</span></li>
+      <li><b>RF-13 Cancelamento/multa.</b> Grátis até 30min antes; depois estorno parcial com 20% de multa. Idempotente por <code>asaas_id</code>.</li>
+    </ul>
+  </section>
+
+  <!-- 08 RNF -->
+  <section id="rnf">
+    <div class="s-num rv">08</div>
+    <h2 class="rv">Requisitos não-funcionais</h2>
+    <p class="s-sub rv">Os atributos que não aparecem em tela mas decidem se o app vive.</p>
+    <table class="rv">
+      <thead><tr><th>Atributo</th><th>Alvo no MVP</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Latência feed</td><td>Consulta geográfica &lt; 300ms p95 (índice GiST obrigatório).</td></tr>
+        <tr><td class="k">Disponibilidade</td><td>Best-effort para beta; foco em zero perda de dado financeiro.</td></tr>
+        <tr><td class="k">Consistência financeira</td><td>Forte. Transações + idempotência. Dinheiro nunca em estado ambíguo.</td></tr>
+        <tr><td class="k">Integridade</td><td>Valores em centavos inteiros, nunca float. Pricing recalculado server-side.</td></tr>
+        <tr><td class="k">Observabilidade</td><td>Sentry (erros) + PostHog (produto) desde S2. Audit log de eventos sensíveis.</td></tr>
+        <tr><td class="k">Privacidade</td><td>LGPD by design: minimização, criptografia de PII, exclusão sob requisição.</td></tr>
+        <tr><td class="k">Manutenibilidade</td><td>Monolito modular; menos peças móveis = menos manutenção para dev solo.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 09 SEGURANÇA -->
+  <section id="seg">
+    <div class="s-num rv">09</div>
+    <h2 class="rv">Arquitetura de segurança</h2>
+    <p class="s-sub rv">"Blindar o app." Marketplace mexe com dinheiro, documento e geolocalização de pessoas — é alvo. A defesa é em camadas, não num único muro.</p>
+
+    <h3>Modelo de ameaças — o que pode dar errado</h3>
+    <table class="rv">
+      <thead><tr><th>Vetor</th><th>Ameaça concreta</th><th>Severidade</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Dinheiro</td><td>Manipular valor no client; double-spend; estorno fraudulento; webhook forjado.</td><td><span class="r">Crítica</span></td></tr>
+        <tr><td class="k">Concorrência</td><td>Dois taskers aceitam o mesmo trampo; corrida em status.</td><td><span class="r">Crítica</span></td></tr>
+        <tr><td class="k">Identidade</td><td>Conta falsa, KYC falsificado, account takeover via OTP.</td><td><span class="o">Alta</span></td></tr>
+        <tr><td class="k">Dados</td><td>Vazamento de CPF/RG/selfie/endereço; acesso indevido entre usuários.</td><td><span class="r">Crítica</span></td></tr>
+        <tr><td class="k">Plataforma</td><td>Disintermediação: combinar fora do app para fugir da comissão.</td><td><span class="o">Alta · receita</span></td></tr>
+        <tr><td class="k">Abuso</td><td>Spam de postagens, brute-force de OTP/login, scraping do feed.</td><td>Média</td></tr>
+      </tbody>
+    </table>
+
+    <h3>As camadas de defesa</h3>
+    <div class="layered rv">
+      <div class="row"><div class="rl">1 · Identidade</div><div class="rc">OTP via Twilio Verify com rate limit por telefone/IP. JWT do Supabase com rotação de refresh token. Bloqueio progressivo após N tentativas.</div></div>
+      <div class="row"><div class="rl">2 · Autorização</div><div class="rc"><b>Row Level Security em todas as tabelas</b> — o banco é a última linha, não só o app. Middleware tRPC injeta <code>ctx.user</code>. <code>service_role</code> nunca chega ao client. Menor privilégio por padrão.</div></div>
+      <div class="row"><div class="rl">3 · Dados em repouso</div><div class="rc"><b>CPF criptografado via pgcrypto.</b> Docs de KYC em bucket <b>privado</b> do Supabase Storage, acesso só por <b>signed URL de TTL curto</b>. Valores monetários em centavos inteiros.</div></div>
+      <div class="row"><div class="rl">4 · Dados em trânsito</div><div class="rc">TLS em tudo. PII jamais em logs (Sentry com scrubbing). Sem dado sensível em query string.</div></div>
+      <div class="row"><div class="rl">5 · Pagamento</div><div class="rc"><b>Escrow por split com retenção</b>, nunca carteira intermediária — evita virar instituição de pagamento e exposição ao Banco Central. <b>Validação de assinatura</b> do webhook Asaas antes de processar. <b>Idempotência por <code>asaas_id</code></b>. Pricing recalculado no servidor — valor do client é só sugestão.</div></div>
+      <div class="row"><div class="rl">6 · Concorrência</div><div class="rc"><b>Optimistic locking</b> via <code>updateMany</code> condicional no status (aceite atômico). <b>Máquina de estados</b> no domínio rejeita transição inválida. Transações em operação financeira.</div></div>
+      <div class="row"><div class="rl">7 · Anti-fraude</div><div class="rc">Rate limit (Redis) em OTP, login e postagem. KYC médio para tasker barra conta descartável. Moderação manual no admin. Audit log de aprovação de KYC e mudança de status de pagamento.</div></div>
+      <div class="row"><div class="rl">8 · LGPD</div><div class="rc">Base legal documentada, minimização de coleta, retenção definida, fluxo de exclusão, encarregado (DPO) nomeado. Criptografia e RLS são também controles de LGPD.</div></div>
+      <div class="row"><div class="rl">9 · Mobile</div><div class="rc">Tokens em <code>expo-secure-store</code> (Keychain/Keystore), nunca em AsyncStorage. Zero secret no bundle. OTA update assinado via EAS. Detecção de root/jailbreak: pós-beta.</div></div>
+      <div class="row"><div class="rl">10 · Resposta</div><div class="rc">Sentry + PostHog com alertas. Audit log imutável de eventos sensíveis. Backups do Postgres. Runbook mínimo de incidente antes do beta.</div></div>
+    </div>
+
+    <div class="note warn rv">
+      <div class="nl">O risco que o produto cria — disintermediação</div>
+      <p>Chat in-app + Pix in-app não são só conveniência: são <b>defesa de receita</b>. Se cliente e tasker combinam por fora (WhatsApp, dinheiro), a comissão evapora. Por isso o chat realtime <b>dentro</b> do app (S3) é estrategicamente superior a um handoff para WhatsApp — mantém a conversa, o pagamento e a confiança na plataforma. Mitigação adicional: liberar contato direto só após o aceite e pagamento, e tornar o fluxo in-app mais fácil que o de fora. Esse é um ponto de produto disfarçado de segurança.</p>
+    </div>
+
+    <div class="note rv">
+      <div class="nl">Quando chamar especialista</div>
+      <p>A arquitetura acima é direção de engenharia. Para <b>criptografia de PII em produção, modelagem de RLS e um pentest antes do beta com dinheiro real</b>, vale uma revisão de um especialista em segurança. É barato perto do custo de um vazamento de CPF sob LGPD.</p>
+    </div>
+  </section>
+
+  <!-- 10 MÉTRICAS -->
+  <section id="metr">
+    <div class="s-num rv">10</div>
+    <h2 class="rv">Métricas de sucesso</h2>
+    <p class="s-sub rv">Marketplace se mede por liquidez antes de GMV. Beta de 20 usuários não valida receita — valida se os dois lados se encontram.</p>
+
+    <h4>A métrica-mãe do beta</h4>
+    <p><b>Taxa de preenchimento (fill rate):</b> % de trampos postados que são aceitos e concluídos. É o pulso da liquidez. Abaixo de ~50% no beta significa desequilíbrio entre oferta e demanda — provavelmente falta tasker. Esse é o número a perseguir.</p>
+
+    <table class="rv">
+      <thead><tr><th>Métrica</th><th>Por quê</th><th>Sinal de saúde (beta)</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Fill rate</td><td>Liquidez real do marketplace</td><td>&gt; 50% de trampos concluídos</td></tr>
+        <tr><td class="k">Tempo até aceite</td><td>A promessa de "minutos"</td><td>Mediana &lt; 30min nas categorias ativas</td></tr>
+        <tr><td class="k">Razão oferta/demanda</td><td>Detecta qual lado falta</td><td>≥ 3 taskers ativos por trampo aberto</td></tr>
+        <tr><td class="k">Conclusão sem disputa</td><td>Confiança e qualidade do escrow</td><td>&gt; 90% sem intervenção manual</td></tr>
+        <tr><td class="k">Recompra (cliente)</td><td>Sinal de retenção / PMF</td><td>≥ 1 cliente postando 2º trampo</td></tr>
+        <tr><td class="k">GMV / take</td><td>Receita — secundário no beta</td><td>Observar, não otimizar ainda</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note rv">
+      <div class="nl">O problema do ovo e da galinha</div>
+      <p>Sem taskers, clientes postam e ninguém aceita; sem trampos, taskers abrem o app vazio e saem. A saída clássica e a recomendada aqui: <b>resolver primeiro o lado da oferta</b>. Recrutar manualmente um punhado de taskers confiáveis em Uberlândia <b>antes</b> de divulgar para clientes. Em beta de 20, o crescimento é a unha — recrutamento 1:1, não campanha paga.</p>
+    </div>
+  </section>
+
+  <!-- 11 RISCOS -->
+  <section id="risco">
+    <div class="s-num rv">11</div>
+    <h2 class="rv">Riscos e mitigação</h2>
+    <p class="s-sub rv">Os que podem afundar o barco, ordenados por o que tira o sono.</p>
+    <table class="rv">
+      <thead><tr><th>Risco</th><th>Prob.</th><th>Impacto</th><th>Mitigação</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Falta de liquidez no beta</td><td><span class="r">Alta</span></td><td><span class="r">Fatal</span></td><td>Recrutar oferta antes da demanda; concentrar em poucas categorias e 1 cidade.</td></tr>
+        <tr><td class="k">Bloqueio Asaas / escrow</td><td>Média</td><td><span class="r">Fatal</span></td><td>Sprint 0 valida sandbox antes de qualquer feature.</td></tr>
+        <tr><td class="k">Vínculo empregatício (STF/PLP)</td><td>Média</td><td><span class="o">Alto</span></td><td>Estrutura de intermediação pura; termos claros; advogado antes do beta.</td></tr>
+        <tr><td class="k">Vazamento de PII (LGPD)</td><td>Baixa</td><td><span class="r">Fatal</span></td><td>Criptografia + RLS + bucket privado + pentest pré-beta.</td></tr>
+        <tr><td class="k">Disintermediação</td><td><span class="o">Alta</span></td><td>Médio</td><td>Chat + Pix in-app; contato só pós-aceite; fluxo interno mais fácil que o externo.</td></tr>
+        <tr><td class="k">Burnout do founder solo</td><td>Média</td><td><span class="o">Alto</span></td><td>Escopo brutalmente cortado; Sprint 0 evita surpresa; ritmo sustentável &gt; herói.</td></tr>
+        <tr><td class="k">Entrada de incumbente</td><td>Baixa (agora)</td><td>Médio</td><td>Velocidade. Densidade local antes que alguém acorde para o Triângulo.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 12 DECISÕES -->
+  <section id="dec">
+    <div class="s-num rv">12</div>
+    <h2 class="rv">Decisões a confirmar</h2>
+    <p class="s-sub rv">Pontos onde a documentação do projeto e o histórico divergem. Preciso do teu OK para fechar no PRD — e o que mudar tem que refletir nos arquivos do projeto e no CLAUDE.md do repo.</p>
+    <ol class="b rv">
+      <li><b>Categorias no dia 1 do beta.</b> O brief fixa 8 categorias no MVP (imutável). O histórico sugeria acender só 3 no beta por disciplina de liquidez. Construir 8 e acender um subconjunto é coerente com as duas coisas — mas <b>quantas e quais</b> acender no lançamento é decisão tua. Recomendo poucas, alta frequência.</li>
+      <li><b>Chat: in-app vs WhatsApp.</b> Brief e arquitetura do projeto trazem <b>chat realtime in-app na S3</b>. Houve menção a substituir por handoff de WhatsApp. Pela lógica anti-disintermediação (seção 9), <b>recomendo manter in-app</b>. Confirma qual fica oficial.</li>
+      <li><b>Área de lançamento.</b> Brief diz "Triângulo Mineiro" e cita Uberlândia + Uberaba + Araguari; o beta de 20 usuários é descrito em Uberlândia. Confirmo: <b>beta concentrado só em Uberlândia</b>, expansão para as outras duas pós-beta?</li>
+    </ol>
+    <div class="note rv">
+      <div class="nl">Próximo passo sugerido</div>
+      <p>Fechadas essas três, o caminho natural é: (a) eu detalho o <b>backlog da S1 em tickets prontos para o Claude Code</b>, ou (b) montamos o <b>plano de recrutamento de oferta</b> para resolver liquidez em paralelo ao código. Manda "Prossiga" com a letra, ou ajusta o rumo.</p>
+    </div>
+  </section>
+
+  <footer>TRAMPO · PRD de Desenvolvimento v1.0 · Sevyn Labs · Diego Freitas · Uberlândia/MG · Jun 2026</footer>
+
+</div>
+</body>
+</html>

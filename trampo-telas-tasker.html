@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRAMPO — Fluxo do Tasker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAFAFA; --surface:#FFFFFF; --ink:#18181B; --muted:#71717A; --faint:#A1A1AA;
+    --accent:#2563EB; --success:#16A34A; --warning:#EA580C; --danger:#DC2626;
+    --border:#E4E4E7; --line:#F1F1F3;
+    --ui:'Hanken Grotesk',sans-serif; --display:'Bricolage Grotesque',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:var(--ui);background:#F4F4F5;color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;
+    background-image:radial-gradient(circle, #E4E4E7 1px, transparent 1px);background-size:26px 26px;}
+
+  .page{max-width:1240px;margin:0 auto;padding:64px 32px 96px;}
+  .doc-head{margin-bottom:56px;max-width:640px;}
+  .brand{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-0.03em;margin-bottom:8px;}
+  .brand .d{color:var(--accent);}
+  .kick{font-family:var(--ui);font-size:11px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--faint);margin-bottom:20px;}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(32px,5vw,46px);letter-spacing:-0.035em;line-height:1.0;margin-bottom:16px;}
+  .lede{font-size:17px;color:var(--muted);}
+
+  .group-label{font-family:var(--ui);font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin:8px 0 24px;display:flex;align-items:center;gap:12px;}
+  .group-label::after{content:"";flex:1;height:1px;background:var(--border);}
+
+  .frames{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:48px 32px;justify-items:center;margin-bottom:56px;}
+  .frame-wrap{width:300px;}
+  .frame-label{display:flex;align-items:baseline;gap:8px;margin-bottom:14px;}
+  .frame-label .n{font-family:var(--ui);font-size:11px;font-weight:700;color:var(--accent);}
+  .frame-label .t{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:-0.015em;}
+  .frame-note{font-size:13px;color:var(--muted);margin-top:12px;line-height:1.45;}
+
+  .phone{width:300px;height:640px;background:var(--bg);border-radius:38px;border:9px solid #18181B;position:relative;overflow:hidden;box-shadow:0 30px 60px -20px rgba(24,24,27,.35), 0 0 0 1px rgba(24,24,27,.06);}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:26px;background:#18181B;border-radius:0 0 16px 16px;z-index:50;}
+  .statusbar{height:44px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;font-size:12px;font-weight:600;}
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;}
+  .scroll{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+  .ph{padding:0 18px;}
+  .scr-title{font-family:var(--display);font-weight:800;font-size:23px;letter-spacing:-0.025em;line-height:1.1;}
+  .scr-sub{font-size:13px;color:var(--muted);margin-top:3px;}
+  .row{display:flex;align-items:center;}
+  .ic{width:18px;height:18px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .ic-sm{width:14px;height:14px;}
+  .btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:var(--accent);color:#fff;font-weight:700;font-size:15px;padding:15px;border-radius:14px;}
+  .btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--border);}
+  .btn.success{background:var(--success);}
+  .btn.dim{background:#E4E4E7;color:var(--faint);}
+
+  .bnav{height:62px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;padding-bottom:6px;}
+  .bnav a{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--faint);font-size:9.5px;font-weight:600;}
+  .bnav a.on{color:var(--accent);}
+  .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#2563EB,#1E40AF);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+  .stars{display:flex;gap:2px;color:var(--warning);}
+  .stars svg{width:13px;height:13px;fill:currentColor;stroke:none;}
+
+  /* KYC checklist */
+  .chk{display:flex;gap:13px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;}
+  .chk .cbox{width:26px;height:26px;border-radius:8px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--faint);}
+  .chk.done .cbox{background:var(--success);border-color:var(--success);color:#fff;}
+  .chk.now{border-color:var(--accent);}
+  .chk.now .cbox{border-color:var(--accent);color:var(--accent);}
+  .chk .cc{flex:1;}
+  .chk .cl{font-size:14px;font-weight:700;letter-spacing:-0.01em;}
+  .chk .cs{font-size:11.5px;color:var(--muted);margin-top:1px;}
+  .chk.done .cl{color:var(--muted);}
+
+  .privacy{display:flex;gap:9px;background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.15);border-radius:12px;padding:12px 13px;}
+  .privacy svg{color:var(--accent);flex-shrink:0;margin-top:1px;}
+  .privacy span{font-size:11px;color:var(--muted);line-height:1.45;}
+
+  /* doc capture */
+  .capture{flex:1;background:#18181B;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:0 24px;}
+  .doc-frame{width:100%;aspect-ratio:1.585;border-radius:14px;border:2px dashed rgba(255,255,255,.45);position:relative;}
+  .doc-frame .corner{position:absolute;width:22px;height:22px;border:3px solid #fff;}
+  .doc-frame .c1{top:-2px;left:-2px;border-right:none;border-bottom:none;border-radius:8px 0 0 0;}
+  .doc-frame .c2{top:-2px;right:-2px;border-left:none;border-bottom:none;border-radius:0 8px 0 0;}
+  .doc-frame .c3{bottom:-2px;left:-2px;border-right:none;border-top:none;border-radius:0 0 0 8px;}
+  .doc-frame .c4{bottom:-2px;right:-2px;border-left:none;border-top:none;border-radius:0 0 8px 0;}
+  .cap-hint{color:rgba(255,255,255,.85);font-size:13px;font-weight:500;text-align:center;margin-top:24px;}
+  .cap-bar{position:absolute;bottom:24px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:36px;}
+  .shutter{width:62px;height:62px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.4);}
+  .cap-side{color:#fff;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;font-weight:600;opacity:.85;}
+
+  /* selfie oval */
+  .selfie-oval{width:170px;height:215px;border-radius:50%;border:3px solid var(--accent);position:relative;display:flex;align-items:center;justify-content:center;}
+  .selfie-oval svg{width:64px;height:64px;color:rgba(255,255,255,.5);}
+
+  /* analysis state */
+  .analysis-ico{width:78px;height:78px;border-radius:50%;background:rgba(234,88,12,.1);display:flex;align-items:center;justify-content:center;color:var(--warning);margin:0 auto 22px;}
+  .analysis-ico svg{width:34px;height:34px;}
+
+  /* profile */
+  .prof-head{display:flex;flex-direction:column;align-items:center;text-align:center;padding:6px 0 18px;}
+  .avatar-lg{width:74px;height:74px;border-radius:50%;background:linear-gradient(135deg,#2563EB,#1E40AF);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px;font-family:var(--display);margin-bottom:12px;position:relative;}
+  .verified{position:absolute;bottom:0;right:-2px;width:26px;height:26px;border-radius:50%;background:var(--success);border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;color:#fff;}
+  .verified svg{width:13px;height:13px;}
+  .prof-name{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-0.02em;}
+  .prof-stat{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:13px;color:var(--muted);}
+  .sect-lab{font-size:10.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--faint);margin:18px 0 9px;}
+  .chip{font-size:12px;font-weight:600;padding:7px 13px;border-radius:99px;background:var(--surface);border:1px solid var(--border);color:var(--ink);}
+  .chip.acc{border-color:var(--accent);color:var(--accent);background:rgba(37,99,235,.04);}
+  .menu-item{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:13px 14px;margin-bottom:8px;font-size:14px;font-weight:600;}
+  .menu-item .ic{color:var(--muted);}
+  .menu-item .chev{margin-left:auto;color:var(--faint);}
+
+  /* earnings */
+  .earn-hero{background:var(--ink);border-radius:18px;padding:20px;color:#fff;margin-bottom:12px;}
+  .earn-hero .el{font-size:12px;color:rgba(255,255,255,.6);font-weight:500;}
+  .earn-hero .ev{font-family:var(--display);font-weight:800;font-size:36px;letter-spacing:-0.03em;margin:4px 0 14px;}
+  .earn-hero .ebtn{background:#fff;color:var(--ink);font-weight:700;font-size:13px;padding:11px;border-radius:11px;text-align:center;}
+  .earn-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .ecard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px;}
+  .ecard .el{font-size:11px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:5px;}
+  .ecard .ev{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-0.02em;margin-top:5px;}
+  .ecard.held .ev{color:var(--warning);}
+  .ecard.avail .ev{color:var(--success);}
+  .htx{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .htx:last-child{border-bottom:none;}
+  .htx .hic{width:34px;height:34px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0;}
+  .htx .hc{flex:1;}
+  .htx .ht{font-size:13.5px;font-weight:600;letter-spacing:-0.01em;}
+  .htx .hd{font-size:11px;color:var(--faint);margin-top:1px;}
+  .htx .hv{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:-0.01em;}
+  .htx .hbadge{font-size:9.5px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;padding:2px 6px;border-radius:5px;margin-top:3px;display:inline-block;}
+  .hbadge.rel{background:rgba(22,163,74,.1);color:var(--success);}
+  .hbadge.hold{background:rgba(234,88,12,.1);color:var(--warning);}
+
+  @media(max-width:560px){.page{padding:40px 16px 72px;}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-head">
+    <div class="brand">TRAMPO<span class="d">.</span></div>
+    <div class="kick">UX — Fluxo do tasker</div>
+    <h1>Do cadastro ao dinheiro na conta</h1>
+    <p class="lede">KYC (manual no beta), perfil e ganhos. O lado da oferta — onde o tasker se verifica, se apresenta e vê o escrow funcionando.</p>
+  </div>
+
+  <!-- GROUP A: KYC -->
+  <div class="group-label">A · Verificação de identidade (KYC)</div>
+  <div class="frames">
+
+    <!-- KYC start -->
+    <div class="frame-wrap">
+      <div class="frame-label"><span class="n">A1</span><span class="t">Começar verificação</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>5G</span></div>
+          <div class="scroll">
+            <div class="ph" style="padding-top:8px;flex:1;overflow:hidden">
+              <div class="scr-title">Confirme sua<br>identidade</div>
+              <div class="scr-sub" style="margin-bottom:22px">Necessário para aceitar trampos e receber pagamentos</div>
+              <div class="chk done"><div class="cbox"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div><div class="cc"><div class="cl">CPF</div><div class="cs">Confirmado no cadastro</div></div></div>
+              <div class="chk now"><div class="cbox"><svg class="ic ic-sm" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg></div><div class="cc"><div class="cl">Documento com foto</div><div class="cs">RG ou CNH · frente</div></div></div>
+              <div class="chk"><div class="cbox"><svg class="ic ic-sm" viewBox="0 0 24 24"><circle cx="12" cy="9" r="4"/><path d="M5 20c0-3 3-5 7-5s7 2 7 5"/></svg></div><div class="cc"><div class="cl">Selfie</div><div class="cs">Para confirmar que é você</div></div></div>
+            </div>
+            <div class="ph" style="padding-top:10px;padding-bottom:14px">
+              <div class="privacy" style="margin-bottom:12px">
+                <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>
+                <span>Seus documentos são criptografados e usados só para verificação. Nunca aparecem para outros usuários.</span>
+              </div>
+              <div class="btn">Começar</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="frame-note">KYC médio (regra imutável): CPF + documento + selfie. O checklist mostra progresso e a nota de privacidade endereça LGPD logo de cara.</p>
+    </div>
+
+    <!-- doc capture -->
+    <div class="frame-wrap">
+      <div class="frame-label"><span class="n">A2</span><span class="t">Enviar documento</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar" style="color:#fff"><span>9:41</span><span>5G</span></div>
+          <div class="capture">
+            <div class="doc-frame"><span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span></div>
+            <div class="cap-hint">Posicione o RG ou CNH<br>dentro da moldura</div>
+            <div class="cap-bar">
+              <div class="cap-side"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>Galeria</div>
+              <div class="shutter"></div>
+              <div class="cap-side" style="opacity:.4"><svg class="ic" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0115 -2.5L23 10M1 14l4.5 3.5a9 9 0 0015-2.5"/></svg>Virar</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="frame-note">Captura guiada com moldura proporcional ao documento. Reduz foto torta e retrabalho na análise manual.</p>
+    </div>
+
+    <!-- selfie -->
+    <div class="frame-wrap">
+      <div class="frame-label"><span class="n">A3</span><span class="t">Selfie</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar" style="color:#fff"><span>9:41</span><span>5G</span></div>
+          <div class="capture">
+            <div class="selfie-oval"><svg viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.5"><circle cx="12" cy="9" r="4"/><path d="M5 20c0-3 3-5 7-5s7 2 7 5"/></svg></div>
+            <div class="cap-hint">Centralize o rosto e<br>mantenha boa iluminação</div>
+            <div class="cap-bar"><div class="shutter"></div></div>
+          </div>
+        </div>
+      </div>
+      <p class="frame-note">Selfie simples, sem prova de vida complexa no MVP. A validação cruzada documento × rosto é feita por você no admin.</p>
+    </div>
+
+    <!-- analysis -->
+    <div class="frame-wrap">
+      <div class="frame-label"><span class="n">A4</span><span class="t">Em análise</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>5G</span></div>
+          <div class="scroll">
+            <div class="ph" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 30px">
+              <div class="analysis-ico"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+              <div class="scr-title" style="font-size:21px;margin-bottom:8px">Documentos<br>em análise</div>
+              <div style="font-size:13.5px;color:var(--muted);line-height:1.5;margin-bottom:8px">Recebemos tudo. A verificação leva <b style="color:var(--ink)">até 24 horas</b>. Avisamos por push assim que liberar.</div>
+              <div style="font-size:12px;color:var(--faint)">Enquanto isso, você já pode explorar os trampos disponíveis.</div>
+            </div>
+            <div class="ph" style="padding-bottom:14px">
+              <div class="btn ghost">Ver feed de trampos</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="frame-note">Estado honesto: como a aprovação é manual no beta, a tela promete 24h e libera o feed em modo leitura. Expectativa clara evita ansiedade e suporte.</p>
+    </div>
+
+  </div>
+
+  <!-- GROUP B: USO -->
+  <div class="group-label">B · Perfil e ganhos</div>
+  <div class="frames">
+
+    <!-- profile -->
+    <div class="frame-wrap">
+      <div class="frame-label"><span class="n">B1</span><span class="t">Perfil do tasker</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>5G</span></div>
+          <div class="scroll">
+            <div class="ph" style="flex:1;overflow:hidden;padding-top:8px">
+              <div class="prof-head">
+                <div class="avatar-lg">DF<div class="verified"><svg viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:3"><path d="M20 6L9 17l-5-5"/></svg></div></div>
+                <div class="prof-name">Diego F.</div>
+                <div class="prof-stat"><div class="stars"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 22l2-7L2 9h7z"/></svg></div>4,8 · 31 trampos · <span style="color:var(--success);font-weight:600">Verificado</span></div>
+              </div>
+              <div class="sect-lab">Categorias que atendo</div>
+              <div class="row" style="gap:7px;flex-wrap:wrap"><span class="chip acc">Reparos</span><span class="chip acc">Entregas</span><span class="chip">+ adicionar</span></div>
+              <div class="sect-lab">Área de atuação</div>
+              <div class="menu-item"><svg class="ic" viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-11a7 7 0 1114 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Uberlândia · raio de 10 km<span class="chev"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span></div>
+              <div class="sect-lab">Conta</div>
+              <div class="menu-item"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Dados de recebimento (Pix)<span class="chev"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span></div>
+            </div>
+            <div class="bnav">
+              <a><svg class="ic" viewBox="0 0 24 24"><path d="M3 12l9-8 9 8M5 10v10h14V10"/></svg>Feed</a>
+              <a><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>Buscar</a>
+              <a><svg class="ic" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Trampos</a>
+              <a class="on"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="frame-note">Selo "Verificado" (passou no KYC) gera confiança bilateral. Categorias que ele atende filtram os trampos que aparecem no feed dele.</p>
+    </div>
+
+    <!-- earnings -->
+    <div class="frame-wrap">
+      <div class="frame-label"><span class="n">B2</span><span class="t">Ganhos</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>5G</span></div>
+          <div class="scroll">
+            <div class="ph" style="flex:1;overflow:hidden;padding-top:8px">
+              <div class="scr-title" style="margin-bottom:16px">Ganhos</div>
+              <div class="earn-hero">
+                <div class="el">Disponível para saque</div>
+                <div class="ev">R$ 408,00</div>
+                <div class="ebtn">Transferir via Pix</div>
+              </div>
+              <div class="earn-2">
+                <div class="ecard held"><div class="el"><svg class="ic ic-sm" viewBox="0 0 24 24" style="color:var(--warning)"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Em liberação</div><div class="ev">R$ 102</div></div>
+                <div class="ecard avail"><div class="el"><svg class="ic ic-sm" viewBox="0 0 24 24" style="color:var(--success)"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Este mês</div><div class="ev">R$ 936</div></div>
+              </div>
+              <div class="sect-lab" style="margin-top:4px">Histórico</div>
+              <div class="htx">
+                <div class="hic"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div>
+                <div class="hc"><div class="ht">Montar guarda-roupa</div><div class="hd">Hoje, 14h · Marina R.</div></div>
+                <div style="text-align:right"><div class="hv">R$ 102</div><span class="hbadge hold">Em 1h</span></div>
+              </div>
+              <div class="htx">
+                <div class="hic"><svg class="ic ic-sm" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l3-4h12l3 4"/></svg></div>
+                <div class="hc"><div class="ht">Entrega centro</div><div class="hd">Ontem · João P.</div></div>
+                <div style="text-align:right"><div class="hv">R$ 47</div><span class="hbadge rel">Liberado</span></div>
+              </div>
+              <div class="htx">
+                <div class="hic"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div>
+                <div class="hc"><div class="ht">Trocar chuveiro</div><div class="hd">2 dias · Carla M.</div></div>
+                <div style="text-align:right"><div class="hv">R$ 68</div><span class="hbadge rel">Liberado</span></div>
+              </div>
+            </div>
+            <div class="bnav">
+              <a><svg class="ic" viewBox="0 0 24 24"><path d="M3 12l9-8 9 8M5 10v10h14V10"/></svg>Feed</a>
+              <a><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>Buscar</a>
+              <a class="on"><svg class="ic" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Trampos</a>
+              <a><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="frame-note">O escrow fica visível: "Em liberação" (laranja, libera em 1h) vs "Disponível" (verde, sacável). Saque via Pix. Valores sempre líquidos, já com a comissão descontada.</p>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>
