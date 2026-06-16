@@ -5,17 +5,20 @@ RUN npm install -g pnpm
 FROM base AS builder
 WORKDIR /app
 
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
 # Copy workspace files
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/db ./packages/db
 COPY packages/contracts ./packages/contracts
 COPY apps/api ./apps/api
 
-# Install dependencies
+# Install all dependencies (including devDependencies for build)
 RUN pnpm install --frozen-lockfile
 
 # Generate Prisma client
-RUN pnpm --filter @trampo/db generate
+RUN cd packages/db && pnpm exec prisma generate
 
 # Build API
 RUN pnpm --filter @trampo/api build
