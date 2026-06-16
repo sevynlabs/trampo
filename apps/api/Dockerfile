@@ -17,8 +17,10 @@ COPY apps/api ./apps/api
 # Install all dependencies (including devDependencies for build)
 RUN pnpm install --frozen-lockfile
 
-# Generate Prisma client
-RUN cd packages/db && pnpm exec prisma generate
+# Generate Prisma client (using npx to ensure prisma is found)
+WORKDIR /app/packages/db
+RUN npx prisma generate
+WORKDIR /app
 
 # Build API
 RUN pnpm --filter @trampo/api build
