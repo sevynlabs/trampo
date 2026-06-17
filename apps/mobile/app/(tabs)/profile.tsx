@@ -97,7 +97,7 @@ export default function ProfileScreen() {
               <MenuItem
                 icon="document-outline"
                 label="Documentos (KYC)"
-                onPress={() => {}}
+                onPress={() => router.push('/kyc')}
               />
             </>
           )}

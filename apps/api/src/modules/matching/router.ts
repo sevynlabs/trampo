@@ -6,6 +6,7 @@ import { assertTransition, canCancel } from '../../domain/state-machine';
 import { calculateCancellationPenalty } from '../../domain/pricing';
 import { scheduleEscrowRelease } from '../webhooks';
 import { env } from '../../lib/env';
+import { sendPushNotification, notifications } from '../../integrations/push';
 
 export const matchingRouter = router({
   /**
@@ -61,8 +62,13 @@ export const matchingRouter = router({
       // The payment charge will be created when client initiates payment
       console.log(`[MATCHING] Task ${taskId} accepted by tasker ${ctx.user.id}`);
 
-      // TODO: Send push notification to client
-      // "Seu trampo foi aceito! Realize o pagamento para o profissional começar."
+      // Send push notification to client
+      if (result) {
+        sendPushNotification(
+          result.client.id,
+          notifications.taskAccepted(result.title, ctx.user.name)
+        ).catch((err) => console.error('[MATCHING] Push notification failed:', err));
+      }
 
       return result;
     }),
@@ -119,7 +125,7 @@ export const matchingRouter = router({
     .mutation(async ({ ctx, input }) => {
       const task = await prisma.task.findUnique({
         where: { id: input.taskId },
-        include: { assignment: true, payment: true },
+        include: { assignment: true, payment: true, client: { select: { id: true } } },
       });
 
       if (!task) {
@@ -149,8 +155,11 @@ export const matchingRouter = router({
 
       console.log(`[MATCHING] Task ${input.taskId} completed, escrow scheduled`);
 
-      // TODO: Send push notification to client
-      // "O trampo foi concluído! Não esqueça de avaliar o profissional."
+      // Send push notification to client
+      sendPushNotification(
+        task.client.id,
+        notifications.taskCompleted(task.title, ctx.user.name)
+      ).catch((err) => console.error('[MATCHING] Push notification failed:', err));
 
       return { success: true };
     }),
