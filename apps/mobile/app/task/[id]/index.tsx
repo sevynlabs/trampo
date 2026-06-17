@@ -72,6 +72,7 @@ export default function TaskDetailScreen() {
   const canComplete = isTasker && task.status === 'IN_PROGRESS';
   const canCancel = (isClient || isTasker) && ['OPEN', 'ACCEPTED'].includes(task.status);
   const canChat = (isClient || isTasker) && task.status !== 'OPEN' && task.status !== 'CANCELLED';
+  const canReview = (isClient || isTasker) && ['COMPLETED', 'RELEASED'].includes(task.status);
 
   const handleAccept = () => {
     Alert.alert(
@@ -272,6 +273,15 @@ export default function TaskDetailScreen() {
             >
               <Text className="text-danger font-bold">Cancelar</Text>
             </Pressable>
+          )}
+
+          {canReview && (
+            <Link href={`/task/${task.id}/review`} asChild>
+              <Pressable className="flex-1 bg-warning py-4 rounded-button items-center flex-row justify-center">
+                <Ionicons name="star" size={20} color="#fff" />
+                <Text className="text-white font-bold ml-2">Avaliar</Text>
+              </Pressable>
+            </Link>
           )}
         </View>
       </View>
