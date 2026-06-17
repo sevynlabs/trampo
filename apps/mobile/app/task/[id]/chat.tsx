@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,41 +12,113 @@ import {
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../../src/lib/trpc';
+import { subscribeToChatMessages } from '../../../src/lib/supabase';
+
+interface Message {
+  id: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
+  sender: {
+    id: string;
+    name: string | null;
+    avatarUrl: string | null;
+  };
+}
 
 export default function ChatScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [message, setMessage] = useState('');
+  const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const scrollRef = useRef<ScrollView>(null);
 
   const { data: me } = trpc.profiles.getMe.useQuery();
+
+  // Fetch initial messages (no polling - we use Realtime now)
   const {
-    data: messages,
+    data: initialMessages,
     isLoading,
     refetch,
   } = trpc.chat.listByTask.useQuery(
     { taskId: id!, limit: 100 },
-    { refetchInterval: 5000 } // Poll every 5s (TODO: use Supabase Realtime)
+    { enabled: !!id }
   );
+
+  // Sync initial messages to local state
+  useEffect(() => {
+    if (initialMessages?.items) {
+      // Convert Date objects to ISO strings
+      const messages = initialMessages.items.map((m) => ({
+        ...m,
+        createdAt: typeof m.createdAt === 'string' ? m.createdAt : m.createdAt.toISOString(),
+      }));
+      setLocalMessages(messages);
+    }
+  }, [initialMessages]);
+
+  // Subscribe to Realtime messages
+  useEffect(() => {
+    if (!id) return;
+
+    console.log('[CHAT] Subscribing to realtime messages');
+
+    const unsubscribe = subscribeToChatMessages(id, (newMessage) => {
+      console.log('[CHAT] Received realtime message:', newMessage.id);
+
+      // Add message to local state if not already present
+      setLocalMessages((prev) => {
+        // Check if message already exists
+        if (prev.some((m) => m.id === newMessage.id)) {
+          return prev;
+        }
+
+        // Add new message
+        return [
+          ...prev,
+          {
+            id: newMessage.id,
+            senderId: newMessage.senderId,
+            content: newMessage.content,
+            createdAt: newMessage.createdAt,
+            sender: {
+              id: newMessage.senderId,
+              name: newMessage.senderName,
+              avatarUrl: newMessage.senderAvatar,
+            },
+          },
+        ];
+      });
+    });
+
+    return () => {
+      console.log('[CHAT] Unsubscribing from realtime');
+      unsubscribe();
+    };
+  }, [id]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  }, [localMessages]);
 
   const sendMessage = trpc.chat.send.useMutation({
     onSuccess: () => {
       setMessage('');
+      // No need to refetch - Realtime will deliver the message
+    },
+    onError: () => {
+      // On error, refetch to ensure consistency
       refetch();
     },
   });
 
-  useEffect(() => {
-    // Scroll to bottom when messages change
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  }, [messages]);
-
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     if (!message.trim()) return;
     sendMessage.mutate({ taskId: id!, content: message.trim() });
-  };
+  }, [message, id, sendMessage]);
 
   return (
     <>
@@ -77,7 +149,7 @@ export default function ChatScreen() {
             <View className="items-center py-8">
               <ActivityIndicator color="#2563EB" />
             </View>
-          ) : !messages?.items?.length ? (
+          ) : localMessages.length === 0 ? (
             <View className="items-center py-8">
               <Ionicons name="chatbubbles-outline" size={48} color="#A1A1AA" />
               <Text className="text-ink-muted mt-4 text-center">
@@ -86,7 +158,7 @@ export default function ChatScreen() {
             </View>
           ) : (
             <View className="gap-3">
-              {messages.items.map((msg) => {
+              {localMessages.map((msg) => {
                 const isMe = msg.senderId === me?.id;
                 return (
                   <View

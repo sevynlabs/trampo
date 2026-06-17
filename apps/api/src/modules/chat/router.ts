@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../../trpc';
 import { prisma } from '@trampo/db';
+import { broadcastChatMessage } from '../../lib/supabase';
 
 export const chatRouter = router({
   /**
@@ -56,7 +57,16 @@ export const chatRouter = router({
         },
       });
 
-      // TODO: Broadcast via Supabase Realtime
+      // Broadcast via Supabase Realtime
+      await broadcastChatMessage(taskId, {
+        id: message.id,
+        senderId: message.senderId,
+        senderName: message.sender.name,
+        senderAvatar: message.sender.avatarUrl,
+        content: message.content,
+        createdAt: message.createdAt.toISOString(),
+      });
+
       // TODO: Send push notification to other party
 
       return message;

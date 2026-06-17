@@ -17,6 +17,7 @@ export const verifyOtpInput = z.object({
 export const sessionOutput = z.object({
   accessToken: z.string(),
   refreshToken: z.string(),
+  isNewUser: z.boolean(),
   user: z.object({
     id: z.string().uuid(),
     phone: z.string(),

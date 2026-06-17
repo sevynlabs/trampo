@@ -3,7 +3,7 @@ import { router, taskerProcedure } from '../../trpc';
 import { feedInput } from '@trampo/contracts';
 import { prisma } from '@trampo/db';
 
-interface FeedTask {
+export interface FeedTask {
   id: string;
   title: string;
   description: string | null;

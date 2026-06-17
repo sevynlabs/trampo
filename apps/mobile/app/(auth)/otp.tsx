@@ -9,8 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { trpc } from '../../src/lib/trpc';
-import { setToken } from '../../src/lib/trpc';
+import { trpc, setTokens } from '../../src/lib/trpc';
 
 const OTP_LENGTH = 6;
 
@@ -24,16 +23,17 @@ export default function OtpScreen() {
 
   const verifyOtp = trpc.auth.verifyOtp.useMutation({
     onSuccess: async (data) => {
-      await setToken(data.accessToken);
+      // Store both access and refresh tokens
+      await setTokens(data.accessToken, data.refreshToken);
 
-      // Check if profile is complete
-      if (!data.user.name) {
+      // Navigate based on user state
+      if (data.isNewUser || !data.user.name) {
         router.replace('/(auth)/profile-setup');
       } else {
         router.replace('/(tabs)/home');
       }
     },
-    onError: (err) => {
+    onError: () => {
       setError('Código inválido. Tente novamente.');
       setCode('');
     },

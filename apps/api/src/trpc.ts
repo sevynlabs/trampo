@@ -3,6 +3,7 @@ import type { Context as HonoContext } from 'hono';
 import superjson from 'superjson';
 import { prisma, type User } from '@trampo/db';
 import { checkRateLimit } from './lib/redis';
+import { verifyToken } from './lib/jwt';
 
 /**
  * Context passed to every tRPC procedure
@@ -11,6 +12,7 @@ export interface Context {
   req: Request;
   honoContext: HonoContext;
   user: User | null;
+  [key: string]: unknown;
 }
 
 /**
@@ -27,18 +29,20 @@ export async function createContext(honoContext: HonoContext): Promise<Context> 
     const token = authHeader.slice(7);
 
     try {
-      // TODO: Verify JWT with Supabase
-      // For now, extract user ID from token and fetch from DB
-      // This will be replaced with proper JWT verification
+      // Verify JWT signature and expiration
+      const payload = await verifyToken(token);
 
-      // Decode JWT payload (base64)
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const userId = payload.sub;
-
-      if (userId) {
+      if (payload && payload.type === 'access') {
+        // Fetch user from database to ensure they still exist
         user = await prisma.user.findUnique({
-          where: { id: userId },
+          where: { id: payload.sub },
         });
+
+        // Verify role hasn't changed (token might have stale role)
+        if (user && user.role !== payload.role) {
+          console.log(`[AUTH] Role mismatch - token: ${payload.role}, db: ${user.role}`);
+          // Still allow access, user object has current role
+        }
       }
     } catch {
       // Invalid token, user remains null

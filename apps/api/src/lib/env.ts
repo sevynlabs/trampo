@@ -24,10 +24,10 @@ const envSchema = z.object({
   ASAAS_WEBHOOK_TOKEN: z.string().min(1),
   ASAAS_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
 
-  // Twilio
-  TWILIO_ACCOUNT_SID: z.string().startsWith('AC'),
-  TWILIO_AUTH_TOKEN: z.string().min(1),
-  TWILIO_VERIFY_SERVICE_SID: z.string().startsWith('VA'),
+  // Twilio (optional in development - uses mock OTP)
+  TWILIO_ACCOUNT_SID: z.string().startsWith('AC').optional(),
+  TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
+  TWILIO_VERIFY_SERVICE_SID: z.string().startsWith('VA').optional(),
 
   // Redis
   UPSTASH_REDIS_REST_URL: z.string().url(),

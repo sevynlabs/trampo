@@ -1,12 +1,23 @@
 import type { Context } from 'hono';
 import { prisma } from '@trampo/db';
 import { env } from '../../lib/env';
+import { scheduleJob } from '../../lib/redis';
+
+// Escrow release delay: 1 hour
+const ESCROW_RELEASE_DELAY_MS = 60 * 60 * 1000;
+
+// Job queue name
+const ESCROW_RELEASE_QUEUE = 'jobs:escrow-release';
 
 /**
  * Asaas Webhook Handler
  *
+ * Payment Flow:
+ * 1. PAYMENT_CONFIRMED → Payment confirmed, wait for task completion
+ * 2. Task completed → status: HELD, schedule escrow release
+ * 3. 1 hour later → Transfer to tasker → status: RELEASED
+ *
  * CRITICAL: Always validate webhook signature before processing!
- * A forged webhook could mark payments as paid without money arriving.
  */
 export async function webhookHandler(c: Context): Promise<Response> {
   // 1. Validate signature
@@ -22,9 +33,12 @@ export async function webhookHandler(c: Context): Promise<Response> {
     event: string;
     payment: {
       id: string;
-      externalReference?: string;
-      status: string;
+      customer: string;
       value: number;
+      netValue: number;
+      status: string;
+      billingType: string;
+      externalReference?: string;
     };
   };
 
@@ -34,7 +48,7 @@ export async function webhookHandler(c: Context): Promise<Response> {
     return c.text('Invalid JSON', 400);
   }
 
-  console.log(`[WEBHOOK] Received: ${event.event}`);
+  console.log(`[WEBHOOK] Received: ${event.event} for payment ${event.payment.id}`);
 
   // 3. Process based on event type
   try {
@@ -48,6 +62,7 @@ export async function webhookHandler(c: Context): Promise<Response> {
         await handlePaymentOverdue(event.payment);
         break;
 
+      case 'PAYMENT_DELETED':
       case 'PAYMENT_REFUNDED':
         await handlePaymentRefunded(event.payment);
         break;
@@ -59,33 +74,42 @@ export async function webhookHandler(c: Context): Promise<Response> {
     return c.text('ok');
   } catch (error) {
     console.error('[WEBHOOK] Error processing:', error);
-    return c.text('Error', 500);
+    // Return 200 to prevent Asaas from retrying
+    // Log the error for investigation
+    return c.text('ok');
   }
 }
 
 /**
  * Handle payment confirmed
- * Updates payment status and triggers escrow flow
+ * Client has paid, payment is now confirmed
  */
-async function handlePaymentConfirmed(payment: {
+async function handlePaymentConfirmed(paymentData: {
   id: string;
   externalReference?: string;
 }) {
-  // Use externalReference as our payment ID
-  const paymentId = payment.externalReference;
+  // externalReference is our payment ID
+  const paymentId = paymentData.externalReference;
 
   if (!paymentId) {
     console.error('[WEBHOOK] Missing externalReference');
     return;
   }
 
-  // Idempotency check - find by asaasId
-  const existing = await prisma.payment.findFirst({
-    where: { asaasPaymentId: payment.id },
+  // Find payment by ID
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: { task: true },
   });
 
-  if (existing?.status !== 'PENDING') {
-    console.log('[WEBHOOK] Payment already processed');
+  if (!payment) {
+    console.error(`[WEBHOOK] Payment not found: ${paymentId}`);
+    return;
+  }
+
+  // Idempotency check
+  if (payment.status !== 'PENDING') {
+    console.log(`[WEBHOOK] Payment ${paymentId} already processed: ${payment.status}`);
     return;
   }
 
@@ -98,27 +122,56 @@ async function handlePaymentConfirmed(payment: {
     },
   });
 
-  console.log(`[WEBHOOK] Payment ${paymentId} confirmed`);
+  console.log(`[WEBHOOK] Payment ${paymentId} confirmed for task ${payment.taskId}`);
 
-  // TODO: Send push notification to tasker
+  // TODO: Send push notification to tasker that payment is confirmed
+  // They can now start the task knowing payment is secured
 }
 
 /**
- * Handle payment overdue (Pix expired)
+ * Handle payment overdue (Pix expired without payment)
  */
-async function handlePaymentOverdue(payment: { externalReference?: string }) {
-  const paymentId = payment.externalReference;
+async function handlePaymentOverdue(paymentData: { externalReference?: string }) {
+  const paymentId = paymentData.externalReference;
   if (!paymentId) return;
 
-  // Could update to expired status or delete
-  console.log(`[WEBHOOK] Payment ${paymentId} overdue`);
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+  });
+
+  if (!payment || payment.status !== 'PENDING') {
+    return;
+  }
+
+  // Mark as expired
+  await prisma.payment.update({
+    where: { id: paymentId },
+    data: {
+      status: 'EXPIRED',
+    },
+  });
+
+  // Revert task to OPEN so another tasker can accept
+  await prisma.task.update({
+    where: { id: payment.taskId },
+    data: {
+      status: 'OPEN',
+    },
+  });
+
+  // Delete the assignment
+  await prisma.taskAssignment.deleteMany({
+    where: { taskId: payment.taskId },
+  });
+
+  console.log(`[WEBHOOK] Payment ${paymentId} expired, task reverted to OPEN`);
 }
 
 /**
- * Handle refund
+ * Handle refund (full or partial)
  */
-async function handlePaymentRefunded(payment: { externalReference?: string }) {
-  const paymentId = payment.externalReference;
+async function handlePaymentRefunded(paymentData: { externalReference?: string }) {
+  const paymentId = paymentData.externalReference;
   if (!paymentId) return;
 
   await prisma.payment.update({
@@ -130,4 +183,101 @@ async function handlePaymentRefunded(payment: { externalReference?: string }) {
   });
 
   console.log(`[WEBHOOK] Payment ${paymentId} refunded`);
+}
+
+/**
+ * Schedule escrow release job
+ * Called when task is completed
+ */
+export async function scheduleEscrowRelease(paymentId: string): Promise<void> {
+  // Update payment to HELD status
+  await prisma.payment.update({
+    where: { id: paymentId },
+    data: {
+      status: 'HELD',
+      heldAt: new Date(),
+    },
+  });
+
+  // Schedule job for 1 hour from now
+  await scheduleJob(ESCROW_RELEASE_QUEUE, paymentId, { paymentId }, ESCROW_RELEASE_DELAY_MS);
+
+  console.log(`[ESCROW] Scheduled release for payment ${paymentId} in 1 hour`);
+}
+
+/**
+ * Process escrow release
+ * Called by job processor after delay
+ */
+export async function processEscrowRelease(paymentId: string): Promise<void> {
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: {
+      task: {
+        include: {
+          assignment: {
+            include: {
+              tasker: {
+                include: {
+                  taskerProfile: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!payment) {
+    console.error(`[ESCROW] Payment not found: ${paymentId}`);
+    return;
+  }
+
+  // Only process HELD payments
+  if (payment.status !== 'HELD') {
+    console.log(`[ESCROW] Payment ${paymentId} not in HELD status: ${payment.status}`);
+    return;
+  }
+
+  const taskerProfile = payment.task.assignment?.tasker.taskerProfile;
+
+  if (!taskerProfile) {
+    console.error(`[ESCROW] No tasker profile for payment ${paymentId}`);
+    return;
+  }
+
+  // In production, transfer to tasker via Asaas
+  // For now, just update status
+  if (env.NODE_ENV === 'production' && taskerProfile.asaasWalletId) {
+    const { transferToTasker } = await import('../../integrations/asaas');
+
+    await transferToTasker({
+      walletId: taskerProfile.asaasWalletId,
+      amount: payment.taskerAmount,
+      description: `TRAMPO: ${payment.task.title}`,
+      externalReference: paymentId,
+    });
+  }
+
+  // Update payment status
+  await prisma.payment.update({
+    where: { id: paymentId },
+    data: {
+      status: 'RELEASED',
+      releasedAt: new Date(),
+    },
+  });
+
+  // Update task status
+  await prisma.task.update({
+    where: { id: payment.taskId },
+    data: {
+      status: 'RELEASED',
+    },
+  });
+
+  console.log(`[ESCROW] Released payment ${paymentId} - R$ ${payment.taskerAmount / 100} to tasker`);
+
+  // TODO: Send push notification to tasker that payment was released
 }

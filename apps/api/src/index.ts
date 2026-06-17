@@ -7,6 +7,7 @@ import { appRouter } from './router';
 import { createContext } from './trpc';
 import { env } from './lib/env';
 import { webhookHandler } from './modules/webhooks';
+import { startEscrowProcessor } from './jobs/escrow-processor';
 
 // Initialize Hono app
 const app = new Hono();
@@ -93,6 +94,9 @@ serve({
   fetch: app.fetch,
   port,
 });
+
+// Start background job processors
+startEscrowProcessor();
 
 // Export for testing
 export { app, appRouter };

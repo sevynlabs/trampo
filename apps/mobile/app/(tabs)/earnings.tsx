@@ -116,9 +116,11 @@ export default function EarningsScreen() {
                   />
                 </View>
                 <View className="flex-1 ml-3">
-                  <Text className="text-ink font-medium">{tx.task.title}</Text>
+                  <Text className="text-ink font-medium">{tx.taskTitle}</Text>
                   <Text className="text-ink-faint text-sm">
-                    {new Date(tx.createdAt).toLocaleDateString('pt-BR')}
+                    {tx.completedAt
+                      ? new Date(tx.completedAt).toLocaleDateString('pt-BR')
+                      : '-'}
                   </Text>
                 </View>
                 <Text
@@ -126,7 +128,7 @@ export default function EarningsScreen() {
                     tx.status === 'RELEASED' ? 'text-success' : 'text-warning'
                   }`}
                 >
-                  +{formatCurrency(tx.taskerAmount)}
+                  +{formatCurrency(tx.amount)}
                 </Text>
               </View>
             ))

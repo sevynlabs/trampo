@@ -116,4 +116,31 @@ export const profilesRouter = router({
 
       return { success: true };
     }),
+
+  /**
+   * Register push notification token
+   */
+  registerPushToken: protectedProcedure
+    .input(z.object({ token: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await prisma.user.update({
+        where: { id: ctx.user.id },
+        data: { pushToken: input.token },
+      });
+
+      console.log(`[PUSH] Registered token for user ${ctx.user.id}`);
+      return { success: true };
+    }),
+
+  /**
+   * Unregister push notification token (logout)
+   */
+  unregisterPushToken: protectedProcedure.mutation(async ({ ctx }) => {
+    await prisma.user.update({
+      where: { id: ctx.user.id },
+      data: { pushToken: null },
+    });
+
+    return { success: true };
+  }),
 });
