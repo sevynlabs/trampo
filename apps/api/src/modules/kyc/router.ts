@@ -1,6 +1,10 @@
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../../trpc';
 import { prisma } from '@trampo/db';
+import { supabase } from '../../lib/supabase';
+
+const KYC_BUCKET = 'kyc-documents';
 
 export const kycRouter = router({
   /**
@@ -24,19 +28,15 @@ export const kycRouter = router({
     if (!profile) {
       return {
         status: 'PENDING' as const,
-        steps: {
-          cpf: true, // Always done via profile
-          document: false,
-          selfie: false,
-        },
+        steps: { cpf: true, document: false, selfie: false },
       };
     }
 
     return {
       status: profile.kycStatus,
-      submittedAt: profile.kycSubmittedAt,
-      approvedAt: profile.kycApprovedAt,
-      rejectedAt: profile.kycRejectedAt,
+      submittedAt: profile.kycSubmittedAt?.toISOString(),
+      approvedAt: profile.kycApprovedAt?.toISOString(),
+      rejectedAt: profile.kycRejectedAt?.toISOString(),
       rejectReason: profile.kycRejectReason,
       steps: {
         cpf: true,
@@ -47,7 +47,7 @@ export const kycRouter = router({
   }),
 
   /**
-   * Upload document (returns signed URL for Supabase Storage)
+   * Get signed upload URL for Supabase Storage
    */
   getUploadUrl: protectedProcedure
     .input(
@@ -58,24 +58,31 @@ export const kycRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { type, contentType } = input;
-
-      // Generate unique path in private bucket
       const ext = contentType === 'image/jpeg' ? 'jpg' : 'png';
-      const path = `kyc/${ctx.user.id}/${type}_${Date.now()}.${ext}`;
+      const path = `${ctx.user.id}/${type}_${Date.now()}.${ext}`;
 
-      // TODO: Generate signed upload URL from Supabase Storage
-      // For now, return mock URL
-      const uploadUrl = `https://storage.supabase.co/upload/${path}`;
+      // Create signed upload URL (5 min expiry)
+      const { data, error } = await supabase.storage
+        .from(KYC_BUCKET)
+        .createSignedUploadUrl(path);
+
+      if (error || !data) {
+        console.error('[KYC] Upload URL error:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Falha ao gerar URL de upload',
+        });
+      }
 
       return {
-        uploadUrl,
+        uploadUrl: data.signedUrl,
+        token: data.token,
         path,
-        expiresIn: 300, // 5 minutes
       };
     }),
 
   /**
-   * Confirm document uploaded
+   * Confirm document uploaded and save path
    */
   confirmUpload: protectedProcedure
     .input(
@@ -87,24 +94,36 @@ export const kycRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { type, path } = input;
 
-      // Map type to field
       const fieldMap = {
         document_front: 'documentFrontPath',
         document_back: 'documentBackPath',
         selfie: 'selfiePath',
       } as const;
 
-      // Update profile
       await prisma.taskerProfile.upsert({
         where: { userId: ctx.user.id },
         update: { [fieldMap[type]]: path },
-        create: {
-          userId: ctx.user.id,
-          [fieldMap[type]]: path,
-        },
+        create: { userId: ctx.user.id, [fieldMap[type]]: path },
       });
 
       return { success: true };
+    }),
+
+  /**
+   * Get signed URL to view a document (for admin review)
+   */
+  getViewUrl: protectedProcedure
+    .input(z.object({ path: z.string() }))
+    .query(async ({ input }) => {
+      const { data, error } = await supabase.storage
+        .from(KYC_BUCKET)
+        .createSignedUrl(input.path, 60); // 1 min expiry
+
+      if (error) {
+        throw new TRPCError({ code: 'NOT_FOUND' });
+      }
+
+      return { url: data.signedUrl };
     }),
 
   /**
@@ -116,23 +135,21 @@ export const kycRouter = router({
     });
 
     if (!profile) {
-      throw new Error('Profile not found');
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Perfil não encontrado' });
     }
 
-    // Validate all required documents
     if (!profile.documentFrontPath || !profile.selfiePath) {
-      throw new Error('Missing required documents');
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Envie todos os documentos obrigatórios',
+      });
     }
 
-    // Update status
     await prisma.taskerProfile.update({
       where: { id: profile.id },
-      data: {
-        kycStatus: 'SUBMITTED',
-        kycSubmittedAt: new Date(),
-      },
+      data: { kycStatus: 'SUBMITTED', kycSubmittedAt: new Date() },
     });
 
-    return { success: true, message: 'KYC submitted for review' };
+    return { success: true };
   }),
 });
