@@ -17,9 +17,9 @@ COPY apps/api ./apps/api
 # Install all dependencies (including devDependencies for build)
 RUN pnpm install --frozen-lockfile
 
-# Generate Prisma client (using npx to ensure prisma is found)
+# Generate Prisma client (using specific version to match package.json)
 WORKDIR /app/packages/db
-RUN npx prisma generate
+RUN npx prisma@5.15.0 generate
 WORKDIR /app
 
 # Build API

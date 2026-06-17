@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { trpcServer } from '@hono/trpc-server';
+import { serve } from '@hono/node-server';
 import { appRouter } from './router';
 import { createContext } from './trpc';
 import { env } from './lib/env';
@@ -87,7 +88,11 @@ console.log(`
 ╚══════════════════════════════════════════════════╝
 `);
 
-export default {
-  port,
+// Start Node.js server
+serve({
   fetch: app.fetch,
-};
+  port,
+});
+
+// Export for testing
+export { app, appRouter };
