@@ -1,12 +1,26 @@
-import { createClient, RealtimeChannel } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 
 // Get Supabase URL and anon key from app config
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const rawUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const rawKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('[SUPABASE] Missing URL or anon key. Realtime features will not work.');
+// Validate URL is actually a valid HTTP(S) URL
+const isValidUrl = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const supabaseUrl = isValidUrl(rawUrl) ? rawUrl : null;
+const supabaseAnonKey = rawKey && rawKey.length > 10 ? rawKey : null;
+const isConfigured = !!(supabaseUrl && supabaseAnonKey);
+
+if (!isConfigured) {
+  console.warn('[SUPABASE] Missing or invalid URL/key. Realtime features disabled.');
 }
 
 /**
@@ -15,17 +29,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * Uses ANON_KEY (public) - safe for client-side.
  * Only used for Realtime subscriptions, not for auth or DB.
  */
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-});
+export const supabase = isConfigured
+  ? createClient(supabaseUrl!, supabaseAnonKey!, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+    })
+  : null;
 
 /**
  * Chat message from Realtime
@@ -50,6 +66,11 @@ export function subscribeToChatMessages(
   taskId: string,
   onMessage: (message: RealtimeChatMessage) => void
 ): () => void {
+  if (!supabase) {
+    console.warn('[REALTIME] Supabase not configured, skipping subscription');
+    return () => {};
+  }
+
   const channelName = `task:${taskId}:chat`;
 
   const channel = supabase
@@ -78,6 +99,11 @@ export function subscribeToTaskUpdates(
   taskId: string,
   onUpdate: (update: { status: string; updatedAt: string }) => void
 ): () => void {
+  if (!supabase) {
+    console.warn('[REALTIME] Supabase not configured, skipping subscription');
+    return () => {};
+  }
+
   const channelName = `task:${taskId}`;
 
   const channel = supabase
