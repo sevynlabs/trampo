@@ -9,6 +9,7 @@ import {
   getPixQrCodeBase64,
   mockAsaas,
 } from '../../integrations/asaas';
+import { getDecryptedCpf } from '../../lib/pii';
 
 const isDev = env.NODE_ENV === 'development';
 
@@ -52,6 +53,19 @@ export const paymentsRouter = router({
         };
       }
 
+      // In production we need the client's real CPF for the Asaas customer.
+      // Validate up-front so we don't create an orphan payment record.
+      let clientCpf: string | null = null;
+      if (!isDev) {
+        clientCpf = await getDecryptedCpf(task.clientId);
+        if (!clientCpf) {
+          throw new TRPCError({
+            code: 'PRECONDITION_FAILED',
+            message: 'Complete seu cadastro (CPF) antes de pagar',
+          });
+        }
+      }
+
       // Create payment record first
       const payment = await prisma.payment.create({
         data: {
@@ -90,10 +104,10 @@ export const paymentsRouter = router({
           asaasPaymentId = mockCharge.id;
           asaasCustomerId = mockCustomer.id;
         } else {
-          // Create customer in Asaas (or find existing)
+          // Create customer in Asaas (or find existing) with the real CPF
           const customer = await findOrCreateCustomer({
             name: task.client.name || 'Cliente TRAMPO',
-            cpf: task.client.cpfHash || '00000000000', // Need real CPF
+            cpf: clientCpf!,
             phone: task.client.phone,
             externalReference: ctx.user.id,
           });
