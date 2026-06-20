@@ -67,6 +67,7 @@ export default function TaskDetailScreen() {
   const isTasker = task.assignment?.taskerId === me?.id;
   const status = STATUS_CONFIG[task.status] || STATUS_CONFIG.OPEN;
 
+  const canPay = isClient && task.status === 'ACCEPTED';
   const canAccept = !isClient && task.status === 'OPEN' && me?.role !== 'CLIENT';
   const canStart = isTasker && task.status === 'ACCEPTED';
   const canComplete = isTasker && task.status === 'IN_PROGRESS';
@@ -221,6 +222,15 @@ export default function TaskDetailScreen() {
               <Pressable className="flex-1 bg-border py-4 rounded-button items-center flex-row justify-center">
                 <Ionicons name="chatbubble-outline" size={20} color="#52525B" />
                 <Text className="text-ink-soft font-bold ml-2">Chat</Text>
+              </Pressable>
+            </Link>
+          )}
+
+          {canPay && (
+            <Link href={`/task/${task.id}/payment`} asChild>
+              <Pressable className="flex-1 bg-accent py-4 rounded-button items-center flex-row justify-center">
+                <Ionicons name="qr-code-outline" size={20} color="#fff" />
+                <Text className="text-white font-bold ml-2">Pagar com Pix</Text>
               </Pressable>
             </Link>
           )}
