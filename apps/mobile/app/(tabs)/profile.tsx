@@ -103,6 +103,16 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {user?.isAdmin && (
+          <View className="bg-surface rounded-card border border-border overflow-hidden mb-6">
+            <MenuItem
+              icon="shield-checkmark-outline"
+              label="Disputas (admin)"
+              onPress={() => router.push('/admin/disputes')}
+            />
+          </View>
+        )}
+
         <View className="bg-surface rounded-card border border-border overflow-hidden mb-6">
           <MenuItem
             icon="help-circle-outline"

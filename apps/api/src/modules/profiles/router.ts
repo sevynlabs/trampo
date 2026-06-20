@@ -3,7 +3,14 @@ import { router, protectedProcedure } from '../../trpc';
 import { registerProfileInput } from '@trampo/contracts';
 import { prisma } from '@trampo/db';
 import { storeEncryptedCpf } from '../../lib/pii';
+import { env } from '../../lib/env';
 import crypto from 'crypto';
+
+const adminIds = new Set(
+  env.ADMIN_USER_IDS.split(',')
+    .map((id) => id.trim())
+    .filter(Boolean)
+);
 
 export const profilesRouter = router({
   /**
@@ -23,7 +30,9 @@ export const profilesRouter = router({
       },
     });
 
-    return user;
+    if (!user) return null;
+
+    return { ...user, isAdmin: adminIds.has(user.id) };
   }),
 
   /**
