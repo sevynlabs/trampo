@@ -80,7 +80,7 @@ export default function ProfileScreen() {
           <MenuItem
             icon="person-outline"
             label="Editar perfil"
-            onPress={() => {}}
+            onPress={() => router.push('/profile/edit')}
           />
           {isTasker && (
             <>

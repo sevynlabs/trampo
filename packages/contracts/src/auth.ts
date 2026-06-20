@@ -34,7 +34,14 @@ export const registerProfileInput = z.object({
   role: z.enum(['CLIENT', 'TASKER', 'BOTH']),
 });
 
+// Editing an existing profile — CPF is immutable and not re-collected.
+export const updateProfileInput = z.object({
+  name: z.string().min(2).max(100),
+  email: z.string().email().optional().or(z.literal('')),
+});
+
 export type RequestOtpInput = z.infer<typeof requestOtpInput>;
 export type VerifyOtpInput = z.infer<typeof verifyOtpInput>;
 export type SessionOutput = z.infer<typeof sessionOutput>;
 export type RegisterProfileInput = z.infer<typeof registerProfileInput>;
+export type UpdateProfileInput = z.infer<typeof updateProfileInput>;

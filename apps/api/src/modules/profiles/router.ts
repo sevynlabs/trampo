@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../../trpc';
-import { registerProfileInput } from '@trampo/contracts';
+import { registerProfileInput, updateProfileInput } from '@trampo/contracts';
 import { prisma } from '@trampo/db';
 import { storeEncryptedCpf } from '../../lib/pii';
 import { env } from '../../lib/env';
@@ -81,6 +81,23 @@ export const profilesRouter = router({
       }
 
       return user;
+    }),
+
+  /**
+   * Update basic profile fields (name, email). CPF is immutable.
+   */
+  updateBasicProfile: protectedProcedure
+    .input(updateProfileInput)
+    .mutation(async ({ ctx, input }) => {
+      const user = await prisma.user.update({
+        where: { id: ctx.user.id },
+        data: {
+          name: input.name,
+          email: input.email ? input.email : null,
+        },
+      });
+
+      return { id: user.id, name: user.name, email: user.email };
     }),
 
   /**
