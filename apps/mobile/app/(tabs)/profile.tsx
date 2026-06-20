@@ -87,12 +87,12 @@ export default function ProfileScreen() {
               <MenuItem
                 icon="grid-outline"
                 label="Categorias de serviço"
-                onPress={() => {}}
+                onPress={() => router.push('/profile/categories')}
               />
               <MenuItem
                 icon="location-outline"
                 label="Área de atuação"
-                onPress={() => {}}
+                onPress={() => router.push('/profile/service-area')}
               />
               <MenuItem
                 icon="document-outline"
