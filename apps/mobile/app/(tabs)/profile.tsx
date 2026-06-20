@@ -117,17 +117,17 @@ export default function ProfileScreen() {
           <MenuItem
             icon="help-circle-outline"
             label="Ajuda e suporte"
-            onPress={() => {}}
+            onPress={() => router.push('/info/help')}
           />
           <MenuItem
             icon="document-text-outline"
             label="Termos de uso"
-            onPress={() => {}}
+            onPress={() => router.push('/info/terms')}
           />
           <MenuItem
             icon="shield-outline"
             label="Política de privacidade"
-            onPress={() => {}}
+            onPress={() => router.push('/info/privacy')}
           />
         </View>
 
