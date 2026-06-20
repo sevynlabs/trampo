@@ -16,6 +16,61 @@ const STATUS_CONFIG: Record<
   DISPUTED: { label: 'Em disputa', color: 'text-danger', bgColor: 'bg-danger/10' },
 };
 
+const PAYMENT_STATUS_CONFIG: Record<
+  string,
+  { label: string; description: string; color: string; bgColor: string; icon: keyof typeof Ionicons.glyphMap }
+> = {
+  PENDING: {
+    label: 'Aguardando pagamento',
+    description: 'O cliente ainda não pagou o Pix.',
+    color: 'text-warning',
+    bgColor: 'bg-warning/10',
+    icon: 'time-outline',
+  },
+  CONFIRMED: {
+    label: 'Pagamento confirmado',
+    description: 'O valor está garantido e protegido.',
+    color: 'text-success',
+    bgColor: 'bg-success/10',
+    icon: 'shield-checkmark-outline',
+  },
+  HELD: {
+    label: 'Pagamento retido',
+    description: 'Será liberado ao profissional após a conclusão.',
+    color: 'text-accent',
+    bgColor: 'bg-accent/10',
+    icon: 'lock-closed-outline',
+  },
+  RELEASED: {
+    label: 'Pagamento liberado',
+    description: 'O valor foi liberado ao profissional.',
+    color: 'text-success',
+    bgColor: 'bg-success/10',
+    icon: 'checkmark-done-outline',
+  },
+  REFUNDED: {
+    label: 'Reembolsado',
+    description: 'O valor foi devolvido ao cliente.',
+    color: 'text-ink-muted',
+    bgColor: 'bg-border/40',
+    icon: 'arrow-undo-outline',
+  },
+  DISPUTED: {
+    label: 'Em disputa',
+    description: 'O pagamento está retido até a resolução.',
+    color: 'text-danger',
+    bgColor: 'bg-danger/10',
+    icon: 'alert-circle-outline',
+  },
+  EXPIRED: {
+    label: 'Pix expirado',
+    description: 'A cobrança expirou sem pagamento.',
+    color: 'text-danger',
+    bgColor: 'bg-danger/10',
+    icon: 'close-circle-outline',
+  },
+};
+
 function formatCurrency(centavos: number) {
   return `R$ ${(centavos / 100).toFixed(2).replace('.', ',')}`;
 }
@@ -55,6 +110,13 @@ export default function TaskDetailScreen() {
     onError: (err) => Alert.alert('Erro', err.message),
   });
 
+  // Payment status — only fetched for parties once a charge can exist.
+  const isParty = !!me && (task?.clientId === me.id || task?.assignment?.taskerId === me.id);
+  const { data: payment } = trpc.payments.getStatus.useQuery(
+    { taskId: id! },
+    { enabled: !!id && !!task && isParty && task.status !== 'OPEN' }
+  );
+
   if (isLoading || !task) {
     return (
       <View className="flex-1 bg-background items-center justify-center">
@@ -67,7 +129,10 @@ export default function TaskDetailScreen() {
   const isTasker = task.assignment?.taskerId === me?.id;
   const status = STATUS_CONFIG[task.status] || STATUS_CONFIG.OPEN;
 
-  const canPay = isClient && task.status === 'ACCEPTED';
+  const canPay =
+    isClient &&
+    task.status === 'ACCEPTED' &&
+    (!payment || payment.status === 'PENDING' || payment.status === 'EXPIRED');
   const canAccept = !isClient && task.status === 'OPEN' && me?.role !== 'CLIENT';
   const canStart = isTasker && task.status === 'ACCEPTED';
   const canComplete = isTasker && task.status === 'IN_PROGRESS';
@@ -184,6 +249,29 @@ export default function TaskDetailScreen() {
               </View>
             )}
           </View>
+
+          {/* Payment status */}
+          {payment && PAYMENT_STATUS_CONFIG[payment.status] && (
+            <View
+              className={`rounded-card p-4 mb-6 ${PAYMENT_STATUS_CONFIG[payment.status].bgColor}`}
+            >
+              <View className="flex-row items-center">
+                <Ionicons
+                  name={PAYMENT_STATUS_CONFIG[payment.status].icon}
+                  size={22}
+                  color="#52525B"
+                />
+                <View className="flex-1 ml-3">
+                  <Text className={`font-bold ${PAYMENT_STATUS_CONFIG[payment.status].color}`}>
+                    {PAYMENT_STATUS_CONFIG[payment.status].label}
+                  </Text>
+                  <Text className="text-ink-muted text-sm mt-0.5">
+                    {PAYMENT_STATUS_CONFIG[payment.status].description}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
 
           {/* Price breakdown */}
           <View className="bg-surface rounded-card border border-border p-4">
