@@ -234,4 +234,25 @@ export const notifications = {
     body: `${reviewerName} deixou uma avaliação para você.`,
     data: { type: 'new_review' },
   }),
+
+  /**
+   * Dispute opened - notify the other party
+   */
+  disputeOpened: (taskTitle: string) => ({
+    title: 'Disputa Aberta ⚠️',
+    body: `Uma disputa foi aberta no trampo "${taskTitle}". Nossa equipe vai analisar.`,
+    data: { type: 'dispute_opened' },
+  }),
+
+  /**
+   * Dispute resolved - notify both parties
+   */
+  disputeResolved: (taskTitle: string, outcome: 'released' | 'refunded') => ({
+    title: 'Disputa Resolvida ✅',
+    body:
+      outcome === 'released'
+        ? `A disputa do trampo "${taskTitle}" foi resolvida e o pagamento foi liberado ao profissional.`
+        : `A disputa do trampo "${taskTitle}" foi resolvida e o valor foi reembolsado ao cliente.`,
+    data: { type: 'dispute_resolved' },
+  }),
 };

@@ -72,7 +72,7 @@ export const chatRouter = router({
       const recipientId = isClient ? task.assignment!.taskerId : task.clientId;
       sendPushNotification(
         recipientId,
-        notifications.newMessage(message.sender.name, task.title)
+        notifications.newMessage(message.sender.name ?? 'Alguém', task.title)
       ).catch((err) => console.error('[CHAT] Push notification failed:', err));
 
       return message;

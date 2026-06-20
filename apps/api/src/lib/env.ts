@@ -39,6 +39,9 @@ const envSchema = z.object({
   // JWT
   JWT_SECRET: z.string().min(32),
 
+  // Admin allowlist (comma-separated user UUIDs) for dispute resolution / backoffice
+  ADMIN_USER_IDS: z.string().default(''),
+
   // Optional
   FCM_SERVER_KEY: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),

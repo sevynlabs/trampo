@@ -73,6 +73,8 @@ export default function TaskDetailScreen() {
   const canCancel = (isClient || isTasker) && ['OPEN', 'ACCEPTED'].includes(task.status);
   const canChat = (isClient || isTasker) && task.status !== 'OPEN' && task.status !== 'CANCELLED';
   const canReview = (isClient || isTasker) && ['COMPLETED', 'RELEASED'].includes(task.status);
+  const canDispute =
+    (isClient || isTasker) && ['IN_PROGRESS', 'COMPLETED'].includes(task.status);
 
   const handleAccept = () => {
     Alert.alert(
@@ -284,6 +286,15 @@ export default function TaskDetailScreen() {
             </Link>
           )}
         </View>
+
+        {canDispute && (
+          <Link href={`/task/${task.id}/dispute`} asChild>
+            <Pressable className="mt-3 py-2 items-center flex-row justify-center">
+              <Ionicons name="alert-circle-outline" size={16} color="#DC2626" />
+              <Text className="text-danger text-sm ml-1">Tive um problema com este trampo</Text>
+            </Pressable>
+          </Link>
+        )}
       </View>
     </>
   );

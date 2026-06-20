@@ -4,6 +4,7 @@ import superjson from 'superjson';
 import { prisma, type User } from '@trampo/db';
 import { checkRateLimit } from './lib/redis';
 import { verifyToken } from './lib/jwt';
+import { env } from './lib/env';
 
 /**
  * Context passed to every tRPC procedure
@@ -126,6 +127,37 @@ const isApprovedTasker = t.middleware(async ({ ctx, next }) => {
 });
 
 export const taskerProcedure = t.procedure.use(isApprovedTasker);
+
+/**
+ * Middleware: Require admin user (allowlisted via ADMIN_USER_IDS)
+ */
+const adminIds = new Set(
+  env.ADMIN_USER_IDS.split(',')
+    .map((id) => id.trim())
+    .filter(Boolean)
+);
+
+const isAdmin = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
+
+  if (!adminIds.has(ctx.user.id)) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Admin access required',
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      user: ctx.user,
+    },
+  });
+});
+
+export const adminProcedure = t.procedure.use(isAdmin);
 
 /**
  * Middleware: Rate limiting

@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { prisma } from '@trampo/db';
 import { env } from '../../lib/env';
 import { scheduleJob } from '../../lib/redis';
+import { sendPushNotification, notifications } from '../../integrations/push';
 
 // Escrow release delay: 1 hour
 const ESCROW_RELEASE_DELAY_MS = 60 * 60 * 1000;
@@ -99,7 +100,7 @@ async function handlePaymentConfirmed(paymentData: {
   // Find payment by ID
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
-    include: { task: true },
+    include: { task: { include: { assignment: true } } },
   });
 
   if (!payment) {
@@ -124,8 +125,14 @@ async function handlePaymentConfirmed(paymentData: {
 
   console.log(`[WEBHOOK] Payment ${paymentId} confirmed for task ${payment.taskId}`);
 
-  // TODO: Send push notification to tasker that payment is confirmed
-  // They can now start the task knowing payment is secured
+  // Notify the tasker that payment is secured — they can now start the task
+  const taskerId = payment.task.assignment?.taskerId;
+  if (taskerId) {
+    sendPushNotification(
+      taskerId,
+      notifications.paymentConfirmed(payment.task.title)
+    ).catch((err) => console.error('[WEBHOOK] Push notification failed:', err));
+  }
 }
 
 /**
@@ -279,5 +286,12 @@ export async function processEscrowRelease(paymentId: string): Promise<void> {
 
   console.log(`[ESCROW] Released payment ${paymentId} - R$ ${payment.taskerAmount / 100} to tasker`);
 
-  // TODO: Send push notification to tasker that payment was released
+  // Notify the tasker that the escrowed payment has been released to them
+  const taskerId = payment.task.assignment?.taskerId;
+  if (taskerId) {
+    sendPushNotification(
+      taskerId,
+      notifications.paymentReleased(payment.taskerAmount, payment.task.title)
+    ).catch((err) => console.error('[ESCROW] Push notification failed:', err));
+  }
 }

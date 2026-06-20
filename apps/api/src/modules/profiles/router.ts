@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../../trpc';
 import { registerProfileInput } from '@trampo/contracts';
 import { prisma } from '@trampo/db';
+import { storeEncryptedCpf } from '../../lib/pii';
 import crypto from 'crypto';
 
 export const profilesRouter = router({
@@ -48,8 +49,6 @@ export const profilesRouter = router({
         throw new Error('CPF já cadastrado');
       }
 
-      // TODO: Encrypt CPF with pgcrypto before storing
-      // For now, store hash only (we'll add encryption later)
       const user = await prisma.user.update({
         where: { id: ctx.user.id },
         data: {
@@ -59,6 +58,11 @@ export const profilesRouter = router({
           role,
         },
       });
+
+      // Encrypt CPF at rest with pgcrypto (stored in users.cpf_encrypted).
+      // The plaintext CPF is never persisted — only the hash (for lookups)
+      // and the encrypted blob (for KYC/verification).
+      await storeEncryptedCpf(ctx.user.id, cpf);
 
       // Create tasker profile if becoming tasker
       if ((role === 'TASKER' || role === 'BOTH') && !user.role.includes('TASKER')) {

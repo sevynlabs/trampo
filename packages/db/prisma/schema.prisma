@@ -47,6 +47,12 @@ enum PaymentStatus {
   EXPIRED
 }
 
+enum DisputeStatus {
+  OPEN
+  RESOLVED_RELEASED // Admin resolved in favor of the tasker (escrow released)
+  RESOLVED_REFUNDED // Admin resolved in favor of the client (payment refunded)
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -176,6 +182,7 @@ model Task {
   completedAt   DateTime?  @map("completed_at")
   releasedAt    DateTime?  @map("released_at")
   cancelledAt   DateTime?  @map("cancelled_at")
+  disputedAt    DateTime?  @map("disputed_at")
 
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
@@ -187,6 +194,7 @@ model Task {
   messages    Message[]
   reviews     Review[]
   payment     Payment?
+  dispute     Dispute?
 
   @@index([location], type: Gist)
   @@index([status, createdAt])
@@ -286,6 +294,27 @@ model Cancellation {
   createdAt     DateTime @default(now()) @map("created_at")
 
   @@map("cancellations")
+}
+
+model Dispute {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskId       String        @unique @map("task_id") @db.Uuid
+  openedById   String        @map("opened_by_id") @db.Uuid
+  reason       String
+  status       DisputeStatus @default(OPEN)
+
+  // Admin resolution
+  resolution   String?       // Free-text notes from the admin
+  resolvedById String?       @map("resolved_by_id") @db.Uuid
+  resolvedAt   DateTime?     @map("resolved_at")
+
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("disputes")
 }
 
 // ============================================

@@ -66,7 +66,7 @@ export const matchingRouter = router({
       if (result) {
         sendPushNotification(
           result.client.id,
-          notifications.taskAccepted(result.title, ctx.user.name)
+          notifications.taskAccepted(result.title, ctx.user.name ?? 'Um profissional')
         ).catch((err) => console.error('[MATCHING] Push notification failed:', err));
       }
 
@@ -158,7 +158,7 @@ export const matchingRouter = router({
       // Send push notification to client
       sendPushNotification(
         task.client.id,
-        notifications.taskCompleted(task.title, ctx.user.name)
+        notifications.taskCompleted(task.title, ctx.user.name ?? 'Um profissional')
       ).catch((err) => console.error('[MATCHING] Push notification failed:', err));
 
       return { success: true };
