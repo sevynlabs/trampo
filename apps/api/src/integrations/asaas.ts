@@ -41,11 +41,6 @@ interface AsaasCharge {
     qrCodeUrl: string; // QR code image URL
     expirationDate: string;
   };
-  split?: Array<{
-    walletId: string;
-    fixedValue?: number;
-    percentualValue?: number;
-  }>;
 }
 
 interface AsaasTransfer {
@@ -119,20 +114,25 @@ export async function findOrCreateCustomer(params: {
 }
 
 /**
- * Create Pix charge with split for tasker
+ * Create a Pix charge for the full task amount, payable to the platform account.
+ *
+ * DECISION — no Asaas split (intentional, not a TODO):
+ * Asaas split credits the split recipients when the payment is confirmed, which
+ * would pay the tasker before the work is done. That conflicts with our escrow
+ * model (the tasker's amount is held and only released ~1h after task
+ * completion — an immutable business rule, see CLAUDE.md). So we collect the
+ * full amount here and pay the tasker via a separate, escrow-timed transfer
+ * (see transferToTasker / processEscrowRelease). Do not reintroduce split
+ * without revisiting the escrow guarantee.
  *
  * @param customerId - Asaas customer ID
  * @param amount - Total amount in centavos
- * @param taskerWalletId - Tasker's Asaas wallet ID (for split)
- * @param taskerAmount - Amount for tasker in centavos
  * @param externalReference - Our payment ID
  * @param description - Payment description
  */
 export async function createPixCharge(params: {
   customerId: string;
   amount: number;
-  taskerWalletId?: string;
-  taskerAmount?: number;
   externalReference: string;
   description: string;
 }): Promise<AsaasCharge> {
@@ -147,10 +147,6 @@ export async function createPixCharge(params: {
     description: params.description,
     externalReference: params.externalReference,
   };
-
-  // Add split if tasker wallet is provided
-  // For now, we won't use split - we'll transfer manually after escrow
-  // This is simpler and gives us more control over the escrow timing
 
   const charge = await request<AsaasCharge>('/payments', {
     method: 'POST',
