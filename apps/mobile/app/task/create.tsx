@@ -16,6 +16,7 @@ import * as Location from 'expo-location';
 import { trpc } from '../../src/lib/trpc';
 import { TASK_CONSTANTS } from '@trampo/contracts';
 import { formatCurrency } from '../../src/lib/format';
+import { GradientButton } from '../../src/components/GradientButton';
 
 export default function CreateTaskScreen() {
   const router = useRouter();
@@ -103,7 +104,7 @@ export default function CreateTaskScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="arrow-back" size={24} color="#18181B" />
+              <Ionicons name="arrow-back" size={24} color="#001B48" />
             </Pressable>
           ),
         }}
@@ -204,7 +205,7 @@ export default function CreateTaskScreen() {
             <Switch
               value={isUrgent}
               onValueChange={setIsUrgent}
-              trackColor={{ false: '#E4E4E7', true: '#2563EB' }}
+              trackColor={{ false: '#DCEAF1', true: '#018ABE' }}
             />
           </View>
 
@@ -240,21 +241,13 @@ export default function CreateTaskScreen() {
 
         {/* Fixed submit button */}
         <View className="absolute bottom-0 left-0 right-0 bg-surface border-t border-border p-4 pb-8">
-          <Pressable
+          <GradientButton
+            label="Publicar serviço"
             onPress={handleSubmit}
-            disabled={!isValid || createTask.isPending}
-            className={`w-full py-4 rounded-button items-center ${
-              isValid ? 'bg-accent' : 'bg-border'
-            }`}
-          >
-            {createTask.isPending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className={`font-bold ${isValid ? 'text-white' : 'text-ink-faint'}`}>
-                Publicar serviço
-              </Text>
-            )}
-          </Pressable>
+            disabled={!isValid}
+            loading={createTask.isPending}
+            icon="rocket-outline"
+          />
         </View>
       </KeyboardAvoidingView>
     </>

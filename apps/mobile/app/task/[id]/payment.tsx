@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { trpc } from '../../../src/lib/trpc';
 import { formatCurrency } from '../../../src/lib/format';
+import { GradientButton } from '../../../src/components/GradientButton';
 
 export default function PaymentScreen() {
   const router = useRouter();
@@ -74,7 +75,7 @@ export default function PaymentScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="close" size={24} color="#18181B" />
+              <Ionicons name="close" size={24} color="#001B48" />
             </Pressable>
           ),
         }}
@@ -85,7 +86,7 @@ export default function PaymentScreen() {
         {isConfirmed ? (
           <View className="items-center py-12">
             <View className="w-20 h-20 bg-success/10 rounded-full items-center justify-center mb-4">
-              <Ionicons name="checkmark-circle" size={56} color="#16A34A" />
+              <Ionicons name="checkmark-circle" size={56} color="#0E9F6E" />
             </View>
             <Text className="font-display text-2xl font-bold text-ink mb-2">
               Pagamento confirmado!
@@ -94,16 +95,15 @@ export default function PaymentScreen() {
               O valor está protegido e será liberado ao profissional após a conclusão do
               serviço.
             </Text>
-            <Pressable
+            <GradientButton
+              label="Voltar ao trampo"
               onPress={() => router.back()}
-              className="bg-accent px-8 py-4 rounded-button w-full items-center"
-            >
-              <Text className="text-white font-bold text-lg">Voltar ao trampo</Text>
-            </Pressable>
+              iconRight="arrow-forward"
+            />
           </View>
         ) : createCharge.isPending || !charge ? (
           <View className="py-20 items-center">
-            <ActivityIndicator size="large" color="#2563EB" />
+            <ActivityIndicator size="large" color="#018ABE" />
             <Text className="text-ink-muted mt-3">Gerando cobrança Pix...</Text>
           </View>
         ) : (
@@ -157,7 +157,7 @@ export default function PaymentScreen() {
 
             {/* Waiting indicator */}
             <View className="flex-row items-center justify-center mb-6">
-              <ActivityIndicator color="#71717A" />
+              <ActivityIndicator color="#5B7A91" />
               <Text className="text-ink-muted ml-2">Aguardando pagamento...</Text>
             </View>
 

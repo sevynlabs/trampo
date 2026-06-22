@@ -11,6 +11,7 @@ import {
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../../src/lib/trpc';
+import { GradientButton } from '../../../src/components/GradientButton';
 
 const MIN_REASON = 10;
 
@@ -54,7 +55,7 @@ export default function DisputeScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="close" size={24} color="#18181B" />
+              <Ionicons name="close" size={24} color="#001B48" />
             </Pressable>
           ),
         }}
@@ -69,7 +70,7 @@ export default function DisputeScreen() {
 
         {/* Warning banner */}
         <View className="flex-row gap-3 bg-amber-50 border border-amber-200 rounded-card p-4 mb-6">
-          <Ionicons name="warning-outline" size={22} color="#D97706" />
+          <Ionicons name="warning-outline" size={22} color="#F59E0B" />
           <Text className="flex-1 text-amber-800 text-sm">
             Abra uma disputa apenas se houver um problema sério com o trampo. O pagamento
             ficará retido até nossa equipe analisar e resolver o caso.
@@ -94,19 +95,14 @@ export default function DisputeScreen() {
         </Text>
 
         {/* Submit */}
-        <Pressable
+        <GradientButton
+          label="Abrir Disputa"
           onPress={handleSubmit}
-          disabled={openDispute.isPending || !canSubmit}
-          className={`p-4 rounded-button items-center ${
-            canSubmit ? 'bg-red-600' : 'bg-border'
-          }`}
-        >
-          {openDispute.isPending ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className="text-white font-bold text-lg">Abrir Disputa</Text>
-          )}
-        </Pressable>
+          disabled={!canSubmit}
+          loading={openDispute.isPending}
+          variant="danger"
+          icon="alert-circle-outline"
+        />
       </ScrollView>
     </>
   );
