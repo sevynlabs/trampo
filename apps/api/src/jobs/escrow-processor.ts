@@ -2,6 +2,7 @@ import { redis } from '../lib/redis';
 import { processEscrowRelease } from '../modules/webhooks';
 
 const ESCROW_RELEASE_QUEUE = 'jobs:escrow-release';
+const ESCROW_RELEASE_DLQ = 'jobs:escrow-release:dead';
 const POLL_INTERVAL_MS = 10000; // Check every 10 seconds
 
 interface Job {
@@ -42,20 +43,31 @@ async function processQueue(): Promise<void> {
   console.log(`[JOBS] Processing ${jobs.length} escrow release jobs`);
 
   for (const jobStr of jobs) {
+    let job: Job;
     try {
-      const job: Job = JSON.parse(jobStr);
+      job = JSON.parse(jobStr);
+    } catch (error) {
+      // Unparseable entry — drop it to the dead-letter queue, don't loop on it.
+      console.error('[JOBS] Dropping unparseable job:', jobStr, error);
+      await redis.zrem(ESCROW_RELEASE_QUEUE, jobStr);
+      await redis.rpush(ESCROW_RELEASE_DLQ, jobStr);
+      continue;
+    }
 
-      // Process the job
+    try {
       await processEscrowRelease(job.data.paymentId);
 
-      // Remove from queue
+      // Success — remove from queue
       await redis.zrem(ESCROW_RELEASE_QUEUE, jobStr);
-
       console.log(`[JOBS] Completed escrow release: ${job.id}`);
     } catch (error) {
-      console.error(`[JOBS] Failed to process job:`, error);
-      // Move to dead letter queue or retry
+      // The release moves money and is NOT idempotent (a retry could transfer
+      // twice if the transfer succeeded but the DB write failed). So we do NOT
+      // auto-retry: dead-letter the job for manual/reconciliation review instead
+      // of silently dropping it (the previous behavior).
+      console.error(`[JOBS] Escrow release failed, dead-lettering ${job.id}:`, error);
       await redis.zrem(ESCROW_RELEASE_QUEUE, jobStr);
+      await redis.rpush(ESCROW_RELEASE_DLQ, jobStr);
     }
   }
 }

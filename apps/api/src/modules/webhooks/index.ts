@@ -267,22 +267,28 @@ export async function processEscrowRelease(paymentId: string): Promise<void> {
     });
   }
 
-  // Update payment status
-  await prisma.payment.update({
-    where: { id: paymentId },
-    data: {
-      status: 'RELEASED',
-      releasedAt: new Date(),
-    },
+  // Atomically flip HELD -> RELEASED and update the task in one transaction.
+  // The optimistic `where status: 'HELD'` guard makes a concurrent fire (e.g.
+  // a second processor, or a dispute that froze the payment) a no-op instead
+  // of a double release.
+  const released = await prisma.$transaction(async (tx) => {
+    const result = await tx.payment.updateMany({
+      where: { id: paymentId, status: 'HELD' },
+      data: { status: 'RELEASED', releasedAt: new Date() },
+    });
+    if (result.count === 0) return false;
+
+    await tx.task.update({
+      where: { id: payment.taskId },
+      data: { status: 'RELEASED' },
+    });
+    return true;
   });
 
-  // Update task status
-  await prisma.task.update({
-    where: { id: payment.taskId },
-    data: {
-      status: 'RELEASED',
-    },
-  });
+  if (!released) {
+    console.log(`[ESCROW] Payment ${paymentId} no longer HELD, skipping release`);
+    return;
+  }
 
   console.log(`[ESCROW] Released payment ${paymentId} - R$ ${payment.taskerAmount / 100} to tasker`);
 

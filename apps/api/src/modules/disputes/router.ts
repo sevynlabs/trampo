@@ -185,6 +185,20 @@ export const disputesRouter = router({
         }
 
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+          // Optimistic guard: only resolve if still OPEN. Prevents a concurrent
+          // second resolve from committing (and rolls back the updates below).
+          const claimed = await tx.dispute.updateMany({
+            where: { taskId: input.taskId, status: 'OPEN' },
+            data: {
+              status: 'RESOLVED_RELEASED',
+              resolution: input.notes,
+              resolvedById: ctx.user.id,
+              resolvedAt: new Date(),
+            },
+          });
+          if (claimed.count === 0) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'Disputa já resolvida' });
+          }
           if (task.payment) {
             await tx.payment.update({
               where: { id: task.payment.id },
@@ -194,15 +208,6 @@ export const disputesRouter = router({
           await tx.task.update({
             where: { id: input.taskId },
             data: { status: 'RELEASED', releasedAt: new Date() },
-          });
-          await tx.dispute.update({
-            where: { taskId: input.taskId },
-            data: {
-              status: 'RESOLVED_RELEASED',
-              resolution: input.notes,
-              resolvedById: ctx.user.id,
-              resolvedAt: new Date(),
-            },
           });
         });
       } else {
@@ -217,6 +222,19 @@ export const disputesRouter = router({
         }
 
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+          // Optimistic guard: only resolve if still OPEN (see RELEASE branch).
+          const claimed = await tx.dispute.updateMany({
+            where: { taskId: input.taskId, status: 'OPEN' },
+            data: {
+              status: 'RESOLVED_REFUNDED',
+              resolution: input.notes,
+              resolvedById: ctx.user.id,
+              resolvedAt: new Date(),
+            },
+          });
+          if (claimed.count === 0) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'Disputa já resolvida' });
+          }
           if (task.payment) {
             await tx.payment.update({
               where: { id: task.payment.id },
@@ -226,15 +244,6 @@ export const disputesRouter = router({
           await tx.task.update({
             where: { id: input.taskId },
             data: { status: 'CANCELLED', cancelledAt: new Date() },
-          });
-          await tx.dispute.update({
-            where: { taskId: input.taskId },
-            data: {
-              status: 'RESOLVED_REFUNDED',
-              resolution: input.notes,
-              resolvedById: ctx.user.id,
-              resolvedAt: new Date(),
-            },
           });
         });
       }
