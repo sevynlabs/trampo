@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
 import { useState } from 'react';
@@ -7,6 +8,7 @@ import { EmptyState, EmptyEarningsIllustration } from '../../src/components/illu
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function EarningsScreen() {
+  const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: earnings, refetch } = trpc.payments.listForTasker.useQuery();
@@ -68,19 +70,22 @@ export default function EarningsScreen() {
         </View>
 
         {/* Withdraw button */}
-        <View className="bg-surface rounded-card p-4 border border-border mb-8">
+        <Pressable
+          onPress={() => router.push('/withdraw')}
+          className="bg-surface rounded-card p-4 border border-border mb-8"
+        >
           <View className="flex-row items-center justify-between">
-            <View>
+            <View className="flex-1">
               <Text className="font-bold text-ink">Sacar dinheiro</Text>
               <Text className="text-ink-muted text-sm mt-1">
-                Transferência via Pix instantâneo
+                Transferência via Pix para sua conta
               </Text>
             </View>
             <View className="bg-accent p-3 rounded-button">
               <Ionicons name="arrow-forward" size={20} color="#fff" />
             </View>
           </View>
-        </View>
+        </Pressable>
 
         {/* Recent transactions */}
         <Text className="font-display text-lg font-bold text-ink mb-4">

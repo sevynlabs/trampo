@@ -326,4 +326,111 @@ export const paymentsRouter = router({
 
       return { status: updated.status };
     }),
+
+  /**
+   * Tasker balance: available to withdraw, pending (in escrow) and total withdrawn.
+   * available = released earnings - (pending + paid withdrawals)
+   */
+  balance: protectedProcedure.query(async ({ ctx }) => {
+    const profile = await prisma.taskerProfile.findUnique({
+      where: { userId: ctx.user.id },
+    });
+    if (!profile) {
+      return { available: 0, pending: 0, withdrawn: 0, pixKey: null };
+    }
+
+    const [released, held, withdrawals] = await Promise.all([
+      prisma.payment.aggregate({
+        where: { task: { assignment: { taskerId: ctx.user.id } }, status: 'RELEASED' },
+        _sum: { taskerAmount: true },
+      }),
+      prisma.payment.aggregate({
+        where: { task: { assignment: { taskerId: ctx.user.id } }, status: 'HELD' },
+        _sum: { taskerAmount: true },
+      }),
+      prisma.withdrawal.aggregate({
+        where: { taskerProfileId: profile.id, status: { in: ['PENDING', 'PAID'] } },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const releasedTotal = released._sum.taskerAmount ?? 0;
+    const withdrawnTotal = withdrawals._sum.amount ?? 0;
+
+    return {
+      available: Math.max(0, releasedTotal - withdrawnTotal),
+      pending: held._sum.taskerAmount ?? 0,
+      withdrawn: withdrawnTotal,
+      pixKey: profile.pixKey,
+    };
+  }),
+
+  /**
+   * Request a withdrawal of the available balance to a Pix key.
+   */
+  requestWithdrawal: protectedProcedure
+    .input(
+      z.object({
+        amount: z.number().int().min(1000), // min R$ 10,00
+        pixKey: z.string().min(3).max(140),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const profile = await prisma.taskerProfile.findUnique({
+        where: { userId: ctx.user.id },
+      });
+      if (!profile) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Perfil de profissional necessário' });
+      }
+
+      const [released, withdrawals] = await Promise.all([
+        prisma.payment.aggregate({
+          where: { task: { assignment: { taskerId: ctx.user.id } }, status: 'RELEASED' },
+          _sum: { taskerAmount: true },
+        }),
+        prisma.withdrawal.aggregate({
+          where: { taskerProfileId: profile.id, status: { in: ['PENDING', 'PAID'] } },
+          _sum: { amount: true },
+        }),
+      ]);
+      const available = Math.max(
+        0,
+        (released._sum.taskerAmount ?? 0) - (withdrawals._sum.amount ?? 0)
+      );
+
+      if (input.amount > available) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Valor maior que o saldo disponível',
+        });
+      }
+
+      // Remember the Pix key for next time.
+      await prisma.taskerProfile.update({
+        where: { id: profile.id },
+        data: { pixKey: input.pixKey },
+      });
+
+      const withdrawal = await prisma.withdrawal.create({
+        data: {
+          taskerProfileId: profile.id,
+          amount: input.amount,
+          pixKey: input.pixKey,
+          status: isDev ? 'PAID' : 'PENDING',
+          paidAt: isDev ? new Date() : null,
+        },
+      });
+
+      // TODO(asaas): in production, execute the payout from the tasker's Asaas
+      // subaccount to input.pixKey (Asaas Pix transfer). On success set status
+      // PAID + asaasTransferId; on failure set FAILED + failureReason. Until that
+      // integration is wired, production withdrawals stay PENDING for manual
+      // processing.
+
+      console.log(
+        `[PAYMENTS] Withdrawal ${withdrawal.id} requested: ${input.amount} (${withdrawal.status})`
+      );
+
+      return { id: withdrawal.id, status: withdrawal.status, amount: withdrawal.amount };
+    }),
 });
