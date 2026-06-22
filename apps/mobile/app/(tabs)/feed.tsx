@@ -68,7 +68,7 @@ export default function FeedScreen() {
   if (locationError) {
     return (
       <View className="flex-1 bg-background items-center justify-center px-6">
-        <Ionicons name="location-outline" size={64} color="#A1A1AA" />
+        <Ionicons name="location-outline" size={64} color="#94B2C4" />
         <Text className="text-ink font-bold text-lg mt-4 text-center">
           Localização necessária
         </Text>
@@ -80,7 +80,7 @@ export default function FeedScreen() {
   if (!location) {
     return (
       <View className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color="#018ABE" />
         <Text className="text-ink-muted mt-4">Obtendo localização...</Text>
       </View>
     );
@@ -143,11 +143,11 @@ export default function FeedScreen() {
       >
         {isLoading ? (
           <View className="items-center py-8">
-            <ActivityIndicator color="#2563EB" />
+            <ActivityIndicator color="#018ABE" />
           </View>
         ) : !tasks?.tasks?.length ? (
           <View className="bg-surface rounded-card p-8 items-center">
-            <Ionicons name="search-outline" size={48} color="#A1A1AA" />
+            <Ionicons name="search-outline" size={48} color="#94B2C4" />
             <Text className="text-ink font-bold mt-4">
               Nenhum serviço encontrado
             </Text>
@@ -180,7 +180,7 @@ export default function FeedScreen() {
                 </View>
 
                 <View className="flex-row items-center mt-2 mb-3">
-                  <Ionicons name="location-outline" size={14} color="#71717A" />
+                  <Ionicons name="location-outline" size={14} color="#5B7A91" />
                   <Text className="text-ink-muted text-sm ml-1 flex-1" numberOfLines={1}>
                     {task.address}
                   </Text>

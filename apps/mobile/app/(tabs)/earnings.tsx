@@ -40,7 +40,7 @@ export default function EarningsScreen() {
         <View className="flex-row gap-3 mb-8">
           <View className="flex-1 bg-surface rounded-card p-4 border border-border">
             <View className="flex-row items-center mb-2">
-              <Ionicons name="hourglass-outline" size={20} color="#EA580C" />
+              <Ionicons name="hourglass-outline" size={20} color="#018ABE" />
               <Text className="text-ink-muted text-sm ml-2">Em espera</Text>
             </View>
             <Text className="font-bold text-xl text-ink">
@@ -53,7 +53,7 @@ export default function EarningsScreen() {
 
           <View className="flex-1 bg-surface rounded-card p-4 border border-border">
             <View className="flex-row items-center mb-2">
-              <Ionicons name="calendar-outline" size={20} color="#16A34A" />
+              <Ionicons name="calendar-outline" size={20} color="#0E9F6E" />
               <Text className="text-ink-muted text-sm ml-2">Este mês</Text>
             </View>
             <Text className="font-bold text-xl text-ink">
@@ -88,7 +88,7 @@ export default function EarningsScreen() {
         <View className="bg-surface rounded-card border border-border overflow-hidden">
           {!earnings?.payments?.length ? (
             <View className="p-8 items-center">
-              <Ionicons name="receipt-outline" size={48} color="#A1A1AA" />
+              <Ionicons name="receipt-outline" size={48} color="#94B2C4" />
               <Text className="text-ink-muted mt-4 text-center">
                 Nenhuma transação ainda
               </Text>
@@ -109,7 +109,7 @@ export default function EarningsScreen() {
                   <Ionicons
                     name={tx.status === 'RELEASED' ? 'checkmark' : 'hourglass'}
                     size={20}
-                    color={tx.status === 'RELEASED' ? '#16A34A' : '#EA580C'}
+                    color={tx.status === 'RELEASED' ? '#0E9F6E' : '#018ABE'}
                   />
                 </View>
                 <View className="flex-1 ml-3">

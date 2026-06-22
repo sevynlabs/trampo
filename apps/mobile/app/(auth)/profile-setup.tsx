@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { trpc } from '../../src/lib/trpc';
+import { GradientButton } from '../../src/components/GradientButton';
 
 type Role = 'CLIENT' | 'TASKER' | 'BOTH';
 
@@ -145,21 +146,13 @@ export default function ProfileSetupScreen() {
           ) : null}
 
           {/* Submit */}
-          <Pressable
+          <GradientButton
+            label="Finalizar cadastro"
             onPress={handleSubmit}
-            disabled={!isValid || updateProfile.isPending}
-            className={`w-full py-4 rounded-button items-center ${
-              isValid ? 'bg-accent' : 'bg-border'
-            }`}
-          >
-            {updateProfile.isPending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className={`font-bold ${isValid ? 'text-white' : 'text-ink-faint'}`}>
-                Finalizar cadastro
-              </Text>
-            )}
-          </Pressable>
+            disabled={!isValid}
+            loading={updateProfile.isPending}
+            iconRight="arrow-forward"
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

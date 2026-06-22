@@ -188,7 +188,7 @@ export default function KYCScreen() {
   if (isLoading) {
     return (
       <View className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color="#018ABE" />
       </View>
     );
   }
@@ -202,7 +202,7 @@ export default function KYCScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="arrow-back" size={24} color="#18181B" />
+              <Ionicons name="arrow-back" size={24} color="#001B48" />
             </Pressable>
           ),
         }}
@@ -215,7 +215,7 @@ export default function KYCScreen() {
         {/* Status Card */}
         <View className={`${config.bgColor} rounded-card p-4 mb-6`}>
           <View className="flex-row items-center mb-2">
-            <Ionicons name={config.icon} size={24} color="#18181B" />
+            <Ionicons name={config.icon} size={24} color="#001B48" />
             <Text className={`${config.color} font-bold text-lg ml-2`}>
               {config.label}
             </Text>
@@ -341,14 +341,14 @@ function DocumentUploadCard({
 
         <View className="ml-4">
           {uploading ? (
-            <ActivityIndicator color="#2563EB" />
+            <ActivityIndicator color="#018ABE" />
           ) : completed ? (
             <View className="w-10 h-10 bg-success/10 rounded-full items-center justify-center">
-              <Ionicons name="checkmark" size={24} color="#22C55E" />
+              <Ionicons name="checkmark" size={24} color="#0E9F6E" />
             </View>
           ) : (
             <View className="w-10 h-10 bg-accent/10 rounded-full items-center justify-center">
-              <Ionicons name="camera-outline" size={24} color="#2563EB" />
+              <Ionicons name="camera-outline" size={24} color="#018ABE" />
             </View>
           )}
         </View>
@@ -370,7 +370,7 @@ function DocumentUploadCard({
 function Tip({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
   return (
     <View className="flex-row items-center mb-2 last:mb-0">
-      <Ionicons name={icon} size={16} color="#52525B" />
+      <Ionicons name={icon} size={16} color="#5B7A91" />
       <Text className="text-ink-muted text-sm ml-2">{text}</Text>
     </View>
   );

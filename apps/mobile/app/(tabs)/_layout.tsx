@@ -15,7 +15,7 @@ function TabIcon({ name, focused, label }: TabIconProps) {
       <Ionicons
         name={name}
         size={24}
-        color={focused ? '#2563EB' : '#A1A1AA'}
+        color={focused ? '#018ABE' : '#94B2C4'}
       />
       <Text
         className={`text-xs mt-1 ${
@@ -40,7 +40,7 @@ export default function TabsLayout() {
         tabBarStyle: {
           height: 80,
           backgroundColor: '#FFFFFF',
-          borderTopColor: '#E4E4E7',
+          borderTopColor: '#DCEAF1',
           borderTopWidth: 1,
         },
       }}

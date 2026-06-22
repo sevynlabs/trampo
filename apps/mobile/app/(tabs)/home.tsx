@@ -66,7 +66,7 @@ export default function HomeScreen() {
           {isTasker && (
             <Link href="/(tabs)/feed" asChild>
               <Pressable className="flex-1 bg-surface border border-border p-4 rounded-card">
-                <Ionicons name="search-outline" size={28} color="#2563EB" />
+                <Ionicons name="search-outline" size={28} color="#018ABE" />
                 <Text className="text-ink font-bold mt-2">Buscar trabalhos</Text>
                 <Text className="text-ink-muted text-sm">
                   Ganhe dinheiro
@@ -85,7 +85,7 @@ export default function HomeScreen() {
 
         {tasks?.length === 0 ? (
           <View className="bg-surface rounded-card p-8 items-center">
-            <Ionicons name="clipboard-outline" size={48} color="#A1A1AA" />
+            <Ionicons name="clipboard-outline" size={48} color="#94B2C4" />
             <Text className="text-ink-muted mt-4 text-center">
               Você ainda não criou nenhum serviço
             </Text>

@@ -54,7 +54,7 @@ export default function DisputeScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="close" size={24} color="#18181B" />
+              <Ionicons name="close" size={24} color="#001B48" />
             </Pressable>
           ),
         }}
@@ -69,7 +69,7 @@ export default function DisputeScreen() {
 
         {/* Warning banner */}
         <View className="flex-row gap-3 bg-amber-50 border border-amber-200 rounded-card p-4 mb-6">
-          <Ionicons name="warning-outline" size={22} color="#D97706" />
+          <Ionicons name="warning-outline" size={22} color="#F59E0B" />
           <Text className="flex-1 text-amber-800 text-sm">
             Abra uma disputa apenas se houver um problema sério com o trampo. O pagamento
             ficará retido até nossa equipe analisar e resolver o caso.

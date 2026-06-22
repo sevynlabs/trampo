@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { trpc } from '../../src/lib/trpc';
+import { GradientButton } from '../../src/components/GradientButton';
 
 export default function PhoneScreen() {
   const router = useRouter();
@@ -87,21 +88,13 @@ export default function PhoneScreen() {
         ) : null}
 
         {/* Submit */}
-        <Pressable
+        <GradientButton
+          label="Continuar"
           onPress={handleSubmit}
-          disabled={!isValid || requestOtp.isPending}
-          className={`w-full py-4 rounded-button items-center ${
-            isValid ? 'bg-accent' : 'bg-border'
-          }`}
-        >
-          {requestOtp.isPending ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className={`font-bold ${isValid ? 'text-white' : 'text-ink-faint'}`}>
-              Continuar
-            </Text>
-          )}
-        </Pressable>
+          disabled={!isValid}
+          loading={requestOtp.isPending}
+          iconRight="arrow-forward"
+        />
       </View>
     </KeyboardAvoidingView>
   );
