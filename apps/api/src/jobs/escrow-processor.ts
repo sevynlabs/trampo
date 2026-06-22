@@ -87,3 +87,24 @@ export async function getNextJobTime(): Promise<Date | null> {
   if (result.length < 2) return null;
   return new Date(parseInt(result[1]));
 }
+
+/**
+ * Number of dead-lettered escrow jobs (for monitoring/backoffice)
+ */
+export async function getDeadLetterCount(): Promise<number> {
+  return redis.llen(ESCROW_RELEASE_DLQ);
+}
+
+/**
+ * List dead-lettered escrow jobs (parsed where possible) for the backoffice.
+ */
+export async function getDeadLetterJobs(limit = 50): Promise<unknown[]> {
+  const raw = await redis.lrange(ESCROW_RELEASE_DLQ, 0, limit - 1);
+  return raw.map((s) => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return { raw: s };
+    }
+  });
+}

@@ -110,6 +110,11 @@ export default function ProfileScreen() {
               label="Disputas (admin)"
               onPress={() => router.push('/admin/disputes')}
             />
+            <MenuItem
+              icon="pulse-outline"
+              label="Operações (admin)"
+              onPress={() => router.push('/admin/ops')}
+            />
           </View>
         )}
 
