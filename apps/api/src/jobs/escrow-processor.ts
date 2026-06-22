@@ -2,7 +2,7 @@ import { redis } from '../lib/redis';
 import { processEscrowRelease } from '../modules/webhooks';
 
 const ESCROW_RELEASE_QUEUE = 'jobs:escrow-release';
-const ESCROW_RELEASE_DLQ = 'jobs:escrow-release:dead';
+export const ESCROW_RELEASE_DLQ = 'jobs:escrow-release:dead';
 const POLL_INTERVAL_MS = 10000; // Check every 10 seconds
 
 interface Job {
