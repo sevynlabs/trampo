@@ -191,6 +191,12 @@ export default function TaskDetailScreen() {
               <Ionicons name="arrow-back" size={24} color="#001B48" />
             </Pressable>
           ),
+          headerRight: () =>
+            isClient && task.status === 'OPEN' ? (
+              <Pressable onPress={() => router.push(`/task/${task.id}/edit`)} className="ml-4">
+                <Ionicons name="create-outline" size={22} color="#018ABE" />
+              </Pressable>
+            ) : null,
         }}
       />
 
@@ -234,16 +240,35 @@ export default function TaskDetailScreen() {
               {isClient ? 'Você criou este serviço' : 'Solicitado por'}
             </Text>
             {!isClient && task.client && (
-              <View className="flex-row items-center">
+              <Pressable
+                onPress={() => router.push(`/user/${task.client.id}`)}
+                className="flex-row items-center"
+              >
                 <View className="w-10 h-10 bg-accent/10 rounded-full items-center justify-center">
                   <Text className="text-accent font-bold">
                     {task.client.name?.charAt(0).toUpperCase() || '?'}
                   </Text>
                 </View>
-                <View className="ml-3">
-                  <Text className="text-ink font-medium">{task.client.name}</Text>
+                <Text className="text-ink font-medium flex-1 ml-3">{task.client.name}</Text>
+                <Ionicons name="chevron-forward" size={18} color="#94B2C4" />
+              </Pressable>
+            )}
+            {isClient && task.assignment?.tasker && (
+              <Pressable
+                onPress={() => router.push(`/user/${task.assignment!.tasker.id}`)}
+                className="flex-row items-center mt-3 pt-3 border-t border-border"
+              >
+                <View className="w-10 h-10 bg-accent/10 rounded-full items-center justify-center">
+                  <Text className="text-accent font-bold">
+                    {task.assignment.tasker.name?.charAt(0).toUpperCase() || '?'}
+                  </Text>
                 </View>
-              </View>
+                <View className="flex-1 ml-3">
+                  <Text className="text-ink-muted text-xs">Profissional</Text>
+                  <Text className="text-ink font-medium">{task.assignment.tasker.name}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94B2C4" />
+              </Pressable>
             )}
           </View>
 

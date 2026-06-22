@@ -3,7 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../../trpc';
 import { submitReviewInput } from '@trampo/contracts';
 import { prisma } from '@trampo/db';
-import { sendPushNotification, notifications } from '../../integrations/push';
+import { notify, notifications } from '../../integrations/push';
 
 export const reviewsRouter = router({
   /**
@@ -73,7 +73,7 @@ export const reviewsRouter = router({
       });
 
       // Send push notification to reviewee
-      sendPushNotification(
+      notify(
         revieweeId,
         notifications.newReview(rating, ctx.user.name ?? 'Alguém')
       ).catch((err) => console.error('[REVIEWS] Push notification failed:', err));

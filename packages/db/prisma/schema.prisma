@@ -79,8 +79,25 @@ model User {
   reviewsGiven    Review[]        @relation("ReviewsGiven")
   reviewsReceived Review[]        @relation("ReviewsReceived")
   payments        Payment[]
+  notifications   Notification[]
 
   @@map("users")
+}
+
+model Notification {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String    // e.g. task_accepted, payment_confirmed, new_message
+  title     String
+  body      String
+  data      Json?     // arbitrary payload for deep-linking
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
 
 model TaskerProfile {
@@ -101,6 +118,7 @@ model TaskerProfile {
   // Asaas integration
   asaasAccountId  String?   @unique @map("asaas_account_id")
   asaasWalletId   String?   @unique @map("asaas_wallet_id")
+  pixKey          String?   @map("pix_key") // Tasker's Pix key for withdrawals
 
   // Stats
   rating          Float     @default(0)
@@ -115,11 +133,35 @@ model TaskerProfile {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  user       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categories TaskerProfileCategory[]
+  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories  TaskerProfileCategory[]
+  withdrawals Withdrawal[]
 
   @@index([currentLocation], type: Gist)
   @@map("tasker_profiles")
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model Withdrawal {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskerProfileId String           @map("tasker_profile_id") @db.Uuid
+  amount          Int              // centavos
+  pixKey          String           @map("pix_key")
+  status          WithdrawalStatus @default(PENDING)
+  asaasTransferId String?          @map("asaas_transfer_id")
+  failureReason   String?          @map("failure_reason")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  paidAt          DateTime?        @map("paid_at")
+
+  taskerProfile TaskerProfile @relation(fields: [taskerProfileId], references: [id], onDelete: Cascade)
+
+  @@index([taskerProfileId, createdAt])
+  @@map("withdrawals")
 }
 
 model Category {

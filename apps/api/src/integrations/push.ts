@@ -33,6 +33,31 @@ interface ExpoPushTicket {
 }
 
 /**
+ * Persist an in-app notification AND send the push. Use this for user-facing
+ * events so they show up in the notification center as well as the OS banner.
+ */
+export async function notify(
+  userId: string,
+  notification: { title: string; body: string; data?: Record<string, unknown> }
+): Promise<void> {
+  const type = (notification.data?.type as string) || 'generic';
+  try {
+    await prisma.notification.create({
+      data: {
+        userId,
+        type,
+        title: notification.title,
+        body: notification.body,
+        data: (notification.data ?? undefined) as object | undefined,
+      },
+    });
+  } catch (err) {
+    console.error('[NOTIFY] Failed to persist notification:', err);
+  }
+  await sendPushNotification(userId, notification);
+}
+
+/**
  * Send push notification to a single user
  */
 export async function sendPushNotification(

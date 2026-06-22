@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 import { prisma } from '@trampo/db';
 import { env } from '../../lib/env';
 import { scheduleJob } from '../../lib/redis';
-import { sendPushNotification, notifications } from '../../integrations/push';
+import { notify, notifications } from '../../integrations/push';
 
 // Escrow release delay: 1 hour
 const ESCROW_RELEASE_DELAY_MS = 60 * 60 * 1000;
@@ -128,7 +128,7 @@ async function handlePaymentConfirmed(paymentData: {
   // Notify the tasker that payment is secured — they can now start the task
   const taskerId = payment.task.assignment?.taskerId;
   if (taskerId) {
-    sendPushNotification(
+    notify(
       taskerId,
       notifications.paymentConfirmed(payment.task.title)
     ).catch((err) => console.error('[WEBHOOK] Push notification failed:', err));
@@ -297,7 +297,7 @@ export async function processEscrowRelease(paymentId: string): Promise<void> {
   // Notify the tasker that the escrowed payment has been released to them
   const taskerId = payment.task.assignment?.taskerId;
   if (taskerId) {
-    sendPushNotification(
+    notify(
       taskerId,
       notifications.paymentReleased(payment.taskerAmount, payment.task.title)
     ).catch((err) => console.error('[ESCROW] Push notification failed:', err));

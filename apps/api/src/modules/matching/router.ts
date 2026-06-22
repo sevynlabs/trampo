@@ -6,7 +6,7 @@ import { assertTransition, canCancel } from '../../domain/state-machine';
 import { calculateCancellationPenalty } from '../../domain/pricing';
 import { scheduleEscrowRelease } from '../webhooks';
 import { env } from '../../lib/env';
-import { sendPushNotification, notifications } from '../../integrations/push';
+import { notify, notifications } from '../../integrations/push';
 
 export const matchingRouter = router({
   /**
@@ -64,7 +64,7 @@ export const matchingRouter = router({
 
       // Send push notification to client
       if (result) {
-        sendPushNotification(
+        notify(
           result.client.id,
           notifications.taskAccepted(result.title, ctx.user.name ?? 'Um profissional')
         ).catch((err) => console.error('[MATCHING] Push notification failed:', err));
@@ -156,7 +156,7 @@ export const matchingRouter = router({
       console.log(`[MATCHING] Task ${input.taskId} completed, escrow scheduled`);
 
       // Send push notification to client
-      sendPushNotification(
+      notify(
         task.client.id,
         notifications.taskCompleted(task.title, ctx.user.name ?? 'Um profissional')
       ).catch((err) => console.error('[MATCHING] Push notification failed:', err));

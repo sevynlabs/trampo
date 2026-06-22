@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../../trpc';
 import { createTaskInput } from '@trampo/contracts';
 import { prisma } from '@trampo/db';
@@ -46,6 +47,59 @@ export const tasksRouter = router({
       `;
 
       return { id: task[0].id, ...price };
+    }),
+
+  /**
+   * Edit an open task (client owner only). Pricing is always recalculated.
+   */
+  update: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        title: z.string().min(3).max(120),
+        description: z.string().max(1000).optional(),
+        baseValue: z.number().int().min(5000), // min R$ 50,00
+        isUrgent: z.boolean(),
+        scheduledAt: z.string().datetime().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const task = await prisma.task.findUnique({
+        where: { id: input.id },
+        select: { clientId: true, status: true },
+      });
+
+      if (!task) {
+        throw new TRPCError({ code: 'NOT_FOUND' });
+      }
+      if (task.clientId !== ctx.user.id) {
+        throw new TRPCError({ code: 'FORBIDDEN' });
+      }
+      if (task.status !== 'OPEN') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Só é possível editar trampos que ainda estão abertos',
+        });
+      }
+
+      const price = calculatePrice(input.baseValue, input.isUrgent);
+
+      await prisma.task.update({
+        where: { id: input.id },
+        data: {
+          title: input.title,
+          description: input.description ?? null,
+          isUrgent: input.isUrgent,
+          baseValue: price.baseValue,
+          urgencyFee: price.urgencyFee,
+          serviceFee: price.serviceFee,
+          totalValue: price.totalValue,
+          taskerValue: price.taskerValue,
+          scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
+        },
+      });
+
+      return { id: input.id, ...price };
     }),
 
   /**
