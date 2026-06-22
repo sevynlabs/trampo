@@ -254,17 +254,19 @@ export async function processEscrowRelease(paymentId: string): Promise<void> {
     return;
   }
 
-  // In production, transfer to tasker via Asaas
-  // For now, just update status
-  if (env.NODE_ENV === 'production' && taskerProfile.asaasWalletId) {
-    const { transferToTasker } = await import('../../integrations/asaas');
+  // In production, transfer to tasker via Asaas. Idempotent: skips the transfer
+  // if we already recorded one, or if Asaas already has one for this payment.
+  let transferId: string | undefined = payment.asaasTransferId ?? undefined;
+  if (env.NODE_ENV === 'production' && taskerProfile.asaasWalletId && !transferId) {
+    const { ensureTransferToTasker } = await import('../../integrations/asaas');
 
-    await transferToTasker({
+    const transfer = await ensureTransferToTasker({
       walletId: taskerProfile.asaasWalletId,
       amount: payment.taskerAmount,
       description: `TRAMPO: ${payment.task.title}`,
       externalReference: paymentId,
     });
+    transferId = transfer.id;
   }
 
   // Atomically flip HELD -> RELEASED and update the task in one transaction.
@@ -274,7 +276,7 @@ export async function processEscrowRelease(paymentId: string): Promise<void> {
   const released = await prisma.$transaction(async (tx) => {
     const result = await tx.payment.updateMany({
       where: { id: paymentId, status: 'HELD' },
-      data: { status: 'RELEASED', releasedAt: new Date() },
+      data: { status: 'RELEASED', releasedAt: new Date(), asaasTransferId: transferId },
     });
     if (result.count === 0) return false;
 

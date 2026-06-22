@@ -256,6 +256,7 @@ model Payment {
   // Asaas
   asaasId         String?       @unique @map("asaas_id") // For idempotency
   asaasPaymentId  String?       @map("asaas_payment_id")
+  asaasTransferId String?       @unique @map("asaas_transfer_id") // Set once escrow is transferred to the tasker
   pixCode         String?       @map("pix_code")
   pixQrCode       String?       @map("pix_qr_code")
 

@@ -236,6 +236,51 @@ export async function transferToTasker(params: {
 }
 
 /**
+ * Look up an existing transfer by our externalReference (the payment ID).
+ *
+ * Used to make escrow release idempotent: if a previous attempt already moved
+ * the money but failed before we recorded it, we must NOT transfer again.
+ *
+ * TODO(asaas): confirm the `/transfers` list endpoint supports filtering by
+ * `externalReference` in the target Asaas API version. If it does not, fall back
+ * to listing recent transfers and matching client-side, or store the transfer id
+ * before posting (two-phase) — see ensureTransferToTasker.
+ */
+export async function findTransferByExternalReference(
+  externalReference: string
+): Promise<AsaasTransfer | null> {
+  const res = await request<{ data: AsaasTransfer[] }>(
+    `/transfers?externalReference=${encodeURIComponent(externalReference)}`
+  );
+
+  // Ignore transfers that failed/were cancelled — those should be retried.
+  const settled = res.data?.find(
+    (t) => t.status !== 'FAILED' && t.status !== 'CANCELLED'
+  );
+  return settled ?? null;
+}
+
+/**
+ * Idempotent transfer: skip the POST when a transfer for this payment already
+ * exists at Asaas. Safe to call on retries after a partial failure.
+ */
+export async function ensureTransferToTasker(params: {
+  walletId: string;
+  amount: number;
+  description: string;
+  externalReference: string; // Our payment ID — the idempotency key
+}): Promise<AsaasTransfer> {
+  const existing = await findTransferByExternalReference(params.externalReference);
+  if (existing) {
+    console.log(
+      `[ASAAS] Transfer already exists for ${params.externalReference} (${existing.id}); skipping POST`
+    );
+    return existing;
+  }
+  return transferToTasker(params);
+}
+
+/**
  * Refund a payment (full or partial)
  */
 export async function refundPayment(params: {

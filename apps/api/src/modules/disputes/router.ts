@@ -166,8 +166,11 @@ export const disputesRouter = router({
       if (input.outcome === 'RELEASE') {
         // Release escrow to the tasker. The transfer must succeed BEFORE we mark
         // the payment as released — if it throws, the dispute stays OPEN so an
-        // admin can retry, instead of recording money that never moved.
-        if (isProd && task.payment) {
+        // admin can retry, instead of recording money that never moved. The
+        // transfer is idempotent (ensureTransferToTasker), so a retry after a
+        // partial failure won't pay twice.
+        let transferId: string | undefined = task.payment?.asaasTransferId ?? undefined;
+        if (isProd && task.payment && !transferId) {
           const walletId = task.assignment?.tasker.taskerProfile?.asaasWalletId;
           if (!walletId) {
             throw new TRPCError({
@@ -175,13 +178,14 @@ export const disputesRouter = router({
               message: 'Profissional sem carteira Asaas configurada',
             });
           }
-          const { transferToTasker } = await import('../../integrations/asaas');
-          await transferToTasker({
+          const { ensureTransferToTasker } = await import('../../integrations/asaas');
+          const transfer = await ensureTransferToTasker({
             walletId,
             amount: task.payment.taskerAmount,
             description: `TRAMPO (disputa): ${task.title}`,
             externalReference: task.payment.id,
           });
+          transferId = transfer.id;
         }
 
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -202,7 +206,7 @@ export const disputesRouter = router({
           if (task.payment) {
             await tx.payment.update({
               where: { id: task.payment.id },
-              data: { status: 'RELEASED', releasedAt: new Date() },
+              data: { status: 'RELEASED', releasedAt: new Date(), asaasTransferId: transferId },
             });
           }
           await tx.task.update({
