@@ -2,6 +2,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'rea
 import { useRouter, useLocalSearchParams, Stack, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../../src/lib/trpc';
+import { formatCurrency } from '../../../src/lib/format';
 
 const STATUS_CONFIG: Record<
   string,
@@ -70,10 +71,6 @@ const PAYMENT_STATUS_CONFIG: Record<
     icon: 'close-circle-outline',
   },
 };
-
-function formatCurrency(centavos: number) {
-  return `R$ ${(centavos / 100).toFixed(2).replace('.', ',')}`;
-}
 
 export default function TaskDetailScreen() {
   const router = useRouter();

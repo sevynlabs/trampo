@@ -1,16 +1,10 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../../trpc';
 import { registerProfileInput, updateProfileInput } from '@trampo/contracts';
-import { prisma } from '@trampo/db';
+import { prisma, Prisma } from '@trampo/db';
 import { storeEncryptedCpf } from '../../lib/pii';
-import { env } from '../../lib/env';
+import { isAdminUser } from '../../lib/admin';
 import crypto from 'crypto';
-
-const adminIds = new Set(
-  env.ADMIN_USER_IDS.split(',')
-    .map((id) => id.trim())
-    .filter(Boolean)
-);
 
 export const profilesRouter = router({
   /**
@@ -32,7 +26,7 @@ export const profilesRouter = router({
 
     if (!user) return null;
 
-    return { ...user, isAdmin: adminIds.has(user.id) };
+    return { ...user, isAdmin: isAdminUser(user.id) };
   }),
 
   /**
@@ -58,27 +52,31 @@ export const profilesRouter = router({
         throw new Error('CPF já cadastrado');
       }
 
-      const user = await prisma.user.update({
-        where: { id: ctx.user.id },
-        data: {
-          name,
-          email,
-          cpfHash,
-          role,
-        },
-      });
+      // Whether the user was already a tasker BEFORE this update (decides if we
+      // need to create a TaskerProfile). Must read the pre-update role.
+      const wasTasker = ctx.user.role.includes('TASKER');
 
-      // Encrypt CPF at rest with pgcrypto (stored in users.cpf_encrypted).
-      // The plaintext CPF is never persisted — only the hash (for lookups)
-      // and the encrypted blob (for KYC/verification).
-      await storeEncryptedCpf(ctx.user.id, cpf);
-
-      // Create tasker profile if becoming tasker
-      if ((role === 'TASKER' || role === 'BOTH') && !user.role.includes('TASKER')) {
-        await prisma.taskerProfile.create({
-          data: { userId: ctx.user.id },
+      // Persist the profile, the encrypted CPF and the tasker profile atomically:
+      // if CPF encryption fails we must not leave a half-written profile (which
+      // would break payments later via getDecryptedCpf).
+      const user = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const updated = await tx.user.update({
+          where: { id: ctx.user.id },
+          data: { name, email, cpfHash, role },
         });
-      }
+
+        // Encrypt CPF at rest with pgcrypto (stored in users.cpf_encrypted).
+        // The plaintext CPF is never persisted — only the hash (for lookups)
+        // and the encrypted blob (for KYC/verification).
+        await storeEncryptedCpf(ctx.user.id, cpf, tx);
+
+        // Create tasker profile if becoming tasker
+        if ((role === 'TASKER' || role === 'BOTH') && !wasTasker) {
+          await tx.taskerProfile.create({ data: { userId: ctx.user.id } });
+        }
+
+        return updated;
+      });
 
       return user;
     }),

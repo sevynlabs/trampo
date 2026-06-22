@@ -15,10 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { trpc } from '../../src/lib/trpc';
 import { TASK_CONSTANTS } from '@trampo/contracts';
-
-function formatCurrency(centavos: number) {
-  return `R$ ${(centavos / 100).toFixed(2).replace('.', ',')}`;
-}
+import { formatCurrency } from '../../src/lib/format';
 
 export default function CreateTaskScreen() {
   const router = useRouter();

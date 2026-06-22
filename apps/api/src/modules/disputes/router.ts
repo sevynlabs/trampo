@@ -4,6 +4,7 @@ import { router, protectedProcedure, adminProcedure } from '../../trpc';
 import { prisma, Prisma } from '@trampo/db';
 import { assertTransition } from '../../domain/state-machine';
 import { env } from '../../lib/env';
+import { isAdminUser } from '../../lib/admin';
 import { sendPushNotification, notifications } from '../../integrations/push';
 
 export const disputesRouter = router({
@@ -101,9 +102,8 @@ export const disputesRouter = router({
 
       const isParty =
         task.clientId === ctx.user.id || task.assignment?.taskerId === ctx.user.id;
-      const isAdmin = env.ADMIN_USER_IDS.split(',').map((s) => s.trim()).includes(ctx.user.id);
 
-      if (!isParty && !isAdmin) {
+      if (!isParty && !isAdminUser(ctx.user.id)) {
         throw new TRPCError({ code: 'FORBIDDEN' });
       }
 
@@ -164,18 +164,24 @@ export const disputesRouter = router({
       const isProd = env.NODE_ENV === 'production';
 
       if (input.outcome === 'RELEASE') {
-        // Release escrow to the tasker
+        // Release escrow to the tasker. The transfer must succeed BEFORE we mark
+        // the payment as released — if it throws, the dispute stays OPEN so an
+        // admin can retry, instead of recording money that never moved.
         if (isProd && task.payment) {
           const walletId = task.assignment?.tasker.taskerProfile?.asaasWalletId;
-          if (walletId) {
-            const { transferToTasker } = await import('../../integrations/asaas');
-            await transferToTasker({
-              walletId,
-              amount: task.payment.taskerAmount,
-              description: `TRAMPO (disputa): ${task.title}`,
-              externalReference: task.payment.id,
-            }).catch((err) => console.error('[DISPUTES] Transfer failed:', err));
+          if (!walletId) {
+            throw new TRPCError({
+              code: 'PRECONDITION_FAILED',
+              message: 'Profissional sem carteira Asaas configurada',
+            });
           }
+          const { transferToTasker } = await import('../../integrations/asaas');
+          await transferToTasker({
+            walletId,
+            amount: task.payment.taskerAmount,
+            description: `TRAMPO (disputa): ${task.title}`,
+            externalReference: task.payment.id,
+          });
         }
 
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -200,13 +206,14 @@ export const disputesRouter = router({
           });
         });
       } else {
-        // Refund the client
+        // Refund the client. Same rule: the refund must succeed before we mark
+        // the payment as refunded, otherwise we'd record a refund that never happened.
         if (isProd && task.payment?.asaasPaymentId) {
           const { refundPayment } = await import('../../integrations/asaas');
           await refundPayment({
             chargeId: task.payment.asaasPaymentId,
             description: `Reembolso por disputa: ${task.title}`,
-          }).catch((err) => console.error('[DISPUTES] Refund failed:', err));
+          });
         }
 
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {

@@ -12,10 +12,7 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { trpc } from '../../../src/lib/trpc';
-
-function formatCurrency(centavos: number) {
-  return `R$ ${(centavos / 100).toFixed(2).replace('.', ',')}`;
-}
+import { formatCurrency } from '../../../src/lib/format';
 
 export default function PaymentScreen() {
   const router = useRouter();

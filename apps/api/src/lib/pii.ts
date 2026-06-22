@@ -1,5 +1,8 @@
-import { prisma } from '@trampo/db';
+import { prisma, Prisma } from '@trampo/db';
 import { env } from './env';
+
+// Either the root client or a transaction client — both expose $executeRaw.
+type Db = typeof prisma | Prisma.TransactionClient;
 
 /**
  * PII encryption at rest using Postgres pgcrypto (pgp_sym_encrypt/decrypt).
@@ -13,9 +16,14 @@ import { env } from './env';
 
 /**
  * Encrypt and store a user's CPF at rest. The user row must already exist.
+ * Pass a transaction client (`db`) to keep this write atomic with the row insert/update.
  */
-export async function storeEncryptedCpf(userId: string, cpf: string): Promise<void> {
-  await prisma.$executeRaw`
+export async function storeEncryptedCpf(
+  userId: string,
+  cpf: string,
+  db: Db = prisma
+): Promise<void> {
+  await db.$executeRaw`
     UPDATE users
     SET cpf_encrypted = pgp_sym_encrypt(${cpf}, ${env.PII_ENCRYPTION_KEY})
     WHERE id = ${userId}::uuid
