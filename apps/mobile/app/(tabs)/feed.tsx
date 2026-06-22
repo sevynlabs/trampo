@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
+  TextInput,
   ScrollView,
   Pressable,
   RefreshControl,
@@ -12,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { trpc } from '../../src/lib/trpc';
 import { formatCurrency } from '../../src/lib/format';
+import { EmptyState, EmptyTasksIllustration } from '../../src/components/illustrations';
+import { PressableCard } from '../../src/components/PressableCard';
 
 function formatDistance(meters: number) {
   if (meters < 1000) return `${Math.round(meters)}m`;
@@ -28,6 +31,8 @@ export default function FeedScreen() {
 
   const { data: categories } = trpc.categories.list.useQuery();
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'distance' | 'value'>('distance');
 
   const {
     data: tasks,
@@ -65,10 +70,29 @@ export default function FeedScreen() {
     setRefreshing(false);
   };
 
+  // Client-side text search + sort over the loaded feed.
+  const visibleTasks = useMemo(() => {
+    let list = tasks?.tasks ?? [];
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.address.toLowerCase().includes(q) ||
+          t.category.name.toLowerCase().includes(q)
+      );
+    }
+    return [...list].sort((a, b) =>
+      sortBy === 'value'
+        ? b.taskerValue - a.taskerValue
+        : (a.distance ?? 0) - (b.distance ?? 0)
+    );
+  }, [tasks, search, sortBy]);
+
   if (locationError) {
     return (
       <View className="flex-1 bg-background items-center justify-center px-6">
-        <Ionicons name="location-outline" size={64} color="#A1A1AA" />
+        <Ionicons name="location-outline" size={64} color="#94B2C4" />
         <Text className="text-ink font-bold text-lg mt-4 text-center">
           Localização necessária
         </Text>
@@ -80,7 +104,7 @@ export default function FeedScreen() {
   if (!location) {
     return (
       <View className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color="#018ABE" />
         <Text className="text-ink-muted mt-4">Obtendo localização...</Text>
       </View>
     );
@@ -93,6 +117,45 @@ export default function FeedScreen() {
         <Text className="font-display text-2xl font-bold text-ink mb-4">
           Serviços próximos
         </Text>
+
+        {/* Search */}
+        <View className="flex-row items-center bg-background border border-border rounded-button px-4 mb-3">
+          <Ionicons name="search-outline" size={18} color="#5B7A91" />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Buscar por título, bairro ou categoria"
+            placeholderTextColor="#94B2C4"
+            className="flex-1 py-3 ml-2 text-ink"
+          />
+          {search.length > 0 && (
+            <Pressable onPress={() => setSearch('')} hitSlop={8}>
+              <Ionicons name="close-circle" size={18} color="#94B2C4" />
+            </Pressable>
+          )}
+        </View>
+
+        {/* Sort */}
+        <View className="flex-row items-center gap-2 mb-3">
+          <Text className="text-ink-muted text-xs">Ordenar:</Text>
+          {(['distance', 'value'] as const).map((key) => (
+            <Pressable
+              key={key}
+              onPress={() => setSortBy(key)}
+              className={`px-3 py-1.5 rounded-chip border ${
+                sortBy === key ? 'bg-accent/10 border-accent' : 'bg-surface border-border'
+              }`}
+            >
+              <Text
+                className={`text-xs font-medium ${
+                  sortBy === key ? 'text-accent' : 'text-ink-muted'
+                }`}
+              >
+                {key === 'distance' ? 'Mais perto' : 'Maior valor'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
 
         {/* Category filter */}
         <ScrollView
@@ -143,25 +206,25 @@ export default function FeedScreen() {
       >
         {isLoading ? (
           <View className="items-center py-8">
-            <ActivityIndicator color="#2563EB" />
+            <ActivityIndicator color="#018ABE" />
           </View>
-        ) : !tasks?.tasks?.length ? (
-          <View className="bg-surface rounded-card p-8 items-center">
-            <Ionicons name="search-outline" size={48} color="#A1A1AA" />
-            <Text className="text-ink font-bold mt-4">
-              Nenhum serviço encontrado
-            </Text>
-            <Text className="text-ink-muted text-center mt-2">
-              Não há serviços disponíveis na sua região agora. Tente novamente mais tarde.
-            </Text>
-          </View>
+        ) : !visibleTasks.length ? (
+          <EmptyState
+            illustration={EmptyTasksIllustration}
+            title={search ? 'Nada encontrado' : 'Nenhum trampo por perto'}
+            subtitle={
+              search
+                ? `Nenhum trampo combina com "${search}". Tente outra busca.`
+                : 'Não há serviços disponíveis na sua região agora. Tente de novo mais tarde.'
+            }
+          />
         ) : (
           <View className="gap-3">
-            {tasks.tasks.map((task) => (
-              <Pressable
+            {visibleTasks.map((task, i) => (
+              <PressableCard
                 key={task.id}
+                index={i}
                 onPress={() => router.push(`/task/${task.id}`)}
-                className="bg-surface rounded-card p-4 border border-border"
               >
                 <View className="flex-row justify-between items-start mb-2">
                   <View className="flex-1 mr-3">
@@ -180,7 +243,7 @@ export default function FeedScreen() {
                 </View>
 
                 <View className="flex-row items-center mt-2 mb-3">
-                  <Ionicons name="location-outline" size={14} color="#71717A" />
+                  <Ionicons name="location-outline" size={14} color="#5B7A91" />
                   <Text className="text-ink-muted text-sm ml-1 flex-1" numberOfLines={1}>
                     {task.address}
                   </Text>
@@ -199,7 +262,7 @@ export default function FeedScreen() {
                     {formatCurrency(task.taskerValue)}
                   </Text>
                 </View>
-              </Pressable>
+              </PressableCard>
             ))}
           </View>
         )}

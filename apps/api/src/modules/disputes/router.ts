@@ -5,7 +5,7 @@ import { prisma, Prisma } from '@trampo/db';
 import { assertTransition } from '../../domain/state-machine';
 import { env } from '../../lib/env';
 import { isAdminUser } from '../../lib/admin';
-import { sendPushNotification, notifications } from '../../integrations/push';
+import { notify, notifications } from '../../integrations/push';
 
 export const disputesRouter = router({
   /**
@@ -74,7 +74,7 @@ export const disputesRouter = router({
       // Notify the other party
       const otherPartyId = isClient ? task.assignment?.taskerId : task.clientId;
       if (otherPartyId) {
-        sendPushNotification(
+        notify(
           otherPartyId,
           notifications.disputeOpened(task.title)
         ).catch((err) => console.error('[DISPUTES] Push notification failed:', err));
@@ -256,7 +256,7 @@ export const disputesRouter = router({
       const outcome = input.outcome === 'RELEASE' ? 'released' : 'refunded';
       for (const userId of [task.client.id, taskerId]) {
         if (userId) {
-          sendPushNotification(
+          notify(
             userId,
             notifications.disputeResolved(task.title, outcome)
           ).catch((err) => console.error('[DISPUTES] Push notification failed:', err));

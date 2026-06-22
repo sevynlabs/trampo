@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../../trpc';
 import { registerProfileInput, updateProfileInput } from '@trampo/contracts';
 import { prisma, Prisma } from '@trampo/db';
@@ -97,6 +98,72 @@ export const profilesRouter = router({
 
       return { id: user.id, name: user.name, email: user.email };
     }),
+
+  /**
+   * Public profile of any user (name, avatar, rating, stats) for profile pages.
+   */
+  getPublic: protectedProcedure
+    .input(z.object({ userId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const user = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: {
+          id: true,
+          name: true,
+          avatarUrl: true,
+          createdAt: true,
+          role: true,
+          taskerProfile: {
+            select: { rating: true, totalTasks: true, kycStatus: true, bio: true },
+          },
+        },
+      });
+
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND' });
+      }
+
+      return {
+        id: user.id,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+        memberSince: user.createdAt.toISOString(),
+        isTasker: user.role === 'TASKER' || user.role === 'BOTH',
+        rating: user.taskerProfile?.rating ?? 0,
+        totalTasks: user.taskerProfile?.totalTasks ?? 0,
+        kycVerified: user.taskerProfile?.kycStatus === 'APPROVED',
+        bio: user.taskerProfile?.bio ?? null,
+      };
+    }),
+
+  /**
+   * Become a tasker: upgrade the role to also offer services and create the
+   * tasker profile if missing. Idempotent. The user keeps their client role.
+   */
+  becomeTasker: protectedProcedure.mutation(async ({ ctx }) => {
+    const profile = await prisma.taskerProfile.findUnique({
+      where: { userId: ctx.user.id },
+    });
+    const alreadyTasker = ctx.user.role.includes('TASKER');
+
+    if (alreadyTasker && profile) {
+      return { success: true, alreadyTasker: true };
+    }
+
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      if (!alreadyTasker) {
+        await tx.user.update({
+          where: { id: ctx.user.id },
+          data: { role: ctx.user.role === 'CLIENT' ? 'BOTH' : 'TASKER' },
+        });
+      }
+      if (!profile) {
+        await tx.taskerProfile.create({ data: { userId: ctx.user.id } });
+      }
+    });
+
+    return { success: true, alreadyTasker: false };
+  }),
 
   /**
    * Update tasker categories

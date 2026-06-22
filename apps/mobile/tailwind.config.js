@@ -5,38 +5,39 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Brand colors from Stripi-inspired design system
-        primary: '#533afd',
-        'primary-deep': '#4434d4',
-        'primary-press': '#2e2b8c',
-        'primary-soft': '#665efd',
-        'primary-subdued': '#b9b9f9',
+        // Brand — TRAMPO blue scale (#001B48 / #02457A / #018ABE / #97CADB / #D6E8EE)
+        primary: '#018ABE', // vibrant accent
+        'primary-deep': '#02457A', // gradient start / dark blue
+        'primary-press': '#001B48', // deep navy / pressed
+        'primary-soft': '#97CADB', // light blue
+        'primary-subdued': '#D6E8EE', // ice tint
 
-        // Ink (text) colors
-        ink: '#0d253d',
-        'ink-secondary': '#273951',
-        'ink-muted': '#64748d',
-        'ink-faint': '#61718a',
+        // Ink (text) colors — navy-based
+        ink: '#001B48',
+        'ink-secondary': '#02457A',
+        'ink-soft': '#2D5273',
+        'ink-muted': '#5B7A91',
+        'ink-faint': '#94B2C4',
 
         // Surface colors
         canvas: '#ffffff',
-        'canvas-soft': '#f6f9fc',
-        'canvas-cream': '#f5e9d4',
-        background: '#f6f9fc',
+        'canvas-soft': '#EEF6FA',
+        'canvas-cream': '#D6E8EE',
+        background: '#F3F8FB',
         surface: '#ffffff',
 
         // Border colors
-        hairline: '#e3e8ee',
-        'hairline-input': '#a8c3de',
-        border: '#e3e8ee',
+        hairline: '#DCEAF1',
+        'hairline-input': '#97CADB',
+        border: '#DCEAF1',
 
-        // Semantic colors
-        success: '#16A34A',
-        warning: '#ea580c',
-        danger: '#ea2261',
+        // Semantic colors (kept functional, tuned to sit beside the blues)
+        success: '#0E9F6E',
+        warning: '#F59E0B',
+        danger: '#E11D48',
 
-        // Legacy aliases for compatibility
-        accent: '#533afd',
+        // Legacy alias for compatibility
+        accent: '#018ABE',
       },
       fontFamily: {
         display: ['Inter', 'SF Pro Display', 'system-ui', 'sans-serif'],

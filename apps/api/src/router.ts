@@ -11,6 +11,7 @@ import { reviewsRouter } from './modules/reviews/router';
 import { paymentsRouter } from './modules/payments/router';
 import { disputesRouter } from './modules/disputes/router';
 import { adminRouter } from './modules/admin/router';
+import { notificationsRouter } from './modules/notifications/router';
 
 /**
  * Main application router
@@ -29,6 +30,7 @@ export const appRouter = router({
   payments: paymentsRouter,
   disputes: disputesRouter,
   admin: adminRouter,
+  notifications: notificationsRouter,
 });
 
 // Export type for client

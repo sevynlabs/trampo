@@ -10,6 +10,7 @@ import {
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
+import { GradientButton } from '../../src/components/GradientButton';
 
 // Preset radii in meters (API accepts 1000–50000).
 const RADIUS_OPTIONS = [
@@ -53,7 +54,7 @@ export default function ServiceAreaScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="arrow-back" size={24} color="#18181B" />
+              <Ionicons name="arrow-back" size={24} color="#001B48" />
             </Pressable>
           ),
         }}
@@ -61,7 +62,7 @@ export default function ServiceAreaScreen() {
 
       {isLoading ? (
         <View className="flex-1 bg-background items-center justify-center">
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color="#018ABE" />
         </View>
       ) : (
         <View className="flex-1 bg-background">
@@ -87,7 +88,7 @@ export default function ServiceAreaScreen() {
                     <Ionicons
                       name="location"
                       size={22}
-                      color={isSelected ? '#EA580C' : '#A1A1AA'}
+                      color={isSelected ? '#018ABE' : '#94B2C4'}
                     />
                     <View className="flex-1 ml-3">
                       <Text
@@ -100,7 +101,7 @@ export default function ServiceAreaScreen() {
                       <Text className="text-ink-muted text-sm">{opt.description}</Text>
                     </View>
                     {isSelected && (
-                      <Ionicons name="checkmark-circle" size={22} color="#EA580C" />
+                      <Ionicons name="checkmark-circle" size={22} color="#018ABE" />
                     )}
                   </Pressable>
                 );
@@ -110,19 +111,12 @@ export default function ServiceAreaScreen() {
 
           {/* Save bar */}
           <View className="bg-surface border-t border-border p-4 pb-8">
-            <Pressable
+            <GradientButton
+              label="Salvar"
               onPress={() => radius && save.mutate({ radiusMeters: radius })}
-              disabled={save.isPending || !radius}
-              className={`py-4 rounded-button items-center ${
-                radius ? 'bg-accent' : 'bg-border'
-              }`}
-            >
-              {save.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold text-lg">Salvar</Text>
-              )}
-            </Pressable>
+              disabled={!radius}
+              loading={save.isPending}
+            />
           </View>
         </View>
       )}

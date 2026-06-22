@@ -10,6 +10,7 @@ import {
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
+import { GradientButton } from '../../src/components/GradientButton';
 
 export default function ServiceCategoriesScreen() {
   const router = useRouter();
@@ -52,7 +53,7 @@ export default function ServiceCategoriesScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="arrow-back" size={24} color="#18181B" />
+              <Ionicons name="arrow-back" size={24} color="#001B48" />
             </Pressable>
           ),
         }}
@@ -60,7 +61,7 @@ export default function ServiceCategoriesScreen() {
 
       {isLoading ? (
         <View className="flex-1 bg-background items-center justify-center">
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color="#018ABE" />
         </View>
       ) : (
         <View className="flex-1 bg-background">
@@ -97,7 +98,7 @@ export default function ServiceCategoriesScreen() {
                       <Ionicons
                         name="checkmark-circle"
                         size={18}
-                        color="#EA580C"
+                        color="#018ABE"
                         style={{ marginLeft: 6 }}
                       />
                     )}
@@ -109,19 +110,11 @@ export default function ServiceCategoriesScreen() {
 
           {/* Save bar */}
           <View className="bg-surface border-t border-border p-4 pb-8">
-            <Pressable
+            <GradientButton
+              label={`Salvar${selected.length > 0 ? ` (${selected.length})` : ''}`}
               onPress={() => save.mutate({ categoryIds: selected })}
-              disabled={save.isPending}
-              className="bg-accent py-4 rounded-button items-center"
-            >
-              {save.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold text-lg">
-                  Salvar {selected.length > 0 ? `(${selected.length})` : ''}
-                </Text>
-              )}
-            </Pressable>
+              loading={save.isPending}
+            />
           </View>
         </View>
       )}

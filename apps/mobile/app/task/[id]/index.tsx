@@ -117,7 +117,7 @@ export default function TaskDetailScreen() {
   if (isLoading || !task) {
     return (
       <View className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color="#018ABE" />
       </View>
     );
   }
@@ -188,9 +188,15 @@ export default function TaskDetailScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="arrow-back" size={24} color="#18181B" />
+              <Ionicons name="arrow-back" size={24} color="#001B48" />
             </Pressable>
           ),
+          headerRight: () =>
+            isClient && task.status === 'OPEN' ? (
+              <Pressable onPress={() => router.push(`/task/${task.id}/edit`)} className="ml-4">
+                <Ionicons name="create-outline" size={22} color="#018ABE" />
+              </Pressable>
+            ) : null,
         }}
       />
 
@@ -224,7 +230,7 @@ export default function TaskDetailScreen() {
 
           {/* Address */}
           <View className="flex-row items-start mb-6">
-            <Ionicons name="location-outline" size={20} color="#71717A" />
+            <Ionicons name="location-outline" size={20} color="#5B7A91" />
             <Text className="text-ink-soft flex-1 ml-2">{task.address}</Text>
           </View>
 
@@ -234,16 +240,35 @@ export default function TaskDetailScreen() {
               {isClient ? 'Você criou este serviço' : 'Solicitado por'}
             </Text>
             {!isClient && task.client && (
-              <View className="flex-row items-center">
+              <Pressable
+                onPress={() => router.push(`/user/${task.client.id}`)}
+                className="flex-row items-center"
+              >
                 <View className="w-10 h-10 bg-accent/10 rounded-full items-center justify-center">
                   <Text className="text-accent font-bold">
                     {task.client.name?.charAt(0).toUpperCase() || '?'}
                   </Text>
                 </View>
-                <View className="ml-3">
-                  <Text className="text-ink font-medium">{task.client.name}</Text>
+                <Text className="text-ink font-medium flex-1 ml-3">{task.client.name}</Text>
+                <Ionicons name="chevron-forward" size={18} color="#94B2C4" />
+              </Pressable>
+            )}
+            {isClient && task.assignment?.tasker && (
+              <Pressable
+                onPress={() => router.push(`/user/${task.assignment!.tasker.id}`)}
+                className="flex-row items-center mt-3 pt-3 border-t border-border"
+              >
+                <View className="w-10 h-10 bg-accent/10 rounded-full items-center justify-center">
+                  <Text className="text-accent font-bold">
+                    {task.assignment.tasker.name?.charAt(0).toUpperCase() || '?'}
+                  </Text>
                 </View>
-              </View>
+                <View className="flex-1 ml-3">
+                  <Text className="text-ink-muted text-xs">Profissional</Text>
+                  <Text className="text-ink font-medium">{task.assignment.tasker.name}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94B2C4" />
+              </Pressable>
             )}
           </View>
 
@@ -256,7 +281,7 @@ export default function TaskDetailScreen() {
                 <Ionicons
                   name={PAYMENT_STATUS_CONFIG[payment.status].icon}
                   size={22}
-                  color="#52525B"
+                  color="#5B7A91"
                 />
                 <View className="flex-1 ml-3">
                   <Text className={`font-bold ${PAYMENT_STATUS_CONFIG[payment.status].color}`}>
@@ -305,7 +330,7 @@ export default function TaskDetailScreen() {
           {canChat && (
             <Link href={`/task/${task.id}/chat`} asChild>
               <Pressable className="flex-1 bg-border py-4 rounded-button items-center flex-row justify-center">
-                <Ionicons name="chatbubble-outline" size={20} color="#52525B" />
+                <Ionicons name="chatbubble-outline" size={20} color="#5B7A91" />
                 <Text className="text-ink-soft font-bold ml-2">Chat</Text>
               </Pressable>
             </Link>
@@ -385,7 +410,7 @@ export default function TaskDetailScreen() {
         {canDispute && (
           <Link href={`/task/${task.id}/dispute`} asChild>
             <Pressable className="mt-3 py-2 items-center flex-row justify-center">
-              <Ionicons name="alert-circle-outline" size={16} color="#DC2626" />
+              <Ionicons name="alert-circle-outline" size={16} color="#E11D48" />
               <Text className="text-danger text-sm ml-1">Tive um problema com este trampo</Text>
             </Pressable>
           </Link>

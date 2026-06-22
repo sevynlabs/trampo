@@ -39,7 +39,7 @@ export default function HelpScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="arrow-back" size={24} color="#18181B" />
+              <Ionicons name="arrow-back" size={24} color="#001B48" />
             </Pressable>
           ),
         }}

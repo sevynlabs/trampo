@@ -3,6 +3,9 @@ import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
 import { formatCurrency } from '../../src/lib/format';
+import { GradientButton } from '../../src/components/GradientButton';
+import { EmptyState, EmptyTasksIllustration } from '../../src/components/illustrations';
+import { PressableCard } from '../../src/components/PressableCard';
 import { useState } from 'react';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -31,17 +34,36 @@ export default function HomeScreen() {
   };
 
   const isTasker = user?.role === 'TASKER' || user?.role === 'BOTH';
+  const { data: unread } = trpc.notifications.unreadCount.useQuery(undefined, {
+    enabled: !!user,
+  });
 
   return (
     <View className="flex-1 bg-background">
       {/* Header */}
-      <View className="bg-surface px-6 pt-16 pb-6 border-b border-border">
-        <Text className="font-display text-2xl font-bold text-ink">
-          Olá, {user?.name?.split(' ')[0] || 'Usuário'}
-        </Text>
-        <Text className="text-ink-muted mt-1">
-          {isTasker ? 'O que você quer fazer hoje?' : 'Precisa de ajuda com algo?'}
-        </Text>
+      <View className="bg-surface px-6 pt-16 pb-6 border-b border-border flex-row items-start justify-between">
+        <View className="flex-1">
+          <Text className="font-display text-2xl font-bold text-ink">
+            Olá, {user?.name?.split(' ')[0] || 'Usuário'}
+          </Text>
+          <Text className="text-ink-muted mt-1">
+            {isTasker ? 'O que você quer fazer hoje?' : 'Precisa de ajuda com algo?'}
+          </Text>
+        </View>
+        <Pressable
+          onPress={() => router.push('/notifications')}
+          hitSlop={8}
+          className="w-11 h-11 rounded-full bg-background items-center justify-center"
+        >
+          <Ionicons name="notifications-outline" size={22} color="#001B48" />
+          {!!unread && unread > 0 && (
+            <View className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-danger items-center justify-center">
+              <Text className="text-white text-[10px] font-bold">
+                {unread > 9 ? '9+' : unread}
+              </Text>
+            </View>
+          )}
+        </Pressable>
       </View>
 
       <ScrollView
@@ -66,7 +88,7 @@ export default function HomeScreen() {
           {isTasker && (
             <Link href="/(tabs)/feed" asChild>
               <Pressable className="flex-1 bg-surface border border-border p-4 rounded-card">
-                <Ionicons name="search-outline" size={28} color="#2563EB" />
+                <Ionicons name="search-outline" size={28} color="#018ABE" />
                 <Text className="text-ink font-bold mt-2">Buscar trabalhos</Text>
                 <Text className="text-ink-muted text-sm">
                   Ganhe dinheiro
@@ -84,26 +106,26 @@ export default function HomeScreen() {
         </View>
 
         {tasks?.length === 0 ? (
-          <View className="bg-surface rounded-card p-8 items-center">
-            <Ionicons name="clipboard-outline" size={48} color="#A1A1AA" />
-            <Text className="text-ink-muted mt-4 text-center">
-              Você ainda não criou nenhum serviço
-            </Text>
-            <Link href="/task/create" asChild>
-              <Pressable className="mt-4 bg-accent px-6 py-3 rounded-button">
-                <Text className="text-white font-bold">Criar primeiro serviço</Text>
-              </Pressable>
-            </Link>
-          </View>
+          <EmptyState
+            illustration={EmptyTasksIllustration}
+            title="Você ainda não criou trampos"
+            subtitle="Crie seu primeiro serviço e encontre profissionais perto de você."
+          >
+            <GradientButton
+              label="Criar primeiro trampo"
+              icon="add"
+              onPress={() => router.push('/task/create')}
+            />
+          </EmptyState>
         ) : (
           <View className="gap-3">
-            {tasks?.map((task) => {
+            {tasks?.map((task, i) => {
               const status = STATUS_LABELS[task.status] || STATUS_LABELS.OPEN;
               return (
-                <Pressable
+                <PressableCard
                   key={task.id}
+                  index={i}
                   onPress={() => router.push(`/task/${task.id}`)}
-                  className="bg-surface rounded-card p-4 border border-border"
                 >
                   <View className="flex-row justify-between items-start mb-2">
                     <Text className="font-bold text-ink flex-1 mr-2">
@@ -126,7 +148,7 @@ export default function HomeScreen() {
                       {formatCurrency(task.totalValue)}
                     </Text>
                   </View>
-                </Pressable>
+                </PressableCard>
               );
             })}
           </View>

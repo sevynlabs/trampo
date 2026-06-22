@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { trpc } from '../../src/lib/trpc';
 import { clearToken } from '../../src/lib/trpc';
 
@@ -18,6 +19,21 @@ export default function ProfileScreen() {
 
   const isTasker = user?.role === 'TASKER' || user?.role === 'BOTH';
   const kycStatus = user?.taskerProfile?.kycStatus;
+
+  const becomeTasker = trpc.profiles.becomeTasker.useMutation({
+    onSuccess: () => {
+      utils.profiles.getMe.invalidate();
+      Alert.alert(
+        'Bem-vindo, profissional! 🎉',
+        'Agora configure suas categorias e envie seus documentos para começar a pegar trampos.',
+        [
+          { text: 'Depois', style: 'cancel' },
+          { text: 'Configurar', onPress: () => router.push('/profile/categories') },
+        ]
+      );
+    },
+    onError: (err) => Alert.alert('Erro', err.message),
+  });
 
   const handleLogout = () => {
     Alert.alert('Sair', 'Tem certeza que deseja sair?', [
@@ -38,11 +54,27 @@ export default function ProfileScreen() {
     <View className="flex-1 bg-background">
       {/* Header */}
       <View className="bg-surface px-6 pt-16 pb-6 border-b border-border items-center">
-        <View className="w-20 h-20 bg-accent/10 rounded-full items-center justify-center mb-3">
-          <Text className="font-display text-3xl text-accent font-bold">
+        <LinearGradient
+          colors={['#001B48', '#018ABE']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: 9999,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 12,
+            shadowColor: '#018ABE',
+            shadowOpacity: 0.4,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 6 },
+          }}
+        >
+          <Text className="font-display text-3xl text-white font-bold">
             {user?.name?.charAt(0).toUpperCase() || '?'}
           </Text>
-        </View>
+        </LinearGradient>
         <Text className="font-display text-xl font-bold text-ink">
           {user?.name || 'Usuário'}
         </Text>
@@ -63,7 +95,7 @@ export default function ProfileScreen() {
 
         {isTasker && user?.taskerProfile?.rating && (
           <View className="flex-row items-center mt-2">
-            <Ionicons name="star" size={16} color="#EA580C" />
+            <Ionicons name="star" size={16} color="#018ABE" />
             <Text className="text-ink-soft font-medium ml-1">
               {user.taskerProfile.rating.toFixed(1)}
             </Text>
@@ -75,6 +107,33 @@ export default function ProfileScreen() {
         className="flex-1"
         contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
       >
+        {/* Become a tasker CTA */}
+        {user && !isTasker && (
+          <Pressable
+            onPress={() => becomeTasker.mutate()}
+            disabled={becomeTasker.isPending}
+            className="mb-6 rounded-card overflow-hidden"
+          >
+            <LinearGradient
+              colors={['#02457A', '#018ABE']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ padding: 20, flexDirection: 'row', alignItems: 'center' }}
+            >
+              <View className="w-12 h-12 rounded-full items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.18)' }}>
+                <Ionicons name="briefcase-outline" size={24} color="#fff" />
+              </View>
+              <View className="flex-1 ml-3">
+                <Text className="text-white font-bold text-base">Quero oferecer serviços</Text>
+                <Text className="text-white/80 text-sm mt-0.5">
+                  Vire profissional e ganhe fazendo trampos
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={22} color="#fff" />
+            </LinearGradient>
+          </Pressable>
+        )}
+
         {/* Menu items */}
         <View className="bg-surface rounded-card border border-border overflow-hidden mb-6">
           <MenuItem
@@ -140,7 +199,7 @@ export default function ProfileScreen() {
           onPress={handleLogout}
           className="bg-surface rounded-card border border-danger/20 p-4 flex-row items-center justify-center"
         >
-          <Ionicons name="log-out-outline" size={20} color="#DC2626" />
+          <Ionicons name="log-out-outline" size={20} color="#E11D48" />
           <Text className="text-danger font-medium ml-2">Sair da conta</Text>
         </Pressable>
       </ScrollView>
@@ -162,9 +221,9 @@ function MenuItem({
       onPress={onPress}
       className="flex-row items-center p-4 border-b border-border last:border-b-0"
     >
-      <Ionicons name={icon} size={22} color="#52525B" />
+      <Ionicons name={icon} size={22} color="#5B7A91" />
       <Text className="flex-1 text-ink ml-3">{label}</Text>
-      <Ionicons name="chevron-forward" size={20} color="#A1A1AA" />
+      <Ionicons name="chevron-forward" size={20} color="#94B2C4" />
     </Pressable>
   );
 }

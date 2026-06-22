@@ -129,7 +129,7 @@ export default function ChatScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="arrow-back" size={24} color="#18181B" />
+              <Ionicons name="arrow-back" size={24} color="#001B48" />
             </Pressable>
           ),
         }}
@@ -147,11 +147,11 @@ export default function ChatScreen() {
         >
           {isLoading ? (
             <View className="items-center py-8">
-              <ActivityIndicator color="#2563EB" />
+              <ActivityIndicator color="#018ABE" />
             </View>
           ) : localMessages.length === 0 ? (
             <View className="items-center py-8">
-              <Ionicons name="chatbubbles-outline" size={48} color="#A1A1AA" />
+              <Ionicons name="chatbubbles-outline" size={48} color="#94B2C4" />
               <Text className="text-ink-muted mt-4 text-center">
                 Nenhuma mensagem ainda.{'\n'}Comece a conversa!
               </Text>
@@ -217,7 +217,7 @@ export default function ChatScreen() {
                 <Ionicons
                   name="send"
                   size={20}
-                  color={message.trim() ? '#fff' : '#A1A1AA'}
+                  color={message.trim() ? '#fff' : '#94B2C4'}
                 />
               )}
             </Pressable>

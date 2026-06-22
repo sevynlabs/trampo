@@ -122,7 +122,7 @@ export default function OtpScreen() {
 
         {verifyOtp.isPending && (
           <View className="items-center mb-4">
-            <ActivityIndicator color="#2563EB" />
+            <ActivityIndicator color="#018ABE" />
           </View>
         )}
 
