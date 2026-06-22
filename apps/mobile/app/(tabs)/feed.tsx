@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { trpc } from '../../src/lib/trpc';
 import { formatCurrency } from '../../src/lib/format';
+import { EmptyState, EmptyTasksIllustration } from '../../src/components/illustrations';
 
 function formatDistance(meters: number) {
   if (meters < 1000) return `${Math.round(meters)}m`;
@@ -146,15 +147,11 @@ export default function FeedScreen() {
             <ActivityIndicator color="#018ABE" />
           </View>
         ) : !tasks?.tasks?.length ? (
-          <View className="bg-surface rounded-card p-8 items-center">
-            <Ionicons name="search-outline" size={48} color="#94B2C4" />
-            <Text className="text-ink font-bold mt-4">
-              Nenhum serviço encontrado
-            </Text>
-            <Text className="text-ink-muted text-center mt-2">
-              Não há serviços disponíveis na sua região agora. Tente novamente mais tarde.
-            </Text>
-          </View>
+          <EmptyState
+            illustration={EmptyTasksIllustration}
+            title="Nenhum trampo por perto"
+            subtitle="Não há serviços disponíveis na sua região agora. Tente de novo mais tarde."
+          />
         ) : (
           <View className="gap-3">
             {tasks.tasks.map((task) => (

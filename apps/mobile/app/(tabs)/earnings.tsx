@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
 import { useState } from 'react';
 import { formatCurrency } from '../../src/lib/format';
+import { EmptyState, EmptyEarningsIllustration } from '../../src/components/illustrations';
 
 export default function EarningsScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -85,15 +86,15 @@ export default function EarningsScreen() {
           Histórico
         </Text>
 
-        <View className="bg-surface rounded-card border border-border overflow-hidden">
-          {!earnings?.payments?.length ? (
-            <View className="p-8 items-center">
-              <Ionicons name="receipt-outline" size={48} color="#94B2C4" />
-              <Text className="text-ink-muted mt-4 text-center">
-                Nenhuma transação ainda
-              </Text>
-            </View>
-          ) : (
+        {!earnings?.payments?.length ? (
+          <EmptyState
+            illustration={EmptyEarningsIllustration}
+            title="Sem ganhos ainda"
+            subtitle="Conclua trampos para ver seus pagamentos aparecerem aqui."
+          />
+        ) : (
+          <View className="bg-surface rounded-card border border-border overflow-hidden">
+            {
             earnings.payments.map((tx, i) => (
               <View
                 key={tx.id}
@@ -128,9 +129,9 @@ export default function EarningsScreen() {
                   +{formatCurrency(tx.amount)}
                 </Text>
               </View>
-            ))
-          )}
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );

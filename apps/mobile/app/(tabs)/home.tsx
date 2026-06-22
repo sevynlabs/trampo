@@ -3,6 +3,8 @@ import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
 import { formatCurrency } from '../../src/lib/format';
+import { GradientButton } from '../../src/components/GradientButton';
+import { EmptyState, EmptyTasksIllustration } from '../../src/components/illustrations';
 import { useState } from 'react';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -84,17 +86,17 @@ export default function HomeScreen() {
         </View>
 
         {tasks?.length === 0 ? (
-          <View className="bg-surface rounded-card p-8 items-center">
-            <Ionicons name="clipboard-outline" size={48} color="#94B2C4" />
-            <Text className="text-ink-muted mt-4 text-center">
-              Você ainda não criou nenhum serviço
-            </Text>
-            <Link href="/task/create" asChild>
-              <Pressable className="mt-4 bg-accent px-6 py-3 rounded-button">
-                <Text className="text-white font-bold">Criar primeiro serviço</Text>
-              </Pressable>
-            </Link>
-          </View>
+          <EmptyState
+            illustration={EmptyTasksIllustration}
+            title="Você ainda não criou trampos"
+            subtitle="Crie seu primeiro serviço e encontre profissionais perto de você."
+          >
+            <GradientButton
+              label="Criar primeiro trampo"
+              icon="add"
+              onPress={() => router.push('/task/create')}
+            />
+          </EmptyState>
         ) : (
           <View className="gap-3">
             {tasks?.map((task) => {

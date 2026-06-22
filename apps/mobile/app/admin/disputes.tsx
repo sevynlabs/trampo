@@ -11,6 +11,7 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
 import { formatCurrency } from '../../src/lib/format';
+import { EmptyState, AllClearIllustration } from '../../src/components/illustrations';
 
 export default function AdminDisputesScreen() {
   const router = useRouter();
@@ -88,10 +89,11 @@ export default function AdminDisputesScreen() {
         )}
 
         {data && data.length === 0 && (
-          <View className="py-20 items-center">
-            <Ionicons name="checkmark-circle-outline" size={48} color="#0E9F6E" />
-            <Text className="text-ink-muted mt-3">Nenhuma disputa aberta 🎉</Text>
-          </View>
+          <EmptyState
+            illustration={AllClearIllustration}
+            title="Tudo certo por aqui"
+            subtitle="Nenhuma disputa aberta no momento."
+          />
         )}
 
         {data?.map((dispute) => {
