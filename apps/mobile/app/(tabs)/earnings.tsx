@@ -4,6 +4,7 @@ import { trpc } from '../../src/lib/trpc';
 import { useState } from 'react';
 import { formatCurrency } from '../../src/lib/format';
 import { EmptyState, EmptyEarningsIllustration } from '../../src/components/illustrations';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function EarningsScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -96,8 +97,9 @@ export default function EarningsScreen() {
           <View className="bg-surface rounded-card border border-border overflow-hidden">
             {
             earnings.payments.map((tx, i) => (
-              <View
+              <Animated.View
                 key={tx.id}
+                entering={FadeInDown.delay(Math.min(i, 8) * 50).duration(380)}
                 className={`flex-row items-center p-4 ${
                   i > 0 ? 'border-t border-border' : ''
                 }`}
@@ -128,7 +130,7 @@ export default function EarningsScreen() {
                 >
                   +{formatCurrency(tx.amount)}
                 </Text>
-              </View>
+              </Animated.View>
             ))}
           </View>
         )}

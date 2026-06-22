@@ -5,6 +5,7 @@ import { trpc } from '../../src/lib/trpc';
 import { formatCurrency } from '../../src/lib/format';
 import { GradientButton } from '../../src/components/GradientButton';
 import { EmptyState, EmptyTasksIllustration } from '../../src/components/illustrations';
+import { PressableCard } from '../../src/components/PressableCard';
 import { useState } from 'react';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -99,13 +100,13 @@ export default function HomeScreen() {
           </EmptyState>
         ) : (
           <View className="gap-3">
-            {tasks?.map((task) => {
+            {tasks?.map((task, i) => {
               const status = STATUS_LABELS[task.status] || STATUS_LABELS.OPEN;
               return (
-                <Pressable
+                <PressableCard
                   key={task.id}
+                  index={i}
                   onPress={() => router.push(`/task/${task.id}`)}
-                  className="bg-surface rounded-card p-4 border border-border"
                 >
                   <View className="flex-row justify-between items-start mb-2">
                     <Text className="font-bold text-ink flex-1 mr-2">
@@ -128,7 +129,7 @@ export default function HomeScreen() {
                       {formatCurrency(task.totalValue)}
                     </Text>
                   </View>
-                </Pressable>
+                </PressableCard>
               );
             })}
           </View>
