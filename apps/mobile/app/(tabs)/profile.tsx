@@ -20,6 +20,21 @@ export default function ProfileScreen() {
   const isTasker = user?.role === 'TASKER' || user?.role === 'BOTH';
   const kycStatus = user?.taskerProfile?.kycStatus;
 
+  const becomeTasker = trpc.profiles.becomeTasker.useMutation({
+    onSuccess: () => {
+      utils.profiles.getMe.invalidate();
+      Alert.alert(
+        'Bem-vindo, profissional! 🎉',
+        'Agora configure suas categorias e envie seus documentos para começar a pegar trampos.',
+        [
+          { text: 'Depois', style: 'cancel' },
+          { text: 'Configurar', onPress: () => router.push('/profile/categories') },
+        ]
+      );
+    },
+    onError: (err) => Alert.alert('Erro', err.message),
+  });
+
   const handleLogout = () => {
     Alert.alert('Sair', 'Tem certeza que deseja sair?', [
       { text: 'Cancelar', style: 'cancel' },
@@ -92,6 +107,33 @@ export default function ProfileScreen() {
         className="flex-1"
         contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
       >
+        {/* Become a tasker CTA */}
+        {user && !isTasker && (
+          <Pressable
+            onPress={() => becomeTasker.mutate()}
+            disabled={becomeTasker.isPending}
+            className="mb-6 rounded-card overflow-hidden"
+          >
+            <LinearGradient
+              colors={['#02457A', '#018ABE']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ padding: 20, flexDirection: 'row', alignItems: 'center' }}
+            >
+              <View className="w-12 h-12 rounded-full items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.18)' }}>
+                <Ionicons name="briefcase-outline" size={24} color="#fff" />
+              </View>
+              <View className="flex-1 ml-3">
+                <Text className="text-white font-bold text-base">Quero oferecer serviços</Text>
+                <Text className="text-white/80 text-sm mt-0.5">
+                  Vire profissional e ganhe fazendo trampos
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={22} color="#fff" />
+            </LinearGradient>
+          </Pressable>
+        )}
+
         {/* Menu items */}
         <View className="bg-surface rounded-card border border-border overflow-hidden mb-6">
           <MenuItem

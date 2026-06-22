@@ -99,6 +99,35 @@ export const profilesRouter = router({
     }),
 
   /**
+   * Become a tasker: upgrade the role to also offer services and create the
+   * tasker profile if missing. Idempotent. The user keeps their client role.
+   */
+  becomeTasker: protectedProcedure.mutation(async ({ ctx }) => {
+    const profile = await prisma.taskerProfile.findUnique({
+      where: { userId: ctx.user.id },
+    });
+    const alreadyTasker = ctx.user.role.includes('TASKER');
+
+    if (alreadyTasker && profile) {
+      return { success: true, alreadyTasker: true };
+    }
+
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      if (!alreadyTasker) {
+        await tx.user.update({
+          where: { id: ctx.user.id },
+          data: { role: ctx.user.role === 'CLIENT' ? 'BOTH' : 'TASKER' },
+        });
+      }
+      if (!profile) {
+        await tx.taskerProfile.create({ data: { userId: ctx.user.id } });
+      }
+    });
+
+    return { success: true, alreadyTasker: false };
+  }),
+
+  /**
    * Update tasker categories
    */
   updateCategories: protectedProcedure
