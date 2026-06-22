@@ -2,6 +2,7 @@ import { View, Text, ScrollView, Pressable, RefreshControl } from 'react-native'
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
+import { formatCurrency } from '../../src/lib/format';
 import { useState } from 'react';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -13,10 +14,6 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   CANCELLED: { label: 'Cancelado', color: 'bg-danger' },
   DISPUTED: { label: 'Em disputa', color: 'bg-danger' },
 };
-
-function formatCurrency(centavos: number) {
-  return `R$ ${(centavos / 100).toFixed(2).replace('.', ',')}`;
-}
 
 export default function HomeScreen() {
   const router = useRouter();

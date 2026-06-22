@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../../trpc';
-import { registerProfileInput } from '@trampo/contracts';
-import { prisma } from '@trampo/db';
+import { registerProfileInput, updateProfileInput } from '@trampo/contracts';
+import { prisma, Prisma } from '@trampo/db';
+import { storeEncryptedCpf } from '../../lib/pii';
+import { isAdminUser } from '../../lib/admin';
 import crypto from 'crypto';
 
 export const profilesRouter = router({
@@ -22,7 +24,9 @@ export const profilesRouter = router({
       },
     });
 
-    return user;
+    if (!user) return null;
+
+    return { ...user, isAdmin: isAdminUser(user.id) };
   }),
 
   /**
@@ -48,26 +52,50 @@ export const profilesRouter = router({
         throw new Error('CPF já cadastrado');
       }
 
-      // TODO: Encrypt CPF with pgcrypto before storing
-      // For now, store hash only (we'll add encryption later)
+      // Whether the user was already a tasker BEFORE this update (decides if we
+      // need to create a TaskerProfile). Must read the pre-update role.
+      const wasTasker = ctx.user.role.includes('TASKER');
+
+      // Persist the profile, the encrypted CPF and the tasker profile atomically:
+      // if CPF encryption fails we must not leave a half-written profile (which
+      // would break payments later via getDecryptedCpf).
+      const user = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const updated = await tx.user.update({
+          where: { id: ctx.user.id },
+          data: { name, email, cpfHash, role },
+        });
+
+        // Encrypt CPF at rest with pgcrypto (stored in users.cpf_encrypted).
+        // The plaintext CPF is never persisted — only the hash (for lookups)
+        // and the encrypted blob (for KYC/verification).
+        await storeEncryptedCpf(ctx.user.id, cpf, tx);
+
+        // Create tasker profile if becoming tasker
+        if ((role === 'TASKER' || role === 'BOTH') && !wasTasker) {
+          await tx.taskerProfile.create({ data: { userId: ctx.user.id } });
+        }
+
+        return updated;
+      });
+
+      return user;
+    }),
+
+  /**
+   * Update basic profile fields (name, email). CPF is immutable.
+   */
+  updateBasicProfile: protectedProcedure
+    .input(updateProfileInput)
+    .mutation(async ({ ctx, input }) => {
       const user = await prisma.user.update({
         where: { id: ctx.user.id },
         data: {
-          name,
-          email,
-          cpfHash,
-          role,
+          name: input.name,
+          email: input.email ? input.email : null,
         },
       });
 
-      // Create tasker profile if becoming tasker
-      if ((role === 'TASKER' || role === 'BOTH') && !user.role.includes('TASKER')) {
-        await prisma.taskerProfile.create({
-          data: { userId: ctx.user.id },
-        });
-      }
-
-      return user;
+      return { id: user.id, name: user.name, email: user.email };
     }),
 
   /**

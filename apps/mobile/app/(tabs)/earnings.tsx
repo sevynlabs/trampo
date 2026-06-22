@@ -2,10 +2,7 @@ import { View, Text, ScrollView, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
 import { useState } from 'react';
-
-function formatCurrency(centavos: number) {
-  return `R$ ${(centavos / 100).toFixed(2).replace('.', ',')}`;
-}
+import { formatCurrency } from '../../src/lib/format';
 
 export default function EarningsScreen() {
   const [refreshing, setRefreshing] = useState(false);

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { trpc } from '../lib/trpc';
 
 // Configure notification behavior
@@ -17,8 +18,8 @@ Notifications.setNotificationHandler({
 
 export function usePushNotifications() {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
-  const notificationListener = useRef<Notifications.EventSubscription>();
-  const responseListener = useRef<Notifications.EventSubscription>();
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   const registerMutation = trpc.profiles.registerPushToken.useMutation();
 
@@ -46,12 +47,8 @@ export function usePushNotifications() {
     });
 
     return () => {
-      if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
-      }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
-      }
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
     };
   }, []);
 
@@ -79,11 +76,19 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
     return null;
   }
 
+  // Resolve the EAS project ID from app config (app.config.js -> extra.eas.projectId)
+  const projectId =
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    Constants.easConfig?.projectId;
+
+  if (!projectId) {
+    console.warn('[PUSH] Missing EAS projectId (set EXPO_PUBLIC_EAS_PROJECT_ID); skipping token');
+    return null;
+  }
+
   // Get Expo push token
   try {
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: 'your-project-id', // Replace with your Expo project ID
-    });
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     console.log('[PUSH] Token:', tokenData.data);
     return tokenData.data;
   } catch (error) {
@@ -92,7 +97,7 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
   }
 }
 
-function handleNotificationTap(data: Record<string, unknown>) {
+function handleNotificationTap(data: Record<string, unknown> | undefined) {
   // Navigation will be handled by the app based on notification type
   // This is a placeholder - integrate with your navigation
   const type = data?.type as string;

@@ -11,10 +11,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { trpc } from '../../src/lib/trpc';
-
-function formatCurrency(centavos: number) {
-  return `R$ ${(centavos / 100).toFixed(2).replace('.', ',')}`;
-}
+import { formatCurrency } from '../../src/lib/format';
 
 function formatDistance(meters: number) {
   if (meters < 1000) return `${Math.round(meters)}m`;

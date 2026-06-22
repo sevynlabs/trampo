@@ -80,19 +80,19 @@ export default function ProfileScreen() {
           <MenuItem
             icon="person-outline"
             label="Editar perfil"
-            onPress={() => {}}
+            onPress={() => router.push('/profile/edit')}
           />
           {isTasker && (
             <>
               <MenuItem
                 icon="grid-outline"
                 label="Categorias de serviço"
-                onPress={() => {}}
+                onPress={() => router.push('/profile/categories')}
               />
               <MenuItem
                 icon="location-outline"
                 label="Área de atuação"
-                onPress={() => {}}
+                onPress={() => router.push('/profile/service-area')}
               />
               <MenuItem
                 icon="document-outline"
@@ -103,21 +103,31 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {user?.isAdmin && (
+          <View className="bg-surface rounded-card border border-border overflow-hidden mb-6">
+            <MenuItem
+              icon="shield-checkmark-outline"
+              label="Disputas (admin)"
+              onPress={() => router.push('/admin/disputes')}
+            />
+          </View>
+        )}
+
         <View className="bg-surface rounded-card border border-border overflow-hidden mb-6">
           <MenuItem
             icon="help-circle-outline"
             label="Ajuda e suporte"
-            onPress={() => {}}
+            onPress={() => router.push('/info/help')}
           />
           <MenuItem
             icon="document-text-outline"
             label="Termos de uso"
-            onPress={() => {}}
+            onPress={() => router.push('/info/terms')}
           />
           <MenuItem
             icon="shield-outline"
             label="Política de privacidade"
-            onPress={() => {}}
+            onPress={() => router.push('/info/privacy')}
           />
         </View>
 

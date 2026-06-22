@@ -75,7 +75,7 @@ export const reviewsRouter = router({
       // Send push notification to reviewee
       sendPushNotification(
         revieweeId,
-        notifications.newReview(rating, ctx.user.name)
+        notifications.newReview(rating, ctx.user.name ?? 'Alguém')
       ).catch((err) => console.error('[REVIEWS] Push notification failed:', err));
 
       // Update tasker profile rating (if reviewee is tasker)

@@ -66,7 +66,7 @@ export const matchingRouter = router({
       if (result) {
         sendPushNotification(
           result.client.id,
-          notifications.taskAccepted(result.title, ctx.user.name)
+          notifications.taskAccepted(result.title, ctx.user.name ?? 'Um profissional')
         ).catch((err) => console.error('[MATCHING] Push notification failed:', err));
       }
 
@@ -158,7 +158,7 @@ export const matchingRouter = router({
       // Send push notification to client
       sendPushNotification(
         task.client.id,
-        notifications.taskCompleted(task.title, ctx.user.name)
+        notifications.taskCompleted(task.title, ctx.user.name ?? 'Um profissional')
       ).catch((err) => console.error('[MATCHING] Push notification failed:', err));
 
       return { success: true };
@@ -207,6 +207,24 @@ export const matchingRouter = router({
         new Date()
       );
 
+      // Process the Asaas refund BEFORE recording the cancellation, so we never
+      // mark the payment as REFUNDED for money that didn't actually move back.
+      // If the refund throws, the whole cancellation aborts and can be retried.
+      const refundConfirmed =
+        !!task.payment && task.payment.status === 'CONFIRMED';
+      if (refundConfirmed && env.NODE_ENV === 'production') {
+        const { refundPayment } = await import('../../integrations/asaas');
+        const refundAmount = penalty > 0 ? task.payment!.amount - penalty : undefined;
+
+        await refundPayment({
+          chargeId: task.payment!.asaasPaymentId!,
+          amount: refundAmount, // undefined = full refund
+          description: `Cancelamento: ${input.reason || 'Sem motivo informado'}`,
+        });
+
+        console.log(`[MATCHING] Refunded payment for task ${input.taskId}`);
+      }
+
       await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Update task
         await tx.task.update({
@@ -228,36 +246,17 @@ export const matchingRouter = router({
           },
         });
 
-        // Update payment status
+        // Update payment status (only meaningful once a refund was due/processed)
         if (task.payment) {
           await tx.payment.update({
             where: { id: task.payment.id },
             data: {
-              status: penalty > 0 ? 'REFUNDED' : 'REFUNDED',
+              status: 'REFUNDED',
               refundedAt: new Date(),
             },
           });
         }
       });
-
-      // Process refund via Asaas (if payment exists and was confirmed)
-      if (task.payment && task.payment.status === 'CONFIRMED' && env.NODE_ENV === 'production') {
-        try {
-          const { refundPayment } = await import('../../integrations/asaas');
-          const refundAmount = penalty > 0 ? task.payment.amount - penalty : undefined;
-
-          await refundPayment({
-            chargeId: task.payment.asaasPaymentId!,
-            amount: refundAmount, // undefined = full refund
-            description: `Cancelamento: ${input.reason || 'Sem motivo informado'}`,
-          });
-
-          console.log(`[MATCHING] Refunded payment for task ${input.taskId}`);
-        } catch (error) {
-          console.error('[MATCHING] Failed to process refund:', error);
-          // Don't throw - cancellation is already recorded
-        }
-      }
 
       console.log(`[MATCHING] Task ${input.taskId} cancelled by ${ctx.user.id}, penalty: ${penalty}`);
 

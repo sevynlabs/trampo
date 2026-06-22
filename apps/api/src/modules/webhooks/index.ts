@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { prisma } from '@trampo/db';
 import { env } from '../../lib/env';
 import { scheduleJob } from '../../lib/redis';
+import { sendPushNotification, notifications } from '../../integrations/push';
 
 // Escrow release delay: 1 hour
 const ESCROW_RELEASE_DELAY_MS = 60 * 60 * 1000;
@@ -99,7 +100,7 @@ async function handlePaymentConfirmed(paymentData: {
   // Find payment by ID
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
-    include: { task: true },
+    include: { task: { include: { assignment: true } } },
   });
 
   if (!payment) {
@@ -124,8 +125,14 @@ async function handlePaymentConfirmed(paymentData: {
 
   console.log(`[WEBHOOK] Payment ${paymentId} confirmed for task ${payment.taskId}`);
 
-  // TODO: Send push notification to tasker that payment is confirmed
-  // They can now start the task knowing payment is secured
+  // Notify the tasker that payment is secured — they can now start the task
+  const taskerId = payment.task.assignment?.taskerId;
+  if (taskerId) {
+    sendPushNotification(
+      taskerId,
+      notifications.paymentConfirmed(payment.task.title)
+    ).catch((err) => console.error('[WEBHOOK] Push notification failed:', err));
+  }
 }
 
 /**
@@ -247,37 +254,52 @@ export async function processEscrowRelease(paymentId: string): Promise<void> {
     return;
   }
 
-  // In production, transfer to tasker via Asaas
-  // For now, just update status
-  if (env.NODE_ENV === 'production' && taskerProfile.asaasWalletId) {
-    const { transferToTasker } = await import('../../integrations/asaas');
+  // In production, transfer to tasker via Asaas. Idempotent: skips the transfer
+  // if we already recorded one, or if Asaas already has one for this payment.
+  let transferId: string | undefined = payment.asaasTransferId ?? undefined;
+  if (env.NODE_ENV === 'production' && taskerProfile.asaasWalletId && !transferId) {
+    const { ensureTransferToTasker } = await import('../../integrations/asaas');
 
-    await transferToTasker({
+    const transfer = await ensureTransferToTasker({
       walletId: taskerProfile.asaasWalletId,
       amount: payment.taskerAmount,
       description: `TRAMPO: ${payment.task.title}`,
       externalReference: paymentId,
     });
+    transferId = transfer.id;
   }
 
-  // Update payment status
-  await prisma.payment.update({
-    where: { id: paymentId },
-    data: {
-      status: 'RELEASED',
-      releasedAt: new Date(),
-    },
+  // Atomically flip HELD -> RELEASED and update the task in one transaction.
+  // The optimistic `where status: 'HELD'` guard makes a concurrent fire (e.g.
+  // a second processor, or a dispute that froze the payment) a no-op instead
+  // of a double release.
+  const released = await prisma.$transaction(async (tx) => {
+    const result = await tx.payment.updateMany({
+      where: { id: paymentId, status: 'HELD' },
+      data: { status: 'RELEASED', releasedAt: new Date(), asaasTransferId: transferId },
+    });
+    if (result.count === 0) return false;
+
+    await tx.task.update({
+      where: { id: payment.taskId },
+      data: { status: 'RELEASED' },
+    });
+    return true;
   });
 
-  // Update task status
-  await prisma.task.update({
-    where: { id: payment.taskId },
-    data: {
-      status: 'RELEASED',
-    },
-  });
+  if (!released) {
+    console.log(`[ESCROW] Payment ${paymentId} no longer HELD, skipping release`);
+    return;
+  }
 
   console.log(`[ESCROW] Released payment ${paymentId} - R$ ${payment.taskerAmount / 100} to tasker`);
 
-  // TODO: Send push notification to tasker that payment was released
+  // Notify the tasker that the escrowed payment has been released to them
+  const taskerId = payment.task.assignment?.taskerId;
+  if (taskerId) {
+    sendPushNotification(
+      taskerId,
+      notifications.paymentReleased(payment.taskerAmount, payment.task.title)
+    ).catch((err) => console.error('[ESCROW] Push notification failed:', err));
+  }
 }

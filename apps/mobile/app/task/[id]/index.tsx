@@ -2,6 +2,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'rea
 import { useRouter, useLocalSearchParams, Stack, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../../src/lib/trpc';
+import { formatCurrency } from '../../../src/lib/format';
 
 const STATUS_CONFIG: Record<
   string,
@@ -16,9 +17,60 @@ const STATUS_CONFIG: Record<
   DISPUTED: { label: 'Em disputa', color: 'text-danger', bgColor: 'bg-danger/10' },
 };
 
-function formatCurrency(centavos: number) {
-  return `R$ ${(centavos / 100).toFixed(2).replace('.', ',')}`;
-}
+const PAYMENT_STATUS_CONFIG: Record<
+  string,
+  { label: string; description: string; color: string; bgColor: string; icon: keyof typeof Ionicons.glyphMap }
+> = {
+  PENDING: {
+    label: 'Aguardando pagamento',
+    description: 'O cliente ainda não pagou o Pix.',
+    color: 'text-warning',
+    bgColor: 'bg-warning/10',
+    icon: 'time-outline',
+  },
+  CONFIRMED: {
+    label: 'Pagamento confirmado',
+    description: 'O valor está garantido e protegido.',
+    color: 'text-success',
+    bgColor: 'bg-success/10',
+    icon: 'shield-checkmark-outline',
+  },
+  HELD: {
+    label: 'Pagamento retido',
+    description: 'Será liberado ao profissional após a conclusão.',
+    color: 'text-accent',
+    bgColor: 'bg-accent/10',
+    icon: 'lock-closed-outline',
+  },
+  RELEASED: {
+    label: 'Pagamento liberado',
+    description: 'O valor foi liberado ao profissional.',
+    color: 'text-success',
+    bgColor: 'bg-success/10',
+    icon: 'checkmark-done-outline',
+  },
+  REFUNDED: {
+    label: 'Reembolsado',
+    description: 'O valor foi devolvido ao cliente.',
+    color: 'text-ink-muted',
+    bgColor: 'bg-border/40',
+    icon: 'arrow-undo-outline',
+  },
+  DISPUTED: {
+    label: 'Em disputa',
+    description: 'O pagamento está retido até a resolução.',
+    color: 'text-danger',
+    bgColor: 'bg-danger/10',
+    icon: 'alert-circle-outline',
+  },
+  EXPIRED: {
+    label: 'Pix expirado',
+    description: 'A cobrança expirou sem pagamento.',
+    color: 'text-danger',
+    bgColor: 'bg-danger/10',
+    icon: 'close-circle-outline',
+  },
+};
 
 export default function TaskDetailScreen() {
   const router = useRouter();
@@ -55,6 +107,13 @@ export default function TaskDetailScreen() {
     onError: (err) => Alert.alert('Erro', err.message),
   });
 
+  // Payment status — only fetched for parties once a charge can exist.
+  const isParty = !!me && (task?.clientId === me.id || task?.assignment?.taskerId === me.id);
+  const { data: payment } = trpc.payments.getStatus.useQuery(
+    { taskId: id! },
+    { enabled: !!id && !!task && isParty && task.status !== 'OPEN' }
+  );
+
   if (isLoading || !task) {
     return (
       <View className="flex-1 bg-background items-center justify-center">
@@ -67,12 +126,18 @@ export default function TaskDetailScreen() {
   const isTasker = task.assignment?.taskerId === me?.id;
   const status = STATUS_CONFIG[task.status] || STATUS_CONFIG.OPEN;
 
+  const canPay =
+    isClient &&
+    task.status === 'ACCEPTED' &&
+    (!payment || payment.status === 'PENDING' || payment.status === 'EXPIRED');
   const canAccept = !isClient && task.status === 'OPEN' && me?.role !== 'CLIENT';
   const canStart = isTasker && task.status === 'ACCEPTED';
   const canComplete = isTasker && task.status === 'IN_PROGRESS';
   const canCancel = (isClient || isTasker) && ['OPEN', 'ACCEPTED'].includes(task.status);
   const canChat = (isClient || isTasker) && task.status !== 'OPEN' && task.status !== 'CANCELLED';
   const canReview = (isClient || isTasker) && ['COMPLETED', 'RELEASED'].includes(task.status);
+  const canDispute =
+    (isClient || isTasker) && ['IN_PROGRESS', 'COMPLETED'].includes(task.status);
 
   const handleAccept = () => {
     Alert.alert(
@@ -182,6 +247,29 @@ export default function TaskDetailScreen() {
             )}
           </View>
 
+          {/* Payment status */}
+          {payment && PAYMENT_STATUS_CONFIG[payment.status] && (
+            <View
+              className={`rounded-card p-4 mb-6 ${PAYMENT_STATUS_CONFIG[payment.status].bgColor}`}
+            >
+              <View className="flex-row items-center">
+                <Ionicons
+                  name={PAYMENT_STATUS_CONFIG[payment.status].icon}
+                  size={22}
+                  color="#52525B"
+                />
+                <View className="flex-1 ml-3">
+                  <Text className={`font-bold ${PAYMENT_STATUS_CONFIG[payment.status].color}`}>
+                    {PAYMENT_STATUS_CONFIG[payment.status].label}
+                  </Text>
+                  <Text className="text-ink-muted text-sm mt-0.5">
+                    {PAYMENT_STATUS_CONFIG[payment.status].description}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
           {/* Price breakdown */}
           <View className="bg-surface rounded-card border border-border p-4">
             <Text className="text-ink font-medium mb-3">Valores</Text>
@@ -219,6 +307,15 @@ export default function TaskDetailScreen() {
               <Pressable className="flex-1 bg-border py-4 rounded-button items-center flex-row justify-center">
                 <Ionicons name="chatbubble-outline" size={20} color="#52525B" />
                 <Text className="text-ink-soft font-bold ml-2">Chat</Text>
+              </Pressable>
+            </Link>
+          )}
+
+          {canPay && (
+            <Link href={`/task/${task.id}/payment`} asChild>
+              <Pressable className="flex-1 bg-accent py-4 rounded-button items-center flex-row justify-center">
+                <Ionicons name="qr-code-outline" size={20} color="#fff" />
+                <Text className="text-white font-bold ml-2">Pagar com Pix</Text>
               </Pressable>
             </Link>
           )}
@@ -284,6 +381,15 @@ export default function TaskDetailScreen() {
             </Link>
           )}
         </View>
+
+        {canDispute && (
+          <Link href={`/task/${task.id}/dispute`} asChild>
+            <Pressable className="mt-3 py-2 items-center flex-row justify-center">
+              <Ionicons name="alert-circle-outline" size={16} color="#DC2626" />
+              <Text className="text-danger text-sm ml-1">Tive um problema com este trampo</Text>
+            </Pressable>
+          </Link>
+        )}
       </View>
     </>
   );

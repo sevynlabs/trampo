@@ -8,6 +8,7 @@ import { createContext } from './trpc';
 import { env } from './lib/env';
 import { webhookHandler } from './modules/webhooks';
 import { startEscrowProcessor } from './jobs/escrow-processor';
+import { startReconciler } from './jobs/reconciler';
 
 // Initialize Hono app
 const app = new Hono();
@@ -97,6 +98,7 @@ serve({
 
 // Start background job processors
 startEscrowProcessor();
+startReconciler();
 
 // Export for testing
 export { app, appRouter };
