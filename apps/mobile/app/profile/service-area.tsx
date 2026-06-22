@@ -10,6 +10,7 @@ import {
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
+import { GradientButton } from '../../src/components/GradientButton';
 
 // Preset radii in meters (API accepts 1000–50000).
 const RADIUS_OPTIONS = [
@@ -110,19 +111,12 @@ export default function ServiceAreaScreen() {
 
           {/* Save bar */}
           <View className="bg-surface border-t border-border p-4 pb-8">
-            <Pressable
+            <GradientButton
+              label="Salvar"
               onPress={() => radius && save.mutate({ radiusMeters: radius })}
-              disabled={save.isPending || !radius}
-              className={`py-4 rounded-button items-center ${
-                radius ? 'bg-accent' : 'bg-border'
-              }`}
-            >
-              {save.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold text-lg">Salvar</Text>
-              )}
-            </Pressable>
+              disabled={!radius}
+              loading={save.isPending}
+            />
           </View>
         </View>
       )}

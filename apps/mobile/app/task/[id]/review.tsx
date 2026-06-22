@@ -11,6 +11,7 @@ import {
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../../src/lib/trpc';
+import { GradientButton } from '../../../src/components/GradientButton';
 
 const TAGS = [
   'Pontual',
@@ -143,19 +144,13 @@ export default function ReviewScreen() {
         />
 
         {/* Submit */}
-        <Pressable
+        <GradientButton
+          label="Enviar Avaliação"
           onPress={handleSubmit}
-          disabled={submitReview.isPending || rating === 0}
-          className={`p-4 rounded-button items-center ${
-            rating > 0 ? 'bg-accent' : 'bg-border'
-          }`}
-        >
-          {submitReview.isPending ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className="text-white font-bold text-lg">Enviar Avaliação</Text>
-          )}
-        </Pressable>
+          disabled={rating === 0}
+          loading={submitReview.isPending}
+          icon="star"
+        />
       </ScrollView>
     </>
   );

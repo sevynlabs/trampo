@@ -10,6 +10,7 @@ import {
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
+import { GradientButton } from '../../src/components/GradientButton';
 
 export default function ServiceCategoriesScreen() {
   const router = useRouter();
@@ -109,19 +110,11 @@ export default function ServiceCategoriesScreen() {
 
           {/* Save bar */}
           <View className="bg-surface border-t border-border p-4 pb-8">
-            <Pressable
+            <GradientButton
+              label={`Salvar${selected.length > 0 ? ` (${selected.length})` : ''}`}
               onPress={() => save.mutate({ categoryIds: selected })}
-              disabled={save.isPending}
-              className="bg-accent py-4 rounded-button items-center"
-            >
-              {save.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold text-lg">
-                  Salvar {selected.length > 0 ? `(${selected.length})` : ''}
-                </Text>
-              )}
-            </Pressable>
+              loading={save.isPending}
+            />
           </View>
         </View>
       )}

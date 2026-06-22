@@ -12,6 +12,7 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { trpc } from '../src/lib/trpc';
+import { GradientButton } from '../src/components/GradientButton';
 
 const STATUS_CONFIG = {
   PENDING: {
@@ -282,21 +283,13 @@ export default function KYCScreen() {
       {/* Submit Button */}
       {canEdit && (
         <View className="absolute bottom-0 left-0 right-0 bg-surface border-t border-border p-4 pb-8">
-          <Pressable
+          <GradientButton
+            label="Enviar para análise"
             onPress={handleSubmit}
-            disabled={!canSubmit || submit.isPending}
-            className={`w-full py-4 rounded-button items-center ${
-              canSubmit ? 'bg-accent' : 'bg-border'
-            }`}
-          >
-            {submit.isPending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className={`font-bold ${canSubmit ? 'text-white' : 'text-ink-faint'}`}>
-                Enviar para análise
-              </Text>
-            )}
-          </Pressable>
+            disabled={!canSubmit}
+            loading={submit.isPending}
+            icon="cloud-upload-outline"
+          />
         </View>
       )}
     </>

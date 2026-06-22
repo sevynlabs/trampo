@@ -13,6 +13,7 @@ import {
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
+import { GradientButton } from '../../src/components/GradientButton';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -110,21 +111,12 @@ export default function EditProfileScreen() {
             </Text>
 
             {/* Save */}
-            <Pressable
+            <GradientButton
+              label="Salvar alterações"
               onPress={handleSave}
-              disabled={!isValid || updateProfile.isPending}
-              className={`w-full py-4 rounded-button items-center ${
-                isValid ? 'bg-accent' : 'bg-border'
-              }`}
-            >
-              {updateProfile.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className={`font-bold ${isValid ? 'text-white' : 'text-ink-faint'}`}>
-                  Salvar alterações
-                </Text>
-              )}
-            </Pressable>
+              disabled={!isValid}
+              loading={updateProfile.isPending}
+            />
           </ScrollView>
         )}
       </KeyboardAvoidingView>

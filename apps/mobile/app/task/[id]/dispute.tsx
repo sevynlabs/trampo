@@ -11,6 +11,7 @@ import {
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../../src/lib/trpc';
+import { GradientButton } from '../../../src/components/GradientButton';
 
 const MIN_REASON = 10;
 
@@ -94,19 +95,14 @@ export default function DisputeScreen() {
         </Text>
 
         {/* Submit */}
-        <Pressable
+        <GradientButton
+          label="Abrir Disputa"
           onPress={handleSubmit}
-          disabled={openDispute.isPending || !canSubmit}
-          className={`p-4 rounded-button items-center ${
-            canSubmit ? 'bg-red-600' : 'bg-border'
-          }`}
-        >
-          {openDispute.isPending ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className="text-white font-bold text-lg">Abrir Disputa</Text>
-          )}
-        </Pressable>
+          disabled={!canSubmit}
+          loading={openDispute.isPending}
+          variant="danger"
+          icon="alert-circle-outline"
+        />
       </ScrollView>
     </>
   );
