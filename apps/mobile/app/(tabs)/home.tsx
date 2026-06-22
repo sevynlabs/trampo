@@ -34,17 +34,36 @@ export default function HomeScreen() {
   };
 
   const isTasker = user?.role === 'TASKER' || user?.role === 'BOTH';
+  const { data: unread } = trpc.notifications.unreadCount.useQuery(undefined, {
+    enabled: !!user,
+  });
 
   return (
     <View className="flex-1 bg-background">
       {/* Header */}
-      <View className="bg-surface px-6 pt-16 pb-6 border-b border-border">
-        <Text className="font-display text-2xl font-bold text-ink">
-          Olá, {user?.name?.split(' ')[0] || 'Usuário'}
-        </Text>
-        <Text className="text-ink-muted mt-1">
-          {isTasker ? 'O que você quer fazer hoje?' : 'Precisa de ajuda com algo?'}
-        </Text>
+      <View className="bg-surface px-6 pt-16 pb-6 border-b border-border flex-row items-start justify-between">
+        <View className="flex-1">
+          <Text className="font-display text-2xl font-bold text-ink">
+            Olá, {user?.name?.split(' ')[0] || 'Usuário'}
+          </Text>
+          <Text className="text-ink-muted mt-1">
+            {isTasker ? 'O que você quer fazer hoje?' : 'Precisa de ajuda com algo?'}
+          </Text>
+        </View>
+        <Pressable
+          onPress={() => router.push('/notifications')}
+          hitSlop={8}
+          className="w-11 h-11 rounded-full bg-background items-center justify-center"
+        >
+          <Ionicons name="notifications-outline" size={22} color="#001B48" />
+          {!!unread && unread > 0 && (
+            <View className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-danger items-center justify-center">
+              <Text className="text-white text-[10px] font-bold">
+                {unread > 9 ? '9+' : unread}
+              </Text>
+            </View>
+          )}
+        </Pressable>
       </View>
 
       <ScrollView

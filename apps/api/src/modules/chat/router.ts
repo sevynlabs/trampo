@@ -3,7 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../../trpc';
 import { prisma } from '@trampo/db';
 import { broadcastChatMessage } from '../../lib/supabase';
-import { sendPushNotification, notifications } from '../../integrations/push';
+import { notify, notifications } from '../../integrations/push';
 
 export const chatRouter = router({
   /**
@@ -70,7 +70,7 @@ export const chatRouter = router({
 
       // Send push notification to other party
       const recipientId = isClient ? task.assignment!.taskerId : task.clientId;
-      sendPushNotification(
+      notify(
         recipientId,
         notifications.newMessage(message.sender.name ?? 'Alguém', task.title)
       ).catch((err) => console.error('[CHAT] Push notification failed:', err));
