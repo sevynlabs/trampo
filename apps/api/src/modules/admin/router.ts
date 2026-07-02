@@ -337,6 +337,35 @@ export const adminRouter = router({
       return { success: true, role: input.role };
     }),
 
+  // ==========================================================================
+  // KYC
+  // ==========================================================================
+
+  /**
+   * Queue of tasker profiles awaiting KYC review (status SUBMITTED),
+   * oldest submissions first.
+   */
+  listPendingKyc: adminAuthProcedure.query(async () => {
+    const profiles = await prisma.taskerProfile.findMany({
+      where: { kycStatus: 'SUBMITTED' },
+      orderBy: { kycSubmittedAt: 'asc' },
+      select: {
+        id: true,
+        kycSubmittedAt: true,
+        user: { select: { id: true, name: true, phone: true, email: true } },
+      },
+    });
+
+    return profiles.map((p) => ({
+      profileId: p.id,
+      userId: p.user.id,
+      name: p.user.name,
+      phone: p.user.phone,
+      email: p.user.email,
+      submittedAt: p.kycSubmittedAt?.toISOString() ?? null,
+    }));
+  }),
+
   /**
    * Settlement health snapshot for the backoffice.
    */
