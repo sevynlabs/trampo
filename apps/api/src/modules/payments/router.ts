@@ -7,9 +7,11 @@ import {
   findOrCreateCustomer,
   createPixCharge,
   getPixQrCodeBase64,
+  createPixTransfer,
   mockAsaas,
 } from '../../integrations/asaas';
 import { getDecryptedCpf } from '../../lib/pii';
+import { acquireLock, releaseLock } from '../../lib/redis';
 
 const isDev = env.NODE_ENV === 'development';
 
@@ -349,7 +351,7 @@ export const paymentsRouter = router({
         _sum: { taskerAmount: true },
       }),
       prisma.withdrawal.aggregate({
-        where: { taskerProfileId: profile.id, status: { in: ['PENDING', 'PAID'] } },
+        where: { taskerProfileId: profile.id, status: 'PAID' },
         _sum: { amount: true },
       }),
     ]);
@@ -367,6 +369,7 @@ export const paymentsRouter = router({
 
   /**
    * Request a withdrawal of the available balance to a Pix key.
+   * Processes the withdrawal immediately via Asaas Pix transfer.
    */
   requestWithdrawal: protectedProcedure
     .input(
@@ -383,54 +386,119 @@ export const paymentsRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Perfil de profissional necessário' });
       }
 
-      const [released, withdrawals] = await Promise.all([
-        prisma.payment.aggregate({
-          where: { task: { assignment: { taskerId: ctx.user.id } }, status: 'RELEASED' },
-          _sum: { taskerAmount: true },
-        }),
-        prisma.withdrawal.aggregate({
-          where: { taskerProfileId: profile.id, status: { in: ['PENDING', 'PAID'] } },
-          _sum: { amount: true },
-        }),
-      ]);
-      const available = Math.max(
-        0,
-        (released._sum.taskerAmount ?? 0) - (withdrawals._sum.amount ?? 0)
-      );
+      // Acquire lock to prevent concurrent withdrawals
+      const lockKey = `withdrawal:${ctx.user.id}`;
+      const lockAcquired = await acquireLock(lockKey, 30);
 
-      if (input.amount > available) {
+      if (!lockAcquired) {
         throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Valor maior que o saldo disponível',
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Saque já em andamento. Aguarde alguns segundos.',
         });
       }
 
-      // Remember the Pix key for next time.
-      await prisma.taskerProfile.update({
-        where: { id: profile.id },
-        data: { pixKey: input.pixKey },
-      });
+      try {
+        // Check available balance
+        const [released, withdrawals] = await Promise.all([
+          prisma.payment.aggregate({
+            where: { task: { assignment: { taskerId: ctx.user.id } }, status: 'RELEASED' },
+            _sum: { taskerAmount: true },
+          }),
+          prisma.withdrawal.aggregate({
+            where: { taskerProfileId: profile.id, status: 'PAID' },
+            _sum: { amount: true },
+          }),
+        ]);
+        const available = Math.max(
+          0,
+          (released._sum.taskerAmount ?? 0) - (withdrawals._sum.amount ?? 0)
+        );
 
-      const withdrawal = await prisma.withdrawal.create({
-        data: {
-          taskerProfileId: profile.id,
-          amount: input.amount,
+        if (input.amount > available) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Valor maior que o saldo disponível',
+          });
+        }
+
+        // Remember the Pix key for next time
+        await prisma.taskerProfile.update({
+          where: { id: profile.id },
+          data: { pixKey: input.pixKey },
+        });
+
+        // Create withdrawal record with PENDING status
+        const withdrawal = await prisma.withdrawal.create({
+          data: {
+            taskerProfileId: profile.id,
+            amount: input.amount,
+            pixKey: input.pixKey,
+            status: 'PENDING',
+          },
+        });
+
+        // Process Pix transfer via Asaas (or mock in dev)
+        const transferFn = isDev ? mockAsaas.createPixTransfer : createPixTransfer;
+        const result = await transferFn({
           pixKey: input.pixKey,
-          status: isDev ? 'PAID' : 'PENDING',
-          paidAt: isDev ? new Date() : null,
-        },
-      });
+          amount: input.amount,
+          description: `Saque TRAMPO - ${new Date().toLocaleDateString('pt-BR')}`,
+        });
 
-      // TODO(asaas): in production, execute the payout from the tasker's Asaas
-      // subaccount to input.pixKey (Asaas Pix transfer). On success set status
-      // PAID + asaasTransferId; on failure set FAILED + failureReason. Until that
-      // integration is wired, production withdrawals stay PENDING for manual
-      // processing.
+        if (result.success) {
+          // Update withdrawal to PAID with transferId
+          const updated = await prisma.withdrawal.update({
+            where: { id: withdrawal.id },
+            data: {
+              status: 'PAID',
+              asaasTransferId: result.transferId,
+              paidAt: new Date(),
+            },
+          });
 
-      console.log(
-        `[PAYMENTS] Withdrawal ${withdrawal.id} requested: ${input.amount} (${withdrawal.status})`
-      );
+          console.log(
+            `[PAYMENTS] Withdrawal ${withdrawal.id} processed: ${input.amount} → ${result.transferId}`
+          );
 
-      return { id: withdrawal.id, status: withdrawal.status, amount: withdrawal.amount };
+          return { id: updated.id, status: updated.status, amount: updated.amount };
+        } else {
+          // Update withdrawal to FAILED with error reason
+          await prisma.withdrawal.update({
+            where: { id: withdrawal.id },
+            data: {
+              status: 'FAILED',
+              failureReason: result.error || 'Unknown error',
+            },
+          });
+
+          // Map error codes to user-friendly messages
+          let userMessage: string;
+          switch (result.errorCode) {
+            case 'INVALID_PIX_KEY':
+              userMessage = 'Chave Pix inválida. Verifique e tente novamente.';
+              break;
+            case 'INSUFFICIENT_BALANCE':
+              userMessage = 'Erro temporário. Tente novamente em alguns minutos.';
+              break;
+            case 'DAILY_LIMIT_EXCEEDED':
+              userMessage = 'Limite diário atingido. Tente novamente amanhã.';
+              break;
+            default:
+              userMessage = 'Falha ao processar saque. Tente novamente.';
+          }
+
+          console.error(
+            `[PAYMENTS] Withdrawal ${withdrawal.id} failed: ${result.error} (${result.errorCode})`
+          );
+
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: userMessage,
+          });
+        }
+      } finally {
+        // Always release the lock
+        await releaseLock(lockKey);
+      }
     }),
 });
