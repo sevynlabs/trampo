@@ -91,6 +91,28 @@ export const adminRouter = router({
     return serializeAdmin(ctx.admin);
   }),
 
+  // ==========================================================================
+  // DASHBOARD
+  // ==========================================================================
+
+  /**
+   * Headline metrics for the dashboard home.
+   */
+  dashboardStats: adminAuthProcedure.query(async () => {
+    const [totalUsers, totalTaskers, kycPending, activeTasks, openDisputes] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.user.count({ where: { role: { in: ['TASKER', 'BOTH'] } } }),
+        prisma.taskerProfile.count({ where: { kycStatus: 'SUBMITTED' } }),
+        prisma.task.count({
+          where: { status: { in: ['ACCEPTED', 'IN_PROGRESS'] } },
+        }),
+        prisma.dispute.count({ where: { status: 'OPEN' } }),
+      ]);
+
+    return { totalUsers, totalTaskers, kycPending, activeTasks, openDisputes };
+  }),
+
   /**
    * Settlement health snapshot for the backoffice.
    */
