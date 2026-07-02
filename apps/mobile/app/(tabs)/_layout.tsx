@@ -29,8 +29,9 @@ function TabIcon({ name, focused, label }: TabIconProps) {
 }
 
 export default function TabsLayout() {
-  const { data: user } = trpc.profiles.getMe.useQuery();
-  const isTasker = user?.role === 'TASKER' || user?.role === 'BOTH';
+  const { data: user, isLoading } = trpc.profiles.getMe.useQuery();
+  // Show all tabs while loading or if user is tasker (better UX than hiding)
+  const isTasker = isLoading || user?.role === 'TASKER' || user?.role === 'BOTH';
 
   return (
     <Tabs
