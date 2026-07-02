@@ -53,6 +53,12 @@ enum DisputeStatus {
   RESOLVED_REFUNDED // Admin resolved in favor of the client (payment refunded)
 }
 
+enum AdminRole {
+  SUPER_ADMIN // Full access, can manage other admins
+  OPERATOR    // Day-to-day ops: KYC review, user management
+  VIEWER      // Read-only access
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -133,12 +139,51 @@ model TaskerProfile {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categories  TaskerProfileCategory[]
-  withdrawals Withdrawal[]
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories   TaskerProfileCategory[]
+  withdrawals  Withdrawal[]
+  kycDecisions KycDecision[]
 
   @@index([currentLocation], type: Gist)
   @@map("tasker_profiles")
+}
+
+// ============================================
+// ADMIN PANEL
+// ============================================
+
+model AdminUser {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  name         String
+  role         AdminRole @default(OPERATOR)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  kycDecisions KycDecision[]
+
+  @@map("admin_users")
+}
+
+/// Audit trail for KYC approve/reject decisions made by admins.
+model KycDecision {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskerProfileId String    @map("tasker_profile_id") @db.Uuid
+  adminId         String    @map("admin_id") @db.Uuid
+  decision        KycStatus // APPROVED or REJECTED
+  reason          String?   // Required when rejecting
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  taskerProfile TaskerProfile @relation(fields: [taskerProfileId], references: [id], onDelete: Cascade)
+  admin         AdminUser     @relation(fields: [adminId], references: [id])
+
+  @@index([taskerProfileId, createdAt])
+  @@index([adminId])
+  @@map("kyc_decisions")
 }
 
 enum WithdrawalStatus {
