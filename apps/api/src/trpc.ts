@@ -1,9 +1,10 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import type { Context as HonoContext } from 'hono';
 import superjson from 'superjson';
-import { prisma, type User } from '@trampo/db';
+import { prisma, type User, type AdminUser } from '@trampo/db';
 import { checkRateLimit } from './lib/redis';
 import { verifyToken } from './lib/jwt';
+import { verifyAdminToken } from './lib/admin-jwt';
 import { isAdminUser } from './lib/admin';
 
 /**
@@ -13,6 +14,7 @@ export interface Context {
   req: Request;
   honoContext: HonoContext;
   user: User | null;
+  admin: AdminUser | null;
   [key: string]: unknown;
 }
 
@@ -25,6 +27,7 @@ export async function createContext(honoContext: HonoContext): Promise<Context> 
   // Extract JWT from Authorization header
   const authHeader = honoContext.req.header('Authorization');
   let user: User | null = null;
+  let admin: AdminUser | null = null;
 
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
@@ -48,12 +51,26 @@ export async function createContext(honoContext: HonoContext): Promise<Context> 
     } catch {
       // Invalid token, user remains null
     }
+
+    // Admin panel tokens use a separate audience, so this only matches
+    // genuine admin JWTs (never a mobile user token).
+    if (!user) {
+      const adminPayload = await verifyAdminToken(token);
+      if (adminPayload) {
+        const found = await prisma.adminUser.findUnique({
+          where: { id: adminPayload.sub },
+        });
+        // Reject deactivated admins immediately.
+        admin = found && found.isActive ? found : null;
+      }
+    }
   }
 
   return {
     req,
     honoContext,
     user,
+    admin,
   };
 }
 
@@ -152,6 +169,47 @@ const isAdmin = t.middleware(async ({ ctx, next }) => {
 });
 
 export const adminProcedure = t.procedure.use(isAdmin);
+
+/**
+ * Middleware: Require an authenticated admin-panel user (AdminUser + admin JWT).
+ *
+ * This is distinct from `adminProcedure` above, which gates mobile users via
+ * the ADMIN_USER_IDS allowlist. The admin panel authenticates against the
+ * AdminUser table with its own email/password + JWT.
+ */
+const isAdminAuthenticated = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.admin) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'Admin authentication required',
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      admin: ctx.admin, // Now guaranteed non-null
+    },
+  });
+});
+
+export const adminAuthProcedure = t.procedure.use(isAdminAuthenticated);
+
+/**
+ * Restrict an admin procedure to specific roles (e.g. SUPER_ADMIN only).
+ * VIEWER is read-only; use this to guard mutations.
+ */
+export function requireAdminRole(...roles: string[]) {
+  return adminAuthProcedure.use(async ({ ctx, next }) => {
+    if (!roles.includes(ctx.admin.role)) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Você não tem permissão para esta ação',
+      });
+    }
+    return next();
+  });
+}
 
 /**
  * Middleware: Rate limiting
