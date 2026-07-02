@@ -5,6 +5,7 @@ import {
   publicProcedure,
   adminProcedure,
   adminAuthProcedure,
+  requireAdminRole,
   withRateLimit,
 } from '../../trpc';
 import { prisma, Prisma } from '@trampo/db';
@@ -182,6 +183,158 @@ export const adminRouter = router({
         pageSize,
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
       };
+    }),
+
+  /**
+   * Full detail for a single user: profile, tasker stats + balance,
+   * recent tasks (both sides), and reviews received.
+   */
+  getUser: adminAuthProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const user = await prisma.user.findUnique({
+        where: { id: input.id },
+        include: { taskerProfile: true },
+      });
+
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Usuário não encontrado' });
+      }
+
+      const profile = user.taskerProfile;
+
+      const [tasksAsClient, assignments, reviews, withdrawnAgg] =
+        await Promise.all([
+          prisma.task.findMany({
+            where: { clientId: user.id },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              totalValue: true,
+              createdAt: true,
+            },
+          }),
+          prisma.taskAssignment.findMany({
+            where: { taskerId: user.id },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+            select: {
+              task: {
+                select: {
+                  id: true,
+                  title: true,
+                  status: true,
+                  taskerValue: true,
+                  createdAt: true,
+                },
+              },
+            },
+          }),
+          prisma.review.findMany({
+            where: { revieweeId: user.id },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+            select: {
+              id: true,
+              rating: true,
+              comment: true,
+              createdAt: true,
+            },
+          }),
+          profile
+            ? prisma.withdrawal.aggregate({
+                where: { taskerProfileId: profile.id, status: 'PAID' },
+                _sum: { amount: true },
+              })
+            : Promise.resolve(null),
+        ]);
+
+      const withdrawn = withdrawnAgg?._sum.amount ?? 0;
+
+      return {
+        user: {
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          email: user.email,
+          avatarUrl: user.avatarUrl,
+          role: user.role,
+          isActive: user.isActive,
+          createdAt: user.createdAt.toISOString(),
+        },
+        taskerProfile: profile
+          ? {
+              id: profile.id,
+              kycStatus: profile.kycStatus,
+              kycSubmittedAt: profile.kycSubmittedAt?.toISOString() ?? null,
+              kycApprovedAt: profile.kycApprovedAt?.toISOString() ?? null,
+              kycRejectedAt: profile.kycRejectedAt?.toISOString() ?? null,
+              kycRejectReason: profile.kycRejectReason,
+              rating: profile.rating,
+              totalTasks: profile.totalTasks,
+              pixKey: profile.pixKey,
+              balance: {
+                totalEarnings: profile.totalEarnings,
+                withdrawn,
+                available: profile.totalEarnings - withdrawn,
+              },
+            }
+          : null,
+        tasksAsClient: tasksAsClient.map((t) => ({
+          id: t.id,
+          title: t.title,
+          status: t.status,
+          value: t.totalValue,
+          createdAt: t.createdAt.toISOString(),
+        })),
+        tasksAsTasker: assignments.map((a) => ({
+          id: a.task.id,
+          title: a.task.title,
+          status: a.task.status,
+          value: a.task.taskerValue,
+          createdAt: a.task.createdAt.toISOString(),
+        })),
+        reviews: reviews.map((r) => ({
+          id: r.id,
+          rating: r.rating,
+          comment: r.comment,
+          createdAt: r.createdAt.toISOString(),
+        })),
+      };
+    }),
+
+  /**
+   * Block or unblock a user (toggles isActive).
+   */
+  setUserActive: requireAdminRole('SUPER_ADMIN', 'OPERATOR')
+    .input(z.object({ id: z.string().uuid(), active: z.boolean() }))
+    .mutation(async ({ input }) => {
+      await prisma.user.update({
+        where: { id: input.id },
+        data: { isActive: input.active },
+      });
+      return { success: true, isActive: input.active };
+    }),
+
+  /**
+   * Change a user's role.
+   */
+  setUserRole: requireAdminRole('SUPER_ADMIN', 'OPERATOR')
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        role: z.enum(['CLIENT', 'TASKER', 'BOTH']),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await prisma.user.update({
+        where: { id: input.id },
+        data: { role: input.role },
+      });
+      return { success: true, role: input.role };
     }),
 
   /**
