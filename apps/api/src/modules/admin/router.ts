@@ -7,7 +7,7 @@ import {
   adminAuthProcedure,
   withRateLimit,
 } from '../../trpc';
-import { prisma } from '@trampo/db';
+import { prisma, Prisma } from '@trampo/db';
 import { reconcileOnce } from '../../jobs/reconciler';
 import {
   getPendingJobCount,
@@ -112,6 +112,77 @@ export const adminRouter = router({
 
     return { totalUsers, totalTaskers, kycPending, activeTasks, openDisputes };
   }),
+
+  // ==========================================================================
+  // USERS
+  // ==========================================================================
+
+  /**
+   * Paginated, searchable, filterable list of users.
+   */
+  listUsers: adminAuthProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(20),
+        search: z.string().trim().optional(),
+        role: z.enum(['ALL', 'CLIENT', 'TASKER', 'BOTH']).default('ALL'),
+        status: z.enum(['all', 'active', 'blocked']).default('all'),
+      })
+    )
+    .query(async ({ input }) => {
+      const { page, pageSize, search, role, status } = input;
+
+      const where: Prisma.UserWhereInput = {};
+
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search } },
+        ];
+      }
+      if (role !== 'ALL') where.role = role;
+      if (status === 'active') where.isActive = true;
+      if (status === 'blocked') where.isActive = false;
+
+      const [total, users] = await Promise.all([
+        prisma.user.count({ where }),
+        prisma.user.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            role: true,
+            isActive: true,
+            createdAt: true,
+            taskerProfile: { select: { kycStatus: true } },
+          },
+        }),
+      ]);
+
+      return {
+        users: users.map((u) => ({
+          id: u.id,
+          name: u.name,
+          phone: u.phone,
+          email: u.email,
+          role: u.role,
+          isActive: u.isActive,
+          kycStatus: u.taskerProfile?.kycStatus ?? null,
+          createdAt: u.createdAt.toISOString(),
+        })),
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      };
+    }),
 
   /**
    * Settlement health snapshot for the backoffice.
