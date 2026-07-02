@@ -18,6 +18,26 @@ import {
 } from '../../jobs/escrow-processor';
 import { verifyPassword } from './auth';
 import { generateAdminToken } from '../../lib/admin-jwt';
+import { supabase } from '../../lib/supabase';
+import { notify } from '../../integrations/push';
+
+/** Supabase Storage bucket holding KYC documents. */
+const KYC_BUCKET = 'kyc-documents';
+
+/** Admin document view URLs are valid for 5 minutes (per security spec). */
+const KYC_URL_TTL_SECONDS = 300;
+
+async function signKycUrl(path: string | null): Promise<string | null> {
+  if (!path) return null;
+  const { data, error } = await supabase.storage
+    .from(KYC_BUCKET)
+    .createSignedUrl(path, KYC_URL_TTL_SECONDS);
+  if (error || !data) {
+    console.error('[ADMIN-KYC] Failed to sign URL for', path, error);
+    return null;
+  }
+  return data.signedUrl;
+}
 
 /** Shape returned to the admin panel — never includes the password hash. */
 function serializeAdmin(admin: {
@@ -365,6 +385,176 @@ export const adminRouter = router({
       submittedAt: p.kycSubmittedAt?.toISOString() ?? null,
     }));
   }),
+
+  /**
+   * Full KYC detail for review: user info, short-lived signed document URLs,
+   * and the decision history.
+   */
+  getKycDetails: adminAuthProcedure
+    .input(z.object({ profileId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const profile = await prisma.taskerProfile.findUnique({
+        where: { id: input.profileId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+              createdAt: true,
+            },
+          },
+          kycDecisions: {
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+            include: { admin: { select: { name: true, email: true } } },
+          },
+        },
+      });
+
+      if (!profile) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Perfil não encontrado' });
+      }
+
+      const [front, back, selfie] = await Promise.all([
+        signKycUrl(profile.documentFrontPath),
+        signKycUrl(profile.documentBackPath),
+        signKycUrl(profile.selfiePath),
+      ]);
+
+      return {
+        profileId: profile.id,
+        kycStatus: profile.kycStatus,
+        submittedAt: profile.kycSubmittedAt?.toISOString() ?? null,
+        approvedAt: profile.kycApprovedAt?.toISOString() ?? null,
+        rejectedAt: profile.kycRejectedAt?.toISOString() ?? null,
+        rejectReason: profile.kycRejectReason,
+        user: {
+          id: profile.user.id,
+          name: profile.user.name,
+          phone: profile.user.phone,
+          email: profile.user.email,
+          createdAt: profile.user.createdAt.toISOString(),
+        },
+        documents: { front, back, selfie },
+        decisions: profile.kycDecisions.map((d) => ({
+          id: d.id,
+          decision: d.decision,
+          reason: d.reason,
+          adminName: d.admin.name,
+          createdAt: d.createdAt.toISOString(),
+        })),
+      };
+    }),
+
+  /**
+   * Approve a KYC submission. Records an audit decision and notifies the tasker.
+   * Uses an optimistic guard so two admins can't both act on the same profile.
+   */
+  approveKyc: requireAdminRole('SUPER_ADMIN', 'OPERATOR')
+    .input(z.object({ profileId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = await prisma.$transaction(async (tx) => {
+        const updated = await tx.taskerProfile.updateMany({
+          where: { id: input.profileId, kycStatus: 'SUBMITTED' },
+          data: {
+            kycStatus: 'APPROVED',
+            kycApprovedAt: new Date(),
+            kycRejectedAt: null,
+            kycRejectReason: null,
+          },
+        });
+
+        if (updated.count === 0) return null;
+
+        await tx.kycDecision.create({
+          data: {
+            taskerProfileId: input.profileId,
+            adminId: ctx.admin.id,
+            decision: 'APPROVED',
+          },
+        });
+
+        const profile = await tx.taskerProfile.findUnique({
+          where: { id: input.profileId },
+          select: { userId: true },
+        });
+        return profile?.userId ?? null;
+      });
+
+      if (!userId) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Este KYC não está aguardando análise',
+        });
+      }
+
+      await notify(userId, {
+        title: 'KYC Aprovado! ✅',
+        body: 'Seus documentos foram aprovados. Você já pode aceitar trampos!',
+        data: { type: 'kyc_approved' },
+      });
+
+      return { success: true };
+    }),
+
+  /**
+   * Reject a KYC submission with a reason. Records an audit decision and
+   * notifies the tasker so they can resubmit.
+   */
+  rejectKyc: requireAdminRole('SUPER_ADMIN', 'OPERATOR')
+    .input(
+      z.object({
+        profileId: z.string().uuid(),
+        reason: z.string().trim().min(3, 'Informe o motivo da reprovação'),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = await prisma.$transaction(async (tx) => {
+        const updated = await tx.taskerProfile.updateMany({
+          where: { id: input.profileId, kycStatus: 'SUBMITTED' },
+          data: {
+            kycStatus: 'REJECTED',
+            kycRejectedAt: new Date(),
+            kycRejectReason: input.reason,
+            kycApprovedAt: null,
+          },
+        });
+
+        if (updated.count === 0) return null;
+
+        await tx.kycDecision.create({
+          data: {
+            taskerProfileId: input.profileId,
+            adminId: ctx.admin.id,
+            decision: 'REJECTED',
+            reason: input.reason,
+          },
+        });
+
+        const profile = await tx.taskerProfile.findUnique({
+          where: { id: input.profileId },
+          select: { userId: true },
+        });
+        return profile?.userId ?? null;
+      });
+
+      if (!userId) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Este KYC não está aguardando análise',
+        });
+      }
+
+      await notify(userId, {
+        title: 'KYC Reprovado',
+        body: `Seus documentos foram reprovados: ${input.reason}. Corrija e envie novamente.`,
+        data: { type: 'kyc_rejected' },
+      });
+
+      return { success: true };
+    }),
 
   /**
    * Settlement health snapshot for the backoffice.
