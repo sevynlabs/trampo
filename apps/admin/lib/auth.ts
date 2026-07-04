@@ -2,11 +2,9 @@ import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import type { AppRouter } from "@trampo/api/src/router";
 
-/** Name of the httpOnly cookie holding the admin JWT. */
-export const ADMIN_COOKIE = "admin_token";
-
-/** Cookie max-age in seconds (24h — matches the admin JWT expiry). */
-export const ADMIN_COOKIE_MAX_AGE = 60 * 60 * 24;
+// Re-export cookie constants (defined in a dep-free module so the Edge
+// middleware can import them without pulling in the tRPC client).
+export { ADMIN_COOKIE, ADMIN_COOKIE_MAX_AGE } from "./constants";
 
 const API_URL = process.env.API_URL || "http://localhost:3000";
 

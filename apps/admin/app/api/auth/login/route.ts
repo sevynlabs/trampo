@@ -17,7 +17,8 @@ export async function POST(req: Request) {
   try {
     const result = await serverTrpc().admin.login.mutate(parsed.data);
 
-    cookies().set(ADMIN_COOKIE, result.token, {
+    const cookieStore = await cookies();
+    cookieStore.set(ADMIN_COOKIE, result.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

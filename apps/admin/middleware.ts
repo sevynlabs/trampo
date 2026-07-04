@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { ADMIN_COOKIE } from "@/lib/auth";
+import { ADMIN_COOKIE } from "@/lib/constants";
 
 /**
  * Route guard for the admin panel.

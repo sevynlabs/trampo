@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, ExternalLink, Loader2, X } from "lucide-react";
@@ -72,9 +72,9 @@ function DocumentPanel({
 export default function KycReviewPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const profileId = params.id;
+  const { id: profileId } = use(params);
   const router = useRouter();
   const utils = trpc.useUtils();
   const query = trpc.admin.getKycDetails.useQuery({ profileId });

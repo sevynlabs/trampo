@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
-import { ADMIN_COOKIE } from "@/lib/auth";
+import { ADMIN_COOKIE } from "@/lib/constants";
 
 const API_URL = process.env.API_URL || "http://localhost:3000";
 
@@ -12,11 +12,13 @@ const API_URL = process.env.API_URL || "http://localhost:3000";
  */
 async function handler(
   req: NextRequest,
-  { params }: { params: { trpc: string } }
+  { params }: { params: Promise<{ trpc: string }> }
 ) {
-  const token = cookies().get(ADMIN_COOKIE)?.value;
+  const { trpc } = await params;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(ADMIN_COOKIE)?.value;
   const search = new URL(req.url).search;
-  const target = `${API_URL}/trpc/${params.trpc}${search}`;
+  const target = `${API_URL}/trpc/${trpc}${search}`;
 
   const headers = new Headers();
   const contentType = req.headers.get("content-type");

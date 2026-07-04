@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/lib/auth";
 
 export async function POST() {
-  cookies().set(ADMIN_COOKIE, "", {
+  const cookieStore = await cookies();
+  cookieStore.set(ADMIN_COOKIE, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

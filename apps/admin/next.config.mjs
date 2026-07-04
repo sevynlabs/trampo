@@ -1,3 +1,8 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -5,6 +10,8 @@ const nextConfig = {
     // Admin panel is internal tooling; don't block builds on lint.
     ignoreDuringBuilds: true,
   },
+  // Monorepo has multiple lockfiles; pin the trace root to this app.
+  outputFileTracingRoot: path.join(__dirname, "../.."),
 };
 
 export default nextConfig;

@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Star } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -48,9 +49,9 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 export default function UserDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const id = params.id;
+  const { id } = use(params);
   const utils = trpc.useUtils();
   const query = trpc.admin.getUser.useQuery({ id });
 
