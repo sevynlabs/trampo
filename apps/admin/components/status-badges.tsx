@@ -33,3 +33,35 @@ export function KycBadge({ status }: { status: string | null }) {
   const cfg = KYC_MAP[status] ?? { label: status, variant: "secondary" as const };
   return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
 }
+
+const PAYMENT_MAP: Record<
+  string,
+  { label: string; variant: "success" | "warning" | "destructive" | "secondary" }
+> = {
+  PENDING: { label: "Aguardando", variant: "secondary" },
+  CONFIRMED: { label: "Pago", variant: "success" },
+  HELD: { label: "Em custódia", variant: "warning" },
+  RELEASED: { label: "Liberado", variant: "success" },
+  REFUNDED: { label: "Reembolsado", variant: "destructive" },
+  DISPUTED: { label: "Em disputa", variant: "destructive" },
+  EXPIRED: { label: "Expirado", variant: "secondary" },
+};
+
+export function PaymentStatusBadge({ status }: { status: string }) {
+  const cfg = PAYMENT_MAP[status] ?? { label: status, variant: "secondary" as const };
+  return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
+}
+
+const WITHDRAWAL_MAP: Record<
+  string,
+  { label: string; variant: "success" | "warning" | "destructive" | "secondary" }
+> = {
+  PENDING: { label: "Pendente", variant: "warning" },
+  PAID: { label: "Pago", variant: "success" },
+  FAILED: { label: "Rejeitado", variant: "destructive" },
+};
+
+export function WithdrawalStatusBadge({ status }: { status: string }) {
+  const cfg = WITHDRAWAL_MAP[status] ?? { label: status, variant: "secondary" as const };
+  return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
+}

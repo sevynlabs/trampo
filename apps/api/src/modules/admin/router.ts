@@ -20,6 +20,8 @@ import { verifyPassword } from './auth';
 import { generateAdminToken } from '../../lib/admin-jwt';
 import { supabase } from '../../lib/supabase';
 import { notify } from '../../integrations/push';
+import { dashboardRouter } from './dashboard';
+import { financeRouter } from './finance';
 
 /** Supabase Storage bucket holding KYC documents. */
 const KYC_BUCKET = 'kyc-documents';
@@ -591,4 +593,10 @@ export const adminRouter = router({
   reconcile: adminProcedure.mutation(async () => {
     return reconcileOnce();
   }),
+
+  // ==========================================================================
+  // NESTED DOMAIN ROUTERS (analytics + financial management)
+  // ==========================================================================
+  dashboard: dashboardRouter,
+  finance: financeRouter,
 });

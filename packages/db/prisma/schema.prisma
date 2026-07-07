@@ -165,8 +165,28 @@ model AdminUser {
 
   // Relations
   kycDecisions KycDecision[]
+  auditLogs    AuditLog[]
 
   @@map("admin_users")
+}
+
+/// Generic audit trail for admin write actions (block user, pay withdrawal,
+/// send campaign, role change, etc). KycDecision remains the KYC-specific log.
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId    String   @map("actor_id") @db.Uuid
+  action     String   // e.g. withdrawal.pay, user.block, campaign.send
+  targetType String   @map("target_type") // e.g. withdrawal, user, payment
+  targetId   String?  @map("target_id")
+  metadata   Json?    // arbitrary before/after or context payload
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor AdminUser @relation(fields: [actorId], references: [id])
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@index([actorId])
+  @@map("audit_logs")
 }
 
 /// Audit trail for KYC approve/reject decisions made by admins.
