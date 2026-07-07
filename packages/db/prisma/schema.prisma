@@ -59,6 +59,25 @@ enum AdminRole {
   VIEWER      // Read-only access
 }
 
+enum CampaignChannel {
+  PUSH
+  EMAIL
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+enum RecipientStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -166,8 +185,64 @@ model AdminUser {
   // Relations
   kycDecisions KycDecision[]
   auditLogs    AuditLog[]
+  campaigns    Campaign[]
 
   @@map("admin_users")
+}
+
+/// A push or email campaign targeted at a dynamic user segment.
+model Campaign {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  channel        CampaignChannel
+  status         CampaignStatus  @default(DRAFT)
+  segment        Json            // dynamic filter descriptor (role, kycStatus, activeWithinDays, ...)
+  title          String          // push title / email subject
+  body           String          // push body / email html
+  emailTemplateId String?        @map("email_template_id") @db.Uuid
+  scheduledAt    DateTime?       @map("scheduled_at")
+  sentAt         DateTime?       @map("sent_at")
+  recipientCount Int             @default(0) @map("recipient_count")
+  sentCount      Int             @default(0) @map("sent_count")
+  failedCount    Int             @default(0) @map("failed_count")
+  createdById    String          @map("created_by_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  createdBy  AdminUser           @relation(fields: [createdById], references: [id])
+  recipients CampaignRecipient[]
+
+  @@index([status, createdAt])
+  @@map("campaigns")
+}
+
+/// Per-user delivery record for a campaign (for metrics + idempotency).
+model CampaignRecipient {
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId String          @map("campaign_id") @db.Uuid
+  userId     String          @map("user_id") @db.Uuid
+  status     RecipientStatus @default(PENDING)
+  error      String?
+  sentAt     DateTime?       @map("sent_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+  @@index([campaignId, status])
+  @@map("campaign_recipients")
+}
+
+/// Reusable email template (subject + HTML body with {{variables}}).
+model EmailTemplate {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  subject   String
+  bodyHtml  String   @map("body_html")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("email_templates")
 }
 
 /// Generic audit trail for admin write actions (block user, pay withdrawal,

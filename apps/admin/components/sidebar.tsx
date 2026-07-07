@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, ShieldCheck, Wallet } from "lucide-react";
+import { LayoutDashboard, Users, ShieldCheck, Wallet, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/finance", label: "Financeiro", icon: Wallet, exact: false },
+  { href: "/campaigns", label: "Campanhas", icon: Megaphone, exact: false },
   { href: "/users", label: "Usuários", icon: Users, exact: false },
   { href: "/kyc", label: "KYC", icon: ShieldCheck, exact: false },
 ];

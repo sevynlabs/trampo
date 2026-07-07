@@ -22,6 +22,7 @@ import { supabase } from '../../lib/supabase';
 import { notify } from '../../integrations/push';
 import { dashboardRouter } from './dashboard';
 import { financeRouter } from './finance';
+import { campaignsRouter } from './campaigns';
 
 /** Supabase Storage bucket holding KYC documents. */
 const KYC_BUCKET = 'kyc-documents';
@@ -599,4 +600,5 @@ export const adminRouter = router({
   // ==========================================================================
   dashboard: dashboardRouter,
   finance: financeRouter,
+  campaigns: campaignsRouter,
 });

@@ -45,6 +45,7 @@ const envSchema = z.object({
   // Optional
   FCM_SERVER_KEY: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM: z.string().optional(),
   CORS_ORIGIN: z.string().default('*'),
 });
 
