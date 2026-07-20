@@ -54,3 +54,22 @@ export async function scheduleJob(
   const executeAt = Date.now() + delayMs;
   await redis.zadd(queue, executeAt, JSON.stringify({ id: jobId, data }));
 }
+
+/**
+ * Acquire a distributed lock using Redis SET NX
+ * Returns true if lock was acquired, false if already locked
+ */
+export async function acquireLock(
+  key: string,
+  ttlSeconds: number
+): Promise<boolean> {
+  const result = await redis.set(key, '1', 'EX', ttlSeconds, 'NX');
+  return result === 'OK';
+}
+
+/**
+ * Release a distributed lock by deleting the key
+ */
+export async function releaseLock(key: string): Promise<void> {
+  await redis.del(key);
+}
