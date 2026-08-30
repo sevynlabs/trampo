@@ -55,6 +55,111 @@ interface AsaasRefund {
   status: string;
 }
 
+// Pix transfer types and interfaces
+type PixKeyType = 'CPF' | 'CNPJ' | 'EMAIL' | 'PHONE' | 'EVP';
+
+interface PixTransferParams {
+  pixKey: string;
+  amount: number; // centavos
+  description: string;
+}
+
+interface PixTransferResult {
+  success: boolean;
+  transferId?: string;
+  error?: string;
+  errorCode?: string;
+}
+
+/**
+ * Detect the type of Pix key from its value
+ * - CPF: 11 digits
+ * - CNPJ: 14 digits
+ * - PHONE: starts with + or has 10-11 digits
+ * - EMAIL: contains @
+ * - EVP: random/UUID key (default)
+ */
+function detectPixKeyType(pixKey: string): PixKeyType {
+  // Remove non-digits to check length
+  const digitsOnly = pixKey.replace(/\D/g, '');
+
+  // Check CNPJ (14 digits)
+  if (digitsOnly.length === 14) {
+    return 'CNPJ';
+  }
+
+  // Check CPF (11 digits)
+  if (digitsOnly.length === 11) {
+    return 'CPF';
+  }
+
+  // Check EMAIL (contains @)
+  if (pixKey.includes('@')) {
+    return 'EMAIL';
+  }
+
+  // Check PHONE (starts with + or has 10-11 digits)
+  if (pixKey.startsWith('+') || (digitsOnly.length === 10 || digitsOnly.length === 11)) {
+    return 'PHONE';
+  }
+
+  // Default to EVP (random/UUID key)
+  return 'EVP';
+}
+
+/**
+ * Create a Pix transfer for tasker withdrawal
+ * Transfers money from platform account to tasker's Pix key
+ */
+export async function createPixTransfer(params: PixTransferParams): Promise<PixTransferResult> {
+  try {
+    const valueInReais = params.amount / 100;
+    const pixKeyType = detectPixKeyType(params.pixKey);
+
+    // Format phone key with 55 prefix if needed
+    let formattedPixKey = params.pixKey;
+    if (pixKeyType === 'PHONE' && !params.pixKey.startsWith('+55')) {
+      const digitsOnly = params.pixKey.replace(/\D/g, '');
+      formattedPixKey = `+55${digitsOnly}`;
+    }
+
+    const transfer = await request<{ id: string; status: string }>('/transfers', {
+      method: 'POST',
+      body: JSON.stringify({
+        pixAddressKey: formattedPixKey,
+        value: valueInReais,
+        description: params.description,
+      }),
+    });
+
+    console.log(`[ASAAS] Pix transfer ${transfer.id} to ${pixKeyType}: R$ ${valueInReais}`);
+
+    return {
+      success: true,
+      transferId: transfer.id,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[ASAAS] Pix transfer failed:', errorMessage);
+
+    // Map common Asaas errors
+    let errorCode = 'UNKNOWN_ERROR';
+    if (errorMessage.includes('saldo insuficiente')) {
+      errorCode = 'INSUFFICIENT_BALANCE';
+    } else if (errorMessage.includes('Chave Pix inválida')) {
+      errorCode = 'INVALID_PIX_KEY';
+    } else if (errorMessage.includes('limite')) {
+      errorCode = 'DAILY_LIMIT_EXCEEDED';
+    }
+
+    return {
+      success: false,
+      error: errorMessage,
+      errorCode,
+    };
+  }
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -350,4 +455,13 @@ export const mockAsaas = {
 
   getPixQrCodeBase64: async () =>
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+
+  createPixTransfer: async (params: { pixKey: string; amount: number; description: string }) => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Fail if amount ends in 666 (for testing)
+    if (params.amount % 1000 === 666) {
+      return { success: false, error: 'Chave Pix inválida', errorCode: 'INVALID_PIX_KEY' };
+    }
+    return { success: true, transferId: `mock_transfer_${Date.now()}` };
+  },
 };

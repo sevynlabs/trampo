@@ -19,7 +19,7 @@ const supabaseUrl = isValidUrl(rawUrl) ? rawUrl : null;
 const supabaseAnonKey = rawKey && rawKey.length > 10 ? rawKey : null;
 const isConfigured = !!(supabaseUrl && supabaseAnonKey);
 
-if (!isConfigured) {
+if (!isConfigured && __DEV__) {
   console.warn('[SUPABASE] Missing or invalid URL/key. Realtime features disabled.');
 }
 
@@ -67,7 +67,7 @@ export function subscribeToChatMessages(
   onMessage: (message: RealtimeChatMessage) => void
 ): () => void {
   if (!supabase) {
-    console.warn('[REALTIME] Supabase not configured, skipping subscription');
+    if (__DEV__) console.warn('[REALTIME] Supabase not configured, skipping subscription');
     return () => {};
   }
 
@@ -82,12 +82,12 @@ export function subscribeToChatMessages(
       }
     })
     .subscribe((status) => {
-      console.log(`[REALTIME] ${channelName}: ${status}`);
+      if (__DEV__) console.log(`[REALTIME] ${channelName}: ${status}`);
     });
 
   // Return cleanup function
   return () => {
-    console.log(`[REALTIME] Unsubscribing from ${channelName}`);
+    if (__DEV__) console.log(`[REALTIME] Unsubscribing from ${channelName}`);
     supabase.removeChannel(channel);
   };
 }
@@ -100,7 +100,7 @@ export function subscribeToTaskUpdates(
   onUpdate: (update: { status: string; updatedAt: string }) => void
 ): () => void {
   if (!supabase) {
-    console.warn('[REALTIME] Supabase not configured, skipping subscription');
+    if (__DEV__) console.warn('[REALTIME] Supabase not configured, skipping subscription');
     return () => {};
   }
 

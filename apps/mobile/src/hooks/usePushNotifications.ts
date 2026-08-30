@@ -35,13 +35,13 @@ export function usePushNotifications() {
 
     // Listen for incoming notifications (app in foreground)
     notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
-      console.log('[PUSH] Received:', notification.request.content);
+      if (__DEV__) console.log('[PUSH] Received:', notification.request.content);
     });
 
     // Listen for notification interactions (user tapped)
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
-      console.log('[PUSH] User tapped:', data);
+      if (__DEV__) console.log('[PUSH] User tapped:', data);
       // Handle navigation based on notification type
       handleNotificationTap(data);
     });
@@ -58,7 +58,7 @@ export function usePushNotifications() {
 async function registerForPushNotificationsAsync(): Promise<string | null> {
   // Must be a physical device
   if (!Device.isDevice) {
-    console.log('[PUSH] Push notifications require a physical device');
+    if (__DEV__) console.log('[PUSH] Push notifications require a physical device');
     return null;
   }
 
@@ -72,7 +72,7 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
   }
 
   if (finalStatus !== 'granted') {
-    console.log('[PUSH] Permission not granted');
+    if (__DEV__) console.log('[PUSH] Permission not granted');
     return null;
   }
 
@@ -82,17 +82,18 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
     Constants.easConfig?.projectId;
 
   if (!projectId) {
-    console.warn('[PUSH] Missing EAS projectId (set EXPO_PUBLIC_EAS_PROJECT_ID); skipping token');
+    if (__DEV__) console.warn('[PUSH] Missing EAS projectId (set EXPO_PUBLIC_EAS_PROJECT_ID); skipping token');
     return null;
   }
 
   // Get Expo push token
   try {
     const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-    console.log('[PUSH] Token:', tokenData.data);
+    // SECURITY: Never log push tokens in production
+    if (__DEV__) console.log('[PUSH] Token:', tokenData.data);
     return tokenData.data;
   } catch (error) {
-    console.error('[PUSH] Error getting token:', error);
+    if (__DEV__) console.error('[PUSH] Error getting token:', error);
     return null;
   }
 }

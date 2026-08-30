@@ -7,6 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsup src/index.ts --format esm",
     "start": "node dist/index.js",
+    "seed:admin": "tsx src/scripts/seed-admin.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
     "@trampo/contracts": "workspace:*",
     "@trampo/db": "workspace:*",
     "@trpc/server": "^11.0.0-rc.446",
+    "bcryptjs": "^2.4.3",
     "hono": "^4.4.0",
     "ioredis": "^5.4.1",
     "jose": "^6.2.3",
@@ -24,6 +26,7 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.14.0",
     "tsup": "^8.1.0",
     "tsx": "^4.15.0",

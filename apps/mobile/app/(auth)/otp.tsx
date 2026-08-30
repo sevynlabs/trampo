@@ -21,10 +21,16 @@ export default function OtpScreen() {
   const [countdown, setCountdown] = useState(60);
   const inputRef = useRef<TextInput>(null);
 
+  const utils = trpc.useUtils();
+
   const verifyOtp = trpc.auth.verifyOtp.useMutation({
     onSuccess: async (data) => {
       // Store both access and refresh tokens
       await setTokens(data.accessToken, data.refreshToken);
+
+      // Drop any cached queries from before login (e.g. a getMe that ran with
+      // no/expired token) so everything refetches with the new session.
+      await utils.invalidate();
 
       // Navigate based on user state
       if (data.isNewUser || !data.user.name) {

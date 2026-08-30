@@ -53,6 +53,31 @@ enum DisputeStatus {
   RESOLVED_REFUNDED // Admin resolved in favor of the client (payment refunded)
 }
 
+enum AdminRole {
+  SUPER_ADMIN // Full access, can manage other admins
+  OPERATOR    // Day-to-day ops: KYC review, user management
+  VIEWER      // Read-only access
+}
+
+enum CampaignChannel {
+  PUSH
+  EMAIL
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+enum RecipientStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -133,12 +158,127 @@ model TaskerProfile {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categories  TaskerProfileCategory[]
-  withdrawals Withdrawal[]
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories   TaskerProfileCategory[]
+  withdrawals  Withdrawal[]
+  kycDecisions KycDecision[]
 
   @@index([currentLocation], type: Gist)
   @@map("tasker_profiles")
+}
+
+// ============================================
+// ADMIN PANEL
+// ============================================
+
+model AdminUser {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  name         String
+  role         AdminRole @default(OPERATOR)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  kycDecisions KycDecision[]
+  auditLogs    AuditLog[]
+  campaigns    Campaign[]
+
+  @@map("admin_users")
+}
+
+/// A push or email campaign targeted at a dynamic user segment.
+model Campaign {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  channel        CampaignChannel
+  status         CampaignStatus  @default(DRAFT)
+  segment        Json            // dynamic filter descriptor (role, kycStatus, activeWithinDays, ...)
+  title          String          // push title / email subject
+  body           String          // push body / email html
+  emailTemplateId String?        @map("email_template_id") @db.Uuid
+  scheduledAt    DateTime?       @map("scheduled_at")
+  sentAt         DateTime?       @map("sent_at")
+  recipientCount Int             @default(0) @map("recipient_count")
+  sentCount      Int             @default(0) @map("sent_count")
+  failedCount    Int             @default(0) @map("failed_count")
+  createdById    String          @map("created_by_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  createdBy  AdminUser           @relation(fields: [createdById], references: [id])
+  recipients CampaignRecipient[]
+
+  @@index([status, createdAt])
+  @@map("campaigns")
+}
+
+/// Per-user delivery record for a campaign (for metrics + idempotency).
+model CampaignRecipient {
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId String          @map("campaign_id") @db.Uuid
+  userId     String          @map("user_id") @db.Uuid
+  status     RecipientStatus @default(PENDING)
+  error      String?
+  sentAt     DateTime?       @map("sent_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+  @@index([campaignId, status])
+  @@map("campaign_recipients")
+}
+
+/// Reusable email template (subject + HTML body with {{variables}}).
+model EmailTemplate {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  subject   String
+  bodyHtml  String   @map("body_html")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("email_templates")
+}
+
+/// Generic audit trail for admin write actions (block user, pay withdrawal,
+/// send campaign, role change, etc). KycDecision remains the KYC-specific log.
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId    String   @map("actor_id") @db.Uuid
+  action     String   // e.g. withdrawal.pay, user.block, campaign.send
+  targetType String   @map("target_type") // e.g. withdrawal, user, payment
+  targetId   String?  @map("target_id")
+  metadata   Json?    // arbitrary before/after or context payload
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor AdminUser @relation(fields: [actorId], references: [id])
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@index([actorId])
+  @@map("audit_logs")
+}
+
+/// Audit trail for KYC approve/reject decisions made by admins.
+model KycDecision {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskerProfileId String    @map("tasker_profile_id") @db.Uuid
+  adminId         String    @map("admin_id") @db.Uuid
+  decision        KycStatus // APPROVED or REJECTED
+  reason          String?   // Required when rejecting
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  taskerProfile TaskerProfile @relation(fields: [taskerProfileId], references: [id], onDelete: Cascade)
+  admin         AdminUser     @relation(fields: [adminId], references: [id])
+
+  @@index([taskerProfileId, createdAt])
+  @@index([adminId])
+  @@map("kyc_decisions")
 }
 
 enum WithdrawalStatus {

@@ -29,6 +29,13 @@ const envSchema = z.object({
   TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
   TWILIO_VERIFY_SERVICE_SID: z.string().startsWith('VA').optional(),
 
+  // Development OTP bypass - MUST be explicitly enabled, never on by default
+  // Set to "true" ONLY in local development environment
+  DEV_OTP_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+
   // Redis
   UPSTASH_REDIS_REST_URL: z.string().url(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
@@ -45,6 +52,7 @@ const envSchema = z.object({
   // Optional
   FCM_SERVER_KEY: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM: z.string().optional(),
   CORS_ORIGIN: z.string().default('*'),
 });
 
