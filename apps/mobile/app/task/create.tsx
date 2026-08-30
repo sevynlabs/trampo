@@ -2,21 +2,24 @@ import { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   ScrollView,
   Pressable,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Switch,
+  StyleSheet,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import * as Location from 'expo-location';
 import { trpc } from '../../src/lib/trpc';
 import { TASK_CONSTANTS } from '@trampo/contracts';
 import { formatCurrency } from '../../src/lib/format';
 import { GradientButton } from '../../src/components/GradientButton';
+import { Input } from '../../src/components/Input';
 
 export default function CreateTaskScreen() {
   const router = useRouter();
@@ -95,15 +98,19 @@ export default function CreateTaskScreen() {
     });
   };
 
+  const selectedCategory = categories?.find((c) => c.id === categoryId);
+
   return (
     <>
       <Stack.Screen
         options={{
           headerShown: true,
           title: 'Criar serviço',
-          headerTitleStyle: { fontWeight: 'bold' },
+          headerTitleStyle: { fontWeight: '600', color: '#001B48' },
+          headerStyle: { backgroundColor: '#F3F8FB' },
+          headerShadowVisible: false,
           headerLeft: () => (
-            <Pressable onPress={() => router.back()} className="mr-4">
+            <Pressable onPress={() => router.back()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#001B48" />
             </Pressable>
           ),
@@ -112,144 +119,390 @@ export default function CreateTaskScreen() {
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1 bg-background"
+        style={styles.container}
       >
         <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Category */}
-          <Text className="text-ink font-medium mb-3">Categoria</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, marginBottom: 24 }}
-          >
-            {categories?.map((cat) => (
-              <Pressable
-                key={cat.id}
-                onPress={() => setCategoryId(cat.id)}
-                className={`px-4 py-3 rounded-card border ${
-                  categoryId === cat.id
-                    ? 'border-accent bg-accent/5'
-                    : 'border-border bg-surface'
-                }`}
-              >
-                <Text
-                  className={`font-medium ${
-                    categoryId === cat.id ? 'text-accent' : 'text-ink'
-                  }`}
+          <Animated.View entering={FadeInDown.delay(100).duration(420)}>
+            <Text style={styles.sectionLabel}>Categoria</Text>
+            <View style={styles.categoryGrid}>
+              {categories?.map((cat, index) => (
+                <Pressable
+                  key={cat.id}
+                  onPress={() => setCategoryId(cat.id)}
+                  style={[
+                    styles.categoryCard,
+                    categoryId === cat.id && styles.categoryCardSelected,
+                  ]}
                 >
-                  {cat.icon} {cat.name}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+                  <Text style={styles.categoryIcon}>{cat.icon}</Text>
+                  <Text
+                    style={[
+                      styles.categoryName,
+                      categoryId === cat.id && styles.categoryNameSelected,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {cat.name}
+                  </Text>
+                  {categoryId === cat.id && (
+                    <View style={styles.categoryCheck}>
+                      <Ionicons name="checkmark" size={12} color="#ffffff" />
+                    </View>
+                  )}
+                </Pressable>
+              ))}
+            </View>
+          </Animated.View>
 
           {/* Title */}
-          <Text className="text-ink font-medium mb-2">O que você precisa?</Text>
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Ex: Limpeza de apartamento 2 quartos"
-            className="bg-surface border border-border rounded-button px-4 py-4 text-ink mb-6"
-            maxLength={200}
-          />
+          <Animated.View entering={FadeInDown.delay(200).duration(420)}>
+            <Input
+              label="O que você precisa?"
+              value={title}
+              onChangeText={setTitle}
+              maxLength={200}
+              error={title.length > 0 && title.length < 5 ? 'Mínimo 5 caracteres' : undefined}
+            />
+          </Animated.View>
 
           {/* Description */}
-          <Text className="text-ink font-medium mb-2">Detalhes (opcional)</Text>
-          <TextInput
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Descreva o serviço com mais detalhes..."
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-            className="bg-surface border border-border rounded-button px-4 py-4 text-ink mb-6 min-h-[100px]"
-            maxLength={1000}
-          />
+          <Animated.View entering={FadeInDown.delay(300).duration(420)}>
+            <Input
+              label="Detalhes (opcional)"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={4}
+              maxLength={1000}
+            />
+          </Animated.View>
 
           {/* Address */}
-          <Text className="text-ink font-medium mb-2">Endereço</Text>
-          <TextInput
-            value={address}
-            onChangeText={setAddress}
-            placeholder="Rua, número, bairro"
-            className="bg-surface border border-border rounded-button px-4 py-4 text-ink mb-6"
-            maxLength={300}
-          />
+          <Animated.View entering={FadeInDown.delay(400).duration(420)}>
+            <Input
+              label="Endereço"
+              value={address}
+              onChangeText={setAddress}
+              icon="location-outline"
+              maxLength={300}
+              error={address.length > 0 && address.length < 5 ? 'Endereço muito curto' : undefined}
+            />
+          </Animated.View>
 
           {/* Value */}
-          <Text className="text-ink font-medium mb-2">Valor do serviço</Text>
-          <TextInput
-            value={baseValue}
-            onChangeText={handleValueChange}
-            placeholder="R$ 50,00 (mínimo)"
-            keyboardType="number-pad"
-            className="bg-surface border border-border rounded-button px-4 py-4 text-ink mb-2"
-          />
-          {baseValue && !isValidValue && (
-            <Text className="text-danger text-sm mb-4">
-              Valor mínimo: {formatCurrency(TASK_CONSTANTS.MIN_VALUE)}
-            </Text>
-          )}
+          <Animated.View entering={FadeInDown.delay(500).duration(420)}>
+            <Input
+              label="Valor do serviço"
+              value={baseValue}
+              onChangeText={handleValueChange}
+              keyboardType="number-pad"
+              icon="cash-outline"
+              error={
+                baseValue && !isValidValue
+                  ? `Valor mínimo: ${formatCurrency(TASK_CONSTANTS.MIN_VALUE)}`
+                  : undefined
+              }
+            />
+          </Animated.View>
 
           {/* Urgent toggle */}
-          <View className="flex-row items-center justify-between bg-surface border border-border rounded-card p-4 mb-6">
-            <View className="flex-1 mr-4">
-              <Text className="text-ink font-medium">Urgente</Text>
-              <Text className="text-ink-muted text-sm">
-                +30% para serviços em até 1h
-              </Text>
+          <Animated.View
+            entering={FadeInDown.delay(600).duration(420)}
+            style={styles.urgentCard}
+          >
+            <View style={styles.urgentContent}>
+              <View style={styles.urgentIconContainer}>
+                <Ionicons name="flash" size={20} color="#F59E0B" />
+              </View>
+              <View style={styles.urgentText}>
+                <Text style={styles.urgentTitle}>Urgente</Text>
+                <Text style={styles.urgentDescription}>
+                  +30% para serviços em até 1h
+                </Text>
+              </View>
             </View>
             <Switch
               value={isUrgent}
               onValueChange={setIsUrgent}
               trackColor={{ false: '#DCEAF1', true: '#018ABE' }}
+              thumbColor="#ffffff"
             />
-          </View>
+          </Animated.View>
 
           {/* Price breakdown */}
           {isValidValue && (
-            <View className="bg-surface border border-border rounded-card p-4 mb-6">
-              <Text className="text-ink font-medium mb-3">Resumo</Text>
-              <View className="flex-row justify-between mb-2">
-                <Text className="text-ink-muted">Valor base</Text>
-                <Text className="text-ink">{formatCurrency(parsedValue)}</Text>
+            <Animated.View
+              entering={FadeIn.duration(300)}
+              style={styles.breakdownCard}
+            >
+              <Text style={styles.breakdownTitle}>Resumo</Text>
+
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>Valor base</Text>
+                <Text style={styles.breakdownValue}>{formatCurrency(parsedValue)}</Text>
               </View>
+
               {isUrgent && (
-                <View className="flex-row justify-between mb-2">
-                  <Text className="text-ink-muted">Taxa de urgência</Text>
-                  <Text className="text-warning">+{formatCurrency(urgencyFee)}</Text>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>Taxa de urgência</Text>
+                  <Text style={styles.breakdownValueWarning}>
+                    +{formatCurrency(urgencyFee)}
+                  </Text>
                 </View>
               )}
-              <View className="flex-row justify-between mb-3">
-                <Text className="text-ink-muted">Taxa de serviço (5%)</Text>
-                <Text className="text-ink-muted">+{formatCurrency(serviceFee)}</Text>
+
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>Taxa de serviço (5%)</Text>
+                <Text style={styles.breakdownValueMuted}>
+                  +{formatCurrency(serviceFee)}
+                </Text>
               </View>
-              <View className="flex-row justify-between pt-3 border-t border-border">
-                <Text className="text-ink font-bold">Total</Text>
-                <Text className="text-accent font-bold text-lg">
+
+              <View style={styles.breakdownDivider} />
+
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownTotalLabel}>Total</Text>
+                <Text style={styles.breakdownTotalValue}>
                   {formatCurrency(totalValue)}
                 </Text>
               </View>
-            </View>
+            </Animated.View>
           )}
 
-          {error && <Text className="text-danger text-sm mb-4">{error}</Text>}
+          {error && (
+            <Animated.Text
+              entering={FadeIn.duration(200)}
+              style={styles.errorText}
+            >
+              {error}
+            </Animated.Text>
+          )}
         </ScrollView>
 
-        {/* Fixed submit button */}
-        <View className="absolute bottom-0 left-0 right-0 bg-surface border-t border-border p-4 pb-8">
-          <GradientButton
-            label="Publicar serviço"
-            onPress={handleSubmit}
-            disabled={!isValid}
-            loading={createTask.isPending}
-            icon="rocket-outline"
-          />
+        {/* Fixed submit button with glass effect */}
+        <View style={styles.bottomContainer}>
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={80} tint="light" style={styles.bottomBlur}>
+              <View style={styles.bottomContent}>
+                <GradientButton
+                  label="Publicar serviço"
+                  onPress={handleSubmit}
+                  disabled={!isValid}
+                  loading={createTask.isPending}
+                  icon="rocket-outline"
+                />
+              </View>
+            </BlurView>
+          ) : (
+            <View style={styles.bottomAndroid}>
+              <GradientButton
+                label="Publicar serviço"
+                onPress={handleSubmit}
+                disabled={!isValid}
+                loading={createTask.isPending}
+                icon="rocket-outline"
+              />
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F3F8FB',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 24,
+    paddingBottom: 140,
+  },
+  backButton: {
+    marginRight: 16,
+    padding: 4,
+  },
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#001B48',
+    marginBottom: 12,
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 24,
+  },
+  categoryCard: {
+    width: '23%',
+    aspectRatio: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#DCEAF1',
+    shadowColor: '#02457A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  categoryCardSelected: {
+    borderColor: '#018ABE',
+    backgroundColor: 'rgba(1, 138, 190, 0.05)',
+  },
+  categoryIcon: {
+    fontSize: 24,
+    marginBottom: 6,
+  },
+  categoryName: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#5B7A91',
+    textAlign: 'center',
+  },
+  categoryNameSelected: {
+    color: '#018ABE',
+  },
+  categoryCheck: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#018ABE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  urgentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#DCEAF1',
+    marginBottom: 16,
+  },
+  urgentContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  urgentIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  urgentText: {
+    flex: 1,
+  },
+  urgentTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#001B48',
+  },
+  urgentDescription: {
+    fontSize: 13,
+    color: '#5B7A91',
+    marginTop: 2,
+  },
+  breakdownCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#DCEAF1',
+    marginTop: 8,
+  },
+  breakdownTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#001B48',
+    marginBottom: 12,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  breakdownLabel: {
+    fontSize: 14,
+    color: '#5B7A91',
+  },
+  breakdownValue: {
+    fontSize: 14,
+    color: '#001B48',
+    fontWeight: '500',
+  },
+  breakdownValueWarning: {
+    fontSize: 14,
+    color: '#F59E0B',
+    fontWeight: '500',
+  },
+  breakdownValueMuted: {
+    fontSize: 14,
+    color: '#5B7A91',
+  },
+  breakdownDivider: {
+    height: 1,
+    backgroundColor: '#EEF6FA',
+    marginVertical: 12,
+  },
+  breakdownTotalLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#001B48',
+  },
+  breakdownTotalValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#018ABE',
+  },
+  errorText: {
+    color: '#E11D48',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  bottomContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  bottomBlur: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(220, 234, 241, 0.5)',
+  },
+  bottomContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  bottomAndroid: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopWidth: 1,
+    borderTopColor: '#DCEAF1',
+    padding: 16,
+    paddingBottom: 32,
+  },
+});

@@ -1,17 +1,19 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { trpc, setTokens } from '../../src/lib/trpc';
-
-const OTP_LENGTH = 6;
+import { GradientMesh } from '../../src/components/GradientMesh';
+import { OtpInput } from '../../src/components/OtpInput';
 
 export default function OtpScreen() {
   const router = useRouter();
@@ -19,25 +21,24 @@ export default function OtpScreen() {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(60);
-  const inputRef = useRef<TextInput>(null);
+  const [success, setSuccess] = useState(false);
 
   const utils = trpc.useUtils();
 
   const verifyOtp = trpc.auth.verifyOtp.useMutation({
     onSuccess: async (data) => {
-      // Store both access and refresh tokens
+      setSuccess(true);
       await setTokens(data.accessToken, data.refreshToken);
-
-      // Drop any cached queries from before login (e.g. a getMe that ran with
-      // no/expired token) so everything refetches with the new session.
       await utils.invalidate();
 
-      // Navigate based on user state
-      if (data.isNewUser || !data.user.name) {
-        router.replace('/(auth)/profile-setup');
-      } else {
-        router.replace('/(tabs)/home');
-      }
+      // Small delay to show success state
+      setTimeout(() => {
+        if (data.isNewUser || !data.user.name) {
+          router.replace('/(auth)/profile-setup');
+        } else {
+          router.replace('/(tabs)/home');
+        }
+      }, 500);
     },
     onError: () => {
       setError('Código inválido. Tente novamente.');
@@ -53,10 +54,6 @@ export default function OtpScreen() {
   });
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
@@ -64,7 +61,7 @@ export default function OtpScreen() {
   }, [countdown]);
 
   useEffect(() => {
-    if (code.length === OTP_LENGTH) {
+    if (code.length === 6 && !verifyOtp.isPending && !success) {
       verifyOtp.mutate({ phone: phone!, code });
     }
   }, [code]);
@@ -74,80 +71,197 @@ export default function OtpScreen() {
     return `(${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
   };
 
+  const handleBack = () => {
+    router.back();
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-background"
+      style={styles.container}
     >
-      <View className="flex-1 px-6 pt-20">
-        {/* Header */}
-        <Text className="font-display text-3xl font-bold text-ink mb-2">
+      {/* Gradient Mesh Background */}
+      <View style={styles.meshContainer}>
+        <GradientMesh height={220} intensity="normal" />
+      </View>
+
+      <View style={styles.content}>
+        {/* Back button */}
+        <Animated.View entering={FadeInDown.delay(50).duration(420)}>
+          <Pressable onPress={handleBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#001B48" />
+          </Pressable>
+        </Animated.View>
+
+        <Animated.Text
+          entering={FadeInDown.delay(100).duration(420)}
+          style={styles.title}
+        >
           Digite o código
-        </Text>
-        <Text className="text-ink-muted mb-8">
-          Enviamos um SMS para {formatPhone(phone || '')}
-        </Text>
+        </Animated.Text>
+
+        <Animated.Text
+          entering={FadeInDown.delay(200).duration(420)}
+          style={styles.subtitle}
+        >
+          Enviamos um SMS para{' '}
+          <Text style={styles.phoneHighlight}>{formatPhone(phone || '')}</Text>
+        </Animated.Text>
 
         {/* OTP Input */}
-        <Pressable
-          onPress={() => inputRef.current?.focus()}
-          className="flex-row justify-center gap-3 mb-6"
+        <Animated.View
+          entering={FadeInDown.delay(300).duration(420)}
+          style={styles.otpContainer}
         >
-          {Array.from({ length: OTP_LENGTH }).map((_, i) => (
-            <View
-              key={i}
-              className={`w-12 h-14 rounded-button items-center justify-center border-2 ${
-                code.length === i
-                  ? 'border-accent bg-surface'
-                  : code[i]
-                  ? 'border-border-strong bg-surface'
-                  : 'border-border bg-surface'
-              }`}
-            >
-              <Text className="font-display text-2xl text-ink">
-                {code[i] || ''}
-              </Text>
-            </View>
-          ))}
-        </Pressable>
+          <OtpInput
+            value={code}
+            onChange={setCode}
+            error={error}
+            success={success}
+            disabled={verifyOtp.isPending || success}
+          />
+        </Animated.View>
 
-        {/* Hidden input */}
-        <TextInput
-          ref={inputRef}
-          value={code}
-          onChangeText={(text) => setCode(text.replace(/\D/g, '').slice(0, OTP_LENGTH))}
-          keyboardType="number-pad"
-          maxLength={OTP_LENGTH}
-          autoComplete="one-time-code"
-          className="absolute opacity-0"
-        />
-
-        {error ? (
-          <Text className="text-danger text-sm text-center mb-4">{error}</Text>
-        ) : null}
-
+        {/* Loading indicator */}
         {verifyOtp.isPending && (
-          <View className="items-center mb-4">
-            <ActivityIndicator color="#018ABE" />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator color="#018ABE" size="small" />
+            <Text style={styles.loadingText}>Verificando...</Text>
           </View>
         )}
 
-        {/* Resend */}
-        <View className="items-center">
+        {/* Resend section */}
+        <Animated.View
+          entering={FadeInDown.delay(400).duration(420)}
+          style={styles.resendContainer}
+        >
           {countdown > 0 ? (
-            <Text className="text-ink-muted">
-              Reenviar código em {countdown}s
+            <Text style={styles.countdownText}>
+              Reenviar código em{' '}
+              <Text style={styles.countdownNumber}>{countdown}s</Text>
             </Text>
           ) : (
             <Pressable
               onPress={() => resendOtp.mutate({ phone: phone! })}
               disabled={resendOtp.isPending}
+              style={styles.resendButton}
             >
-              <Text className="text-accent font-bold">Reenviar código</Text>
+              {resendOtp.isPending ? (
+                <ActivityIndicator color="#018ABE" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="refresh" size={18} color="#018ABE" />
+                  <Text style={styles.resendText}>Reenviar código</Text>
+                </>
+              )}
             </Pressable>
           )}
-        </View>
+        </Animated.View>
+
+        {/* Change number link */}
+        <Animated.View entering={FadeInDown.delay(500).duration(420)}>
+          <Pressable onPress={handleBack} style={styles.changeNumberButton}>
+            <Text style={styles.changeNumberText}>Alterar número</Text>
+          </Pressable>
+        </Animated.View>
       </View>
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F3F8FB',
+  },
+  meshContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    shadowColor: '#02457A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#001B48',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#5B7A91',
+    marginBottom: 40,
+    lineHeight: 22,
+  },
+  phoneHighlight: {
+    color: '#02457A',
+    fontWeight: '600',
+  },
+  otpContainer: {
+    marginBottom: 32,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 24,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#5B7A91',
+  },
+  resendContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  countdownText: {
+    fontSize: 14,
+    color: '#5B7A91',
+  },
+  countdownNumber: {
+    fontWeight: '600',
+    color: '#02457A',
+  },
+  resendButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(1, 138, 190, 0.08)',
+    borderRadius: 12,
+  },
+  resendText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#018ABE',
+  },
+  changeNumberButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  changeNumberText: {
+    fontSize: 14,
+    color: '#5B7A91',
+    textDecorationLine: 'underline',
+  },
+});

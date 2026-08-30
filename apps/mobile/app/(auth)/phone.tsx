@@ -3,14 +3,15 @@ import {
   View,
   Text,
   TextInput,
-  Pressable,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { trpc } from '../../src/lib/trpc';
 import { GradientButton } from '../../src/components/GradientButton';
+import { GradientMesh } from '../../src/components/GradientMesh';
 
 export default function PhoneScreen() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function PhoneScreen() {
   const numberRef = useRef<TextInput>(null);
 
   const requestOtp = trpc.auth.requestOtp.useMutation({
-    onSuccess: (data) => {
+    onSuccess: () => {
       router.push({
         pathname: '/(auth)/otp',
         params: { phone: `+55${ddd}${number}` },
@@ -43,33 +44,48 @@ export default function PhoneScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-background"
+      style={styles.container}
     >
-      <View className="flex-1 px-6 pt-20">
-        {/* Header */}
-        <Text className="font-display text-3xl font-bold text-ink mb-2">
-          Qual seu número?
-        </Text>
-        <Text className="text-ink-muted mb-8">
-          Vamos enviar um código SMS para confirmar
-        </Text>
+      {/* Gradient Mesh Background */}
+      <View style={styles.meshContainer} pointerEvents="none">
+        <GradientMesh height={220} intensity="normal" animated={false} />
+      </View>
 
-        {/* Phone input */}
-        <View className="flex-row items-center gap-3 mb-4">
-          <View className="bg-surface border border-border rounded-button px-4 py-4">
-            <Text className="text-ink-muted">+55</Text>
+      <View style={styles.content}>
+        <Animated.Text
+          entering={FadeInDown.delay(100).duration(420)}
+          style={styles.title}
+        >
+          TESTE REFRESH 123
+        </Animated.Text>
+        <Animated.Text
+          entering={FadeInDown.delay(200).duration(420)}
+          style={styles.subtitle}
+        >
+          Vamos enviar um código SMS para confirmar
+        </Animated.Text>
+
+        {/* Phone input - original working design */}
+        <Animated.View
+          entering={FadeInDown.delay(300).duration(420)}
+          style={styles.phoneRow}
+        >
+          <View style={styles.prefix}>
+            <Text style={styles.prefixText}>+55</Text>
           </View>
 
           <TextInput
             value={ddd}
             onChangeText={(text) => {
-              setDdd(text.replace(/\D/g, '').slice(0, 2));
-              if (text.length >= 2) numberRef.current?.focus();
+              const digits = text.replace(/\D/g, '').slice(0, 2);
+              setDdd(digits);
+              if (digits.length >= 2) numberRef.current?.focus();
             }}
             placeholder="DDD"
+            placeholderTextColor="#94B2C4"
             keyboardType="number-pad"
             maxLength={2}
-            className="bg-surface border border-border rounded-button px-4 py-4 w-20 text-ink text-center"
+            style={styles.dddInput}
           />
 
           <TextInput
@@ -77,25 +93,103 @@ export default function PhoneScreen() {
             value={number}
             onChangeText={(text) => setNumber(text.replace(/\D/g, '').slice(0, 9))}
             placeholder="00000-0000"
+            placeholderTextColor="#94B2C4"
             keyboardType="number-pad"
             maxLength={9}
-            className="flex-1 bg-surface border border-border rounded-button px-4 py-4 text-ink"
+            style={styles.numberInput}
           />
-        </View>
+        </Animated.View>
 
         {error ? (
-          <Text className="text-danger text-sm mb-4">{error}</Text>
+          <Text style={styles.error}>{error}</Text>
         ) : null}
 
-        {/* Submit */}
-        <GradientButton
-          label="Continuar"
-          onPress={handleSubmit}
-          disabled={!isValid}
-          loading={requestOtp.isPending}
-          iconRight="arrow-forward"
-        />
+        <Animated.View entering={FadeInDown.delay(400).duration(420)}>
+          <GradientButton
+            label="Continuar"
+            onPress={handleSubmit}
+            disabled={!isValid}
+            loading={requestOtp.isPending}
+            iconRight="arrow-forward"
+          />
+        </Animated.View>
       </View>
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F3F8FB',
+  },
+  meshContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 100,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#001B48',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#5B7A91',
+    marginBottom: 32,
+  },
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 24,
+  },
+  prefix: {
+    backgroundColor: '#EEF6FA',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#DCEAF1',
+  },
+  prefixText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#5B7A91',
+  },
+  dddInput: {
+    width: 72,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    borderColor: '#DCEAF1',
+    fontSize: 16,
+    color: '#001B48',
+    textAlign: 'center',
+  },
+  numberInput: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    borderColor: '#DCEAF1',
+    fontSize: 16,
+    color: '#001B48',
+  },
+  error: {
+    color: '#E11D48',
+    fontSize: 14,
+    marginBottom: 16,
+  },
+});

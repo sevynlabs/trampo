@@ -38,6 +38,16 @@ module.exports = {
 
         // Legacy alias for compatibility
         accent: '#018ABE',
+
+        // Gradient mesh colors (for animated backgrounds)
+        'mesh-1': 'rgba(2, 69, 122, 0.4)',
+        'mesh-2': 'rgba(1, 138, 190, 0.3)',
+        'mesh-3': 'rgba(151, 202, 219, 0.35)',
+        'mesh-4': 'rgba(214, 232, 238, 0.25)',
+
+        // Skeleton loader colors
+        'skeleton-base': '#DCEAF1',
+        'skeleton-highlight': '#EEF6FA',
       },
       fontFamily: {
         display: ['Inter', 'SF Pro Display', 'system-ui', 'sans-serif'],

@@ -6,15 +6,18 @@ import {
   ScrollView,
   Pressable,
   RefreshControl,
-  ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { trpc } from '../../src/lib/trpc';
 import { formatCurrency } from '../../src/lib/format';
 import { EmptyState, EmptyTasksIllustration } from '../../src/components/illustrations';
 import { PressableCard } from '../../src/components/PressableCard';
+import { SkeletonCard } from '../../src/components/Skeleton';
 
 function formatDistance(meters: number) {
   if (meters < 1000) return `${Math.round(meters)}m`;
@@ -28,6 +31,7 @@ export default function FeedScreen() {
     null
   );
   const [locationError, setLocationError] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const { data: categories } = trpc.categories.list.useQuery();
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
@@ -70,7 +74,6 @@ export default function FeedScreen() {
     setRefreshing(false);
   };
 
-  // Client-side text search + sort over the loaded feed.
   const visibleTasks = useMemo(() => {
     let list = tasks?.tasks ?? [];
     const q = search.trim().toLowerCase();
@@ -91,122 +94,161 @@ export default function FeedScreen() {
 
   if (locationError) {
     return (
-      <View className="flex-1 bg-background items-center justify-center px-6">
-        <Ionicons name="location-outline" size={64} color="#94B2C4" />
-        <Text className="text-ink font-bold text-lg mt-4 text-center">
-          Localização necessária
-        </Text>
-        <Text className="text-ink-muted text-center mt-2">{locationError}</Text>
+      <View style={styles.errorContainer}>
+        <Animated.View entering={FadeIn.duration(300)} style={styles.errorContent}>
+          <View style={styles.errorIcon}>
+            <Ionicons name="location-outline" size={48} color="#5B7A91" />
+          </View>
+          <Text style={styles.errorTitle}>Localização necessária</Text>
+          <Text style={styles.errorText}>{locationError}</Text>
+        </Animated.View>
       </View>
     );
   }
 
   if (!location) {
     return (
-      <View className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color="#018ABE" />
-        <Text className="text-ink-muted mt-4">Obtendo localização...</Text>
+      <View style={styles.loadingContainer}>
+        <View style={styles.loadingContent}>
+          <View style={styles.loadingPulse}>
+            <Ionicons name="navigate" size={32} color="#018ABE" />
+          </View>
+          <Text style={styles.loadingText}>Obtendo localização...</Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-background">
+    <View style={styles.container}>
       {/* Header */}
-      <View className="bg-surface px-6 pt-16 pb-4 border-b border-border">
-        <Text className="font-display text-2xl font-bold text-ink mb-4">
+      <View style={styles.headerContainer}>
+        <LinearGradient
+          colors={['#EEF6FA', '#F3F8FB']}
+          style={StyleSheet.absoluteFill}
+        />
+
+        <Animated.Text
+          entering={FadeIn.duration(300)}
+          style={styles.headerTitle}
+        >
           Serviços próximos
-        </Text>
+        </Animated.Text>
 
         {/* Search */}
-        <View className="flex-row items-center bg-background border border-border rounded-button px-4 mb-3">
-          <Ionicons name="search-outline" size={18} color="#5B7A91" />
+        <Animated.View
+          entering={FadeInDown.delay(100).duration(420)}
+          style={[
+            styles.searchContainer,
+            searchFocused && styles.searchContainerFocused,
+          ]}
+        >
+          <Ionicons
+            name="search-outline"
+            size={18}
+            color={searchFocused ? '#018ABE' : '#5B7A91'}
+          />
           <TextInput
             value={search}
             onChangeText={setSearch}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
             placeholder="Buscar por título, bairro ou categoria"
             placeholderTextColor="#94B2C4"
-            className="flex-1 py-3 ml-2 text-ink"
+            style={styles.searchInput}
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch('')} hitSlop={8}>
               <Ionicons name="close-circle" size={18} color="#94B2C4" />
             </Pressable>
           )}
-        </View>
+        </Animated.View>
 
         {/* Sort */}
-        <View className="flex-row items-center gap-2 mb-3">
-          <Text className="text-ink-muted text-xs">Ordenar:</Text>
+        <Animated.View
+          entering={FadeInDown.delay(200).duration(420)}
+          style={styles.sortRow}
+        >
+          <Text style={styles.sortLabel}>Ordenar:</Text>
           {(['distance', 'value'] as const).map((key) => (
             <Pressable
               key={key}
               onPress={() => setSortBy(key)}
-              className={`px-3 py-1.5 rounded-chip border ${
-                sortBy === key ? 'bg-accent/10 border-accent' : 'bg-surface border-border'
-              }`}
+              style={[
+                styles.sortChip,
+                sortBy === key && styles.sortChipActive,
+              ]}
             >
               <Text
-                className={`text-xs font-medium ${
-                  sortBy === key ? 'text-accent' : 'text-ink-muted'
-                }`}
+                style={[
+                  styles.sortChipText,
+                  sortBy === key && styles.sortChipTextActive,
+                ]}
               >
                 {key === 'distance' ? 'Mais perto' : 'Maior valor'}
               </Text>
             </Pressable>
           ))}
-        </View>
+        </Animated.View>
 
         {/* Category filter */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8 }}
-        >
-          <Pressable
-            onPress={() => setSelectedCategory(undefined)}
-            className={`px-4 py-2 rounded-chip ${
-              !selectedCategory ? 'bg-accent' : 'bg-border'
-            }`}
+        <Animated.View entering={FadeInDown.delay(300).duration(420)}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesContainer}
           >
-            <Text
-              className={`font-medium ${
-                !selectedCategory ? 'text-white' : 'text-ink-soft'
-              }`}
-            >
-              Todos
-            </Text>
-          </Pressable>
-          {categories?.map((cat) => (
             <Pressable
-              key={cat.id}
-              onPress={() => setSelectedCategory(cat.id)}
-              className={`px-4 py-2 rounded-chip ${
-                selectedCategory === cat.id ? 'bg-accent' : 'bg-border'
-              }`}
+              onPress={() => setSelectedCategory(undefined)}
+              style={[
+                styles.categoryChip,
+                !selectedCategory && styles.categoryChipActive,
+              ]}
             >
               <Text
-                className={`font-medium ${
-                  selectedCategory === cat.id ? 'text-white' : 'text-ink-soft'
-                }`}
+                style={[
+                  styles.categoryChipText,
+                  !selectedCategory && styles.categoryChipTextActive,
+                ]}
               >
-                {cat.name}
+                Todos
               </Text>
             </Pressable>
-          ))}
-        </ScrollView>
+            {categories?.map((cat) => (
+              <Pressable
+                key={cat.id}
+                onPress={() => setSelectedCategory(cat.id)}
+                style={[
+                  styles.categoryChip,
+                  selectedCategory === cat.id && styles.categoryChipActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    selectedCategory === cat.id && styles.categoryChipTextActive,
+                  ]}
+                >
+                  {cat.name}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </Animated.View>
       </View>
 
       <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {isLoading ? (
-          <View className="items-center py-8">
-            <ActivityIndicator color="#018ABE" />
+          <View style={styles.skeletonContainer}>
+            {[0, 1, 2, 3].map((i) => (
+              <SkeletonCard key={i} index={i} />
+            ))}
           </View>
         ) : !visibleTasks.length ? (
           <EmptyState
@@ -219,46 +261,55 @@ export default function FeedScreen() {
             }
           />
         ) : (
-          <View className="gap-3">
+          <View style={styles.taskList}>
             {visibleTasks.map((task, i) => (
               <PressableCard
                 key={task.id}
                 index={i}
+                variant={task.isUrgent ? 'urgent' : 'default'}
                 onPress={() => router.push(`/task/${task.id}`)}
               >
-                <View className="flex-row justify-between items-start mb-2">
-                  <View className="flex-1 mr-3">
-                    <Text className="font-bold text-ink">{task.title}</Text>
-                    <Text className="text-ink-muted text-sm mt-1">
-                      {task.category.name}
+                <View style={styles.taskHeader}>
+                  <View style={styles.taskHeaderLeft}>
+                    <Text style={styles.taskTitle} numberOfLines={1}>
+                      {task.title}
                     </Text>
+                    <Text style={styles.taskCategory}>{task.category.name}</Text>
                   </View>
                   {task.isUrgent && (
-                    <View className="bg-warning px-2 py-1 rounded-chip">
-                      <Text className="text-white text-xs font-medium">
-                        Urgente
+                    <View style={styles.urgentBadge}>
+                      <Ionicons name="flash" size={12} color="#ffffff" />
+                      <Text style={styles.urgentText}>Urgente</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.taskLocation}>
+                  <Ionicons name="location-outline" size={14} color="#5B7A91" />
+                  <Text style={styles.taskAddress} numberOfLines={1}>
+                    {task.address}
+                  </Text>
+                  {task.distance && (
+                    <View style={styles.distanceBadge}>
+                      <Text style={styles.distanceText}>
+                        {formatDistance(task.distance)}
                       </Text>
                     </View>
                   )}
                 </View>
 
-                <View className="flex-row items-center mt-2 mb-3">
-                  <Ionicons name="location-outline" size={14} color="#5B7A91" />
-                  <Text className="text-ink-muted text-sm ml-1 flex-1" numberOfLines={1}>
-                    {task.address}
-                  </Text>
-                  {task.distance && (
-                    <Text className="text-ink-soft text-sm font-medium">
-                      {formatDistance(task.distance)}
+                <View style={styles.taskFooter}>
+                  <View style={styles.clientInfo}>
+                    <View style={styles.clientAvatar}>
+                      <Text style={styles.clientInitial}>
+                        {task.clientName.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={styles.clientName}>
+                      {task.clientName.split(' ')[0]}
                     </Text>
-                  )}
-                </View>
-
-                <View className="flex-row justify-between items-center pt-3 border-t border-border">
-                  <Text className="text-ink-soft text-sm">
-                    {task.clientName.split(' ')[0]}
-                  </Text>
-                  <Text className="font-bold text-success text-lg">
+                  </View>
+                  <Text style={styles.taskValue}>
                     {formatCurrency(task.taskerValue)}
                   </Text>
                 </View>
@@ -270,3 +321,261 @@ export default function FeedScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F3F8FB',
+  },
+  headerContainer: {
+    paddingTop: 60,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DCEAF1',
+  },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#001B48',
+    letterSpacing: -0.5,
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 24,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: '#DCEAF1',
+    marginBottom: 12,
+  },
+  searchContainerFocused: {
+    borderColor: '#018ABE',
+    shadowColor: '#018ABE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    color: '#001B48',
+  },
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    marginBottom: 12,
+    gap: 8,
+  },
+  sortLabel: {
+    fontSize: 13,
+    color: '#5B7A91',
+    marginRight: 4,
+  },
+  sortChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#DCEAF1',
+  },
+  sortChipActive: {
+    backgroundColor: 'rgba(1, 138, 190, 0.1)',
+    borderColor: '#018ABE',
+  },
+  sortChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#5B7A91',
+  },
+  sortChipTextActive: {
+    color: '#018ABE',
+  },
+  categoriesContainer: {
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#EEF6FA',
+  },
+  categoryChipActive: {
+    backgroundColor: '#018ABE',
+  },
+  categoryChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#5B7A91',
+  },
+  categoryChipTextActive: {
+    color: '#ffffff',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  skeletonContainer: {
+    gap: 12,
+  },
+  taskList: {
+    gap: 12,
+  },
+  taskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  taskHeaderLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#001B48',
+    marginBottom: 2,
+  },
+  taskCategory: {
+    fontSize: 13,
+    color: '#5B7A91',
+  },
+  urgentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  urgentText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  taskLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  taskAddress: {
+    flex: 1,
+    fontSize: 14,
+    color: '#5B7A91',
+    marginLeft: 4,
+  },
+  distanceBadge: {
+    backgroundColor: '#EEF6FA',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  distanceText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#02457A',
+  },
+  taskFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#EEF6FA',
+  },
+  clientInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  clientAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#97CADB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  clientInitial: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  clientName: {
+    fontSize: 14,
+    color: '#5B7A91',
+  },
+  taskValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0E9F6E',
+  },
+  // Error and Loading states
+  errorContainer: {
+    flex: 1,
+    backgroundColor: '#F3F8FB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  errorContent: {
+    alignItems: 'center',
+  },
+  errorIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#EEF6FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#001B48',
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#5B7A91',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#F3F8FB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingContent: {
+    alignItems: 'center',
+  },
+  loadingPulse: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(1, 138, 190, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#5B7A91',
+  },
+});

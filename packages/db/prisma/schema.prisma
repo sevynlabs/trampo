@@ -232,6 +232,39 @@ model CampaignRecipient {
   @@map("campaign_recipients")
 }
 
+enum CouponKind {
+  PERCENT
+  FIXED
+}
+
+/// Promotional coupon / discount code.
+model Coupon {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String     @unique
+  kind       CouponKind
+  value      Int        // percent (0-100) or centavos, per kind
+  maxUses    Int?       @map("max_uses")
+  usedCount  Int        @default(0) @map("used_count")
+  validFrom  DateTime?  @map("valid_from")
+  validUntil DateTime?  @map("valid_until")
+  isActive   Boolean    @default(true) @map("is_active")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  @@map("coupons")
+}
+
+/// Key/value store for admin-managed integration toggles + config.
+model IntegrationSetting {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String   @unique
+  value       Json
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("integration_settings")
+}
+
 /// Reusable email template (subject + HTML body with {{variables}}).
 model EmailTemplate {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid

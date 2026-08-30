@@ -1,35 +1,39 @@
 import { useState } from 'react';
 import {
   View,
-  Text,
-  TextInput,
-  Pressable,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { trpc } from '../../src/lib/trpc';
 import { GradientButton } from '../../src/components/GradientButton';
+import { OnboardingHeader } from '../../src/components/OnboardingHeader';
+import { Input } from '../../src/components/Input';
+import { SelectionCard, SelectionCardGroup } from '../../src/components/SelectionCard';
 
 type Role = 'CLIENT' | 'TASKER' | 'BOTH';
 
-const ROLES: { value: Role; label: string; description: string }[] = [
+const ROLES: { value: Role; title: string; description: string; icon: keyof typeof import('@expo/vector-icons').Ionicons.glyphMap }[] = [
   {
     value: 'CLIENT',
-    label: 'Preciso de ajuda',
+    title: 'Preciso de ajuda',
     description: 'Contratar pessoas para fazer serviços',
+    icon: 'person-outline',
   },
   {
     value: 'TASKER',
-    label: 'Quero trabalhar',
+    title: 'Quero trabalhar',
     description: 'Oferecer meus serviços e ganhar dinheiro',
+    icon: 'briefcase-outline',
   },
   {
     value: 'BOTH',
-    label: 'Os dois',
+    title: 'Os dois',
     description: 'Contratar e também oferecer serviços',
+    icon: 'swap-horizontal-outline',
   },
 ];
 
@@ -46,7 +50,6 @@ export default function ProfileSetupScreen() {
     onSuccess: () => {
       utils.profiles.getMe.invalidate();
       if (role === 'TASKER' || role === 'BOTH') {
-        // TODO: go to category selection
         router.replace('/(tabs)/feed');
       } else {
         router.replace('/(tabs)/home');
@@ -66,14 +69,16 @@ export default function ProfileSetupScreen() {
     return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
   };
 
-  const isValid = name.length >= 2 && cpf.replace(/\D/g, '').length === 11 && role;
+  const cpfDigits = cpf.replace(/\D/g, '');
+  const isValidCpf = cpfDigits.length === 11;
+  const isValid = name.length >= 2 && isValidCpf && role;
 
   const handleSubmit = () => {
     if (!isValid || !role) return;
     setError('');
     updateProfile.mutate({
       name,
-      cpf: cpf.replace(/\D/g, ''),
+      cpf: cpfDigits,
       role,
     });
   };
@@ -81,80 +86,127 @@ export default function ProfileSetupScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-background"
+      style={styles.container}
     >
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }}>
-        <View className="flex-1 px-6 pt-20">
-          {/* Header */}
-          <Text className="font-display text-3xl font-bold text-ink mb-2">
-            Complete seu perfil
-          </Text>
-          <Text className="text-ink-muted mb-8">
-            Precisamos de algumas informações para começar
-          </Text>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <OnboardingHeader
+          title="Complete seu perfil"
+          subtitle="Precisamos de algumas informações para começar"
+          meshHeight={180}
+          meshIntensity="subtle"
+        />
 
-          {/* Name */}
-          <Text className="text-ink font-medium mb-2">Nome completo</Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Como você quer ser chamado"
-            autoCapitalize="words"
-            className="bg-surface border border-border rounded-button px-4 py-4 text-ink mb-6"
-          />
+        <View style={styles.form}>
+          <Animated.View entering={FadeInDown.delay(300).duration(420)}>
+            <Input
+              label="Nome completo"
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+              autoComplete="name"
+            />
+          </Animated.View>
 
-          {/* CPF */}
-          <Text className="text-ink font-medium mb-2">CPF</Text>
-          <TextInput
-            value={cpf}
-            onChangeText={(text) => setCpf(formatCpf(text))}
-            placeholder="000.000.000-00"
-            keyboardType="number-pad"
-            maxLength={14}
-            className="bg-surface border border-border rounded-button px-4 py-4 text-ink mb-6"
-          />
+          <Animated.View entering={FadeInDown.delay(400).duration(420)}>
+            <Input
+              label="CPF"
+              value={cpf}
+              onChangeText={(text) => setCpf(formatCpf(text))}
+              keyboardType="number-pad"
+              maxLength={14}
+              success={isValidCpf}
+              error={cpfDigits.length > 0 && cpfDigits.length < 11 ? 'CPF incompleto' : undefined}
+            />
+          </Animated.View>
 
-          {/* Role selection */}
-          <Text className="text-ink font-medium mb-3">O que você quer fazer?</Text>
-          <View className="gap-3 mb-6">
-            {ROLES.map((item) => (
-              <Pressable
-                key={item.value}
-                onPress={() => setRole(item.value)}
-                className={`p-4 rounded-card border-2 ${
-                  role === item.value
-                    ? 'border-accent bg-accent/5'
-                    : 'border-border bg-surface'
-                }`}
-              >
-                <Text
-                  className={`font-bold text-base ${
-                    role === item.value ? 'text-accent' : 'text-ink'
-                  }`}
-                >
-                  {item.label}
-                </Text>
-                <Text className="text-ink-muted text-sm mt-1">
-                  {item.description}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <Animated.View
+            entering={FadeInDown.delay(500).duration(420)}
+            style={styles.roleSection}
+          >
+            <Animated.Text
+              entering={FadeInDown.delay(500).duration(420)}
+              style={styles.roleLabel}
+            >
+              O que você quer fazer?
+            </Animated.Text>
+
+            <SelectionCardGroup>
+              {ROLES.map((item, index) => (
+                <SelectionCard
+                  key={item.value}
+                  title={item.title}
+                  description={item.description}
+                  icon={item.icon}
+                  selected={role === item.value}
+                  onPress={() => setRole(item.value)}
+                  index={index}
+                />
+              ))}
+            </SelectionCardGroup>
+          </Animated.View>
 
           {error ? (
-            <Text className="text-danger text-sm mb-4">{error}</Text>
+            <Animated.Text
+              entering={FadeInDown.duration(200)}
+              style={styles.errorText}
+            >
+              {error}
+            </Animated.Text>
           ) : null}
 
-          {/* Submit */}
-          <GradientButton
-            label="Finalizar cadastro"
-            onPress={handleSubmit}
-            disabled={!isValid}
-            loading={updateProfile.isPending}
-            iconRight="arrow-forward"
-          />
+          <Animated.View
+            entering={FadeInDown.delay(700).duration(420)}
+            style={styles.submitContainer}
+          >
+            <GradientButton
+              label="Finalizar cadastro"
+              onPress={handleSubmit}
+              disabled={!isValid}
+              loading={updateProfile.isPending}
+              iconRight="arrow-forward"
+            />
+          </Animated.View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F3F8FB',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  form: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  roleSection: {
+    marginTop: 8,
+  },
+  roleLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#001B48',
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#E11D48',
+    fontSize: 14,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  submitContainer: {
+    marginTop: 32,
+  },
+});
