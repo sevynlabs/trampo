@@ -6,9 +6,14 @@ import { prisma } from '@trampo/db';
 import { sendOtp, verifyOtp } from '../../integrations/twilio';
 import { generateTokenPair, verifyToken } from '../../lib/jwt';
 import { env } from '../../lib/env';
+import { redis } from '../../lib/redis';
 
-// Development bypass code
+// Development bypass code - requires BOTH NODE_ENV=development AND DEV_OTP_ENABLED=true
 const DEV_OTP_CODE = '123456';
+const isDevOtpEnabled = env.NODE_ENV === 'development' && env.DEV_OTP_ENABLED;
+
+// Token blocklist prefix for Redis
+const TOKEN_BLOCKLIST_PREFIX = 'token:blocked:';
 
 export const authRouter = router({
   /**
@@ -21,9 +26,9 @@ export const authRouter = router({
     .mutation(async ({ input }) => {
       const { phone } = input;
 
-      // In development, skip Twilio
-      if (env.NODE_ENV === 'development') {
-        console.log(`[AUTH] Development mode - OTP code: ${DEV_OTP_CODE}`);
+      // In development with DEV_OTP_ENABLED=true, skip Twilio
+      if (isDevOtpEnabled) {
+        console.warn(`[AUTH] ⚠️ DEV MODE - OTP bypass enabled. Code: ${DEV_OTP_CODE}`);
         return { success: true, message: 'OTP sent' };
       }
 
@@ -50,14 +55,15 @@ export const authRouter = router({
       const { phone, code } = input;
 
       // Verify OTP
-      if (env.NODE_ENV === 'development') {
-        // Accept dev code in development
+      if (isDevOtpEnabled) {
+        // Accept dev code ONLY when explicitly enabled
         if (code !== DEV_OTP_CODE) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: 'Invalid OTP code',
           });
         }
+        console.warn(`[AUTH] ⚠️ DEV MODE - OTP bypass accepted for ${phone}`);
       } else {
         // Verify with Twilio in production
         const result = await verifyOtp(phone, code);
@@ -120,9 +126,19 @@ export const authRouter = router({
    * Refresh access token
    */
   refresh: publicProcedure
+    .use(withRateLimit(20, 60)) // 20 refreshes per minute
     .input(z.object({ refreshToken: z.string() }))
     .mutation(async ({ input }) => {
       const { refreshToken } = input;
+
+      // Check if token is blocklisted (user logged out)
+      const isBlocked = await redis.get(`${TOKEN_BLOCKLIST_PREFIX}${refreshToken}`);
+      if (isBlocked) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Token has been revoked',
+        });
+      }
 
       // Verify refresh token
       const payload = await verifyToken(refreshToken);
@@ -167,13 +183,26 @@ export const authRouter = router({
     }),
 
   /**
-   * Logout - invalidate refresh token (client-side)
-   * In a more robust implementation, you'd store refresh tokens in DB
-   * and mark them as revoked here
+   * Logout - invalidate refresh token by adding to blocklist
+   * Token is blocked for 30 days (refresh token lifetime)
    */
-  logout: publicProcedure.mutation(async () => {
-    // Currently stateless - client just deletes tokens
-    // Future: Add token to blocklist in Redis
-    return { success: true };
-  }),
+  logout: publicProcedure
+    .input(z.object({ refreshToken: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const { refreshToken } = input;
+
+      if (refreshToken) {
+        // Block the refresh token for 30 days (its max lifetime)
+        const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
+        await redis.set(
+          `${TOKEN_BLOCKLIST_PREFIX}${refreshToken}`,
+          '1',
+          'EX',
+          THIRTY_DAYS_IN_SECONDS
+        );
+        console.log('[AUTH] Refresh token added to blocklist');
+      }
+
+      return { success: true };
+    }),
 });

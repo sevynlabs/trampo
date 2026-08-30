@@ -29,13 +29,25 @@ const { prisma } = await import('@trampo/db');
 const { hashPassword } = await import('../modules/admin/auth');
 
 async function main() {
+  // SECURITY: Password is REQUIRED - no default allowed
+  const password = process.env.ADMIN_SEED_PASSWORD;
+  if (!password) {
+    console.error('❌ ADMIN_SEED_PASSWORD is required. No default password allowed for security.');
+    console.error('   Usage: ADMIN_SEED_EMAIL=... ADMIN_SEED_PASSWORD=... pnpm --filter @trampo/api seed:admin');
+    process.exitCode = 1;
+    return;
+  }
+
+  if (password.length < 12) {
+    console.error('❌ ADMIN_SEED_PASSWORD must be at least 12 characters long.');
+    process.exitCode = 1;
+    return;
+  }
+
   const email = (process.env.ADMIN_SEED_EMAIL || 'admin@trampo.com.br')
     .trim()
     .toLowerCase();
-  const password = process.env.ADMIN_SEED_PASSWORD || 'trampo-admin-123';
   const name = process.env.ADMIN_SEED_NAME || 'Super Admin';
-
-  const usingDefaultPassword = !process.env.ADMIN_SEED_PASSWORD;
 
   const existing = await prisma.adminUser.findUnique({ where: { email } });
   if (existing) {
@@ -49,11 +61,6 @@ async function main() {
   });
 
   console.log(`✅ Created SUPER_ADMIN: ${admin.email}`);
-  if (usingDefaultPassword) {
-    console.warn(
-      `⚠️  Using DEFAULT password "${password}". Change it immediately in production!`
-    );
-  }
 }
 
 main()

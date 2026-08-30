@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure } from '../../trpc';
+import { router, protectedProcedure, adminAuthProcedure } from '../../trpc';
 import { prisma } from '@trampo/db';
 import { supabase } from '../../lib/supabase';
+import { isAdminUser } from '../../lib/admin';
 
 const KYC_BUCKET = 'kyc-documents';
 
@@ -110,11 +111,25 @@ export const kycRouter = router({
     }),
 
   /**
-   * Get signed URL to view a document (for admin review)
+   * Get signed URL to view a document
+   * Users can only view their own documents
+   * Admins can view any document
    */
   getViewUrl: protectedProcedure
     .input(z.object({ path: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      // SECURITY: Verify ownership - path format is "{userId}/{type}_{timestamp}.{ext}"
+      const pathUserId = input.path.split('/')[0];
+      const isOwner = pathUserId === ctx.user.id;
+      const isAdmin = isAdminUser(ctx.user.id);
+
+      if (!isOwner && !isAdmin) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Você não tem permissão para visualizar este documento',
+        });
+      }
+
       const { data, error } = await supabase.storage
         .from(KYC_BUCKET)
         .createSignedUrl(input.path, 60); // 1 min expiry

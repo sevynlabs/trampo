@@ -138,7 +138,11 @@ export const feedRouter = router({
   search: taskerProcedure
     .input(
       z.object({
-        query: z.string().min(2).max(100),
+        query: z
+          .string()
+          .min(2)
+          .max(100)
+          .regex(/^[\p{L}\p{N}\s]+$/u, 'Busca contém caracteres inválidos'),
         location: z.object({
           latitude: z.number(),
           longitude: z.number(),
@@ -148,6 +152,10 @@ export const feedRouter = router({
     )
     .query(async ({ input }) => {
       const { query, location, radiusMeters } = input;
+
+      // Sanitize search pattern - escape SQL LIKE wildcards to prevent pattern injection
+      const sanitizedQuery = query.replace(/[%_\\]/g, '\\$&');
+      const searchPattern = `%${sanitizedQuery}%`;
 
       const tasks = await prisma.$queryRaw<FeedTask[]>`
         SELECT
@@ -164,7 +172,7 @@ export const feedRouter = router({
         FROM tasks t
         JOIN categories c ON t.category_id = c.id
         WHERE t.status = 'OPEN'
-          AND (t.title ILIKE ${'%' + query + '%'} OR t.description ILIKE ${'%' + query + '%'})
+          AND (t.title ILIKE ${searchPattern} OR t.description ILIKE ${searchPattern})
           AND ST_DWithin(
             t.location,
             ST_SetSRID(ST_MakePoint(${location.longitude}, ${location.latitude}), 4326)::geography,
