@@ -5,7 +5,7 @@ import { prisma, Prisma } from '@trampo/db';
 import { assertTransition } from '../../domain/state-machine';
 import { env } from '../../lib/env';
 import { isAdminUser } from '../../lib/admin';
-import { notify, notifications } from '../../integrations/push';
+import { notify, notifications, withTask } from '../../integrations/push';
 
 export const disputesRouter = router({
   /**
@@ -57,17 +57,27 @@ export const disputesRouter = router({
           },
         });
 
-        await tx.task.update({
-          where: { id: input.taskId },
+        const moved = await tx.task.updateMany({
+          where: { id: input.taskId, status: { in: ['IN_PROGRESS', 'COMPLETED'] } },
           data: { status: 'DISPUTED', disputedAt: new Date() },
         });
+        if (moved.count === 0) {
+          throw new TRPCError({ code: 'CONFLICT', message: 'O status do trampo mudou' });
+        }
 
-        // Freeze the payment so the escrow-release job won't auto-release it
-        if (task.payment && (task.payment.status === 'CONFIRMED' || task.payment.status === 'HELD')) {
-          await tx.payment.update({
-            where: { id: task.payment.id },
+        // Freeze the payment so the escrow-release job won't auto-release it.
+        // If the release won the race, the dispute is rolled back.
+        if (task.payment) {
+          const frozen = await tx.payment.updateMany({
+            where: { id: task.payment.id, status: { in: ['CONFIRMED', 'HELD'] } },
             data: { status: 'DISPUTED' },
           });
+          if (frozen.count === 0) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'O pagamento deste trampo já foi liberado ou estornado',
+            });
+          }
         }
       });
 
@@ -76,7 +86,7 @@ export const disputesRouter = router({
       if (otherPartyId) {
         notify(
           otherPartyId,
-          notifications.disputeOpened(task.title)
+          withTask(notifications.disputeOpened(task.title), input.taskId)
         ).catch((err) => console.error('[DISPUTES] Push notification failed:', err));
       }
 
@@ -164,29 +174,10 @@ export const disputesRouter = router({
       const isProd = env.NODE_ENV === 'production';
 
       if (input.outcome === 'RELEASE') {
-        // Release escrow to the tasker. The transfer must succeed BEFORE we mark
-        // the payment as released — if it throws, the dispute stays OPEN so an
-        // admin can retry, instead of recording money that never moved. The
-        // transfer is idempotent (ensureTransferToTasker), so a retry after a
-        // partial failure won't pay twice.
-        let transferId: string | undefined = task.payment?.asaasTransferId ?? undefined;
-        if (isProd && task.payment && !transferId) {
-          const walletId = task.assignment?.tasker.taskerProfile?.asaasWalletId;
-          if (!walletId) {
-            throw new TRPCError({
-              code: 'PRECONDITION_FAILED',
-              message: 'Profissional sem carteira Asaas configurada',
-            });
-          }
-          const { ensureTransferToTasker } = await import('../../integrations/asaas');
-          const transfer = await ensureTransferToTasker({
-            walletId,
-            amount: task.payment.taskerAmount,
-            description: `TRAMPO (disputa): ${task.title}`,
-            externalReference: task.payment.id,
-          });
-          transferId = transfer.id;
-        }
+        // Release to the tasker. Payouts happen through Pix withdrawals from the
+        // RELEASED balance (payments.requestWithdrawal), so releasing is only a
+        // status change - an extra wallet transfer here would pay twice.
+        const taskerProfileId = task.assignment?.tasker.taskerProfile?.id;
 
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
           // Optimistic guard: only resolve if still OPEN. Prevents a concurrent
@@ -204,10 +195,19 @@ export const disputesRouter = router({
             throw new TRPCError({ code: 'CONFLICT', message: 'Disputa já resolvida' });
           }
           if (task.payment) {
-            await tx.payment.update({
-              where: { id: task.payment.id },
-              data: { status: 'RELEASED', releasedAt: new Date(), asaasTransferId: transferId },
+            const released = await tx.payment.updateMany({
+              where: { id: task.payment.id, status: 'DISPUTED' },
+              data: { status: 'RELEASED', releasedAt: new Date() },
             });
+            if (released.count === 1 && taskerProfileId) {
+              await tx.taskerProfile.update({
+                where: { id: taskerProfileId },
+                data: {
+                  totalTasks: { increment: 1 },
+                  totalEarnings: { increment: task.payment.taskerAmount },
+                },
+              });
+            }
           }
           await tx.task.update({
             where: { id: input.taskId },
@@ -217,7 +217,7 @@ export const disputesRouter = router({
       } else {
         // Refund the client. Same rule: the refund must succeed before we mark
         // the payment as refunded, otherwise we'd record a refund that never happened.
-        if (isProd && task.payment?.asaasPaymentId) {
+        if (isProd && task.payment?.asaasPaymentId && task.payment.paidAt && task.payment.status === 'DISPUTED') {
           const { refundPayment } = await import('../../integrations/asaas');
           await refundPayment({
             chargeId: task.payment.asaasPaymentId,
@@ -240,8 +240,8 @@ export const disputesRouter = router({
             throw new TRPCError({ code: 'CONFLICT', message: 'Disputa já resolvida' });
           }
           if (task.payment) {
-            await tx.payment.update({
-              where: { id: task.payment.id },
+            await tx.payment.updateMany({
+              where: { id: task.payment.id, status: 'DISPUTED' },
               data: { status: 'REFUNDED', refundedAt: new Date() },
             });
           }
@@ -258,7 +258,7 @@ export const disputesRouter = router({
         if (userId) {
           notify(
             userId,
-            notifications.disputeResolved(task.title, outcome)
+            withTask(notifications.disputeResolved(task.title, outcome), input.taskId)
           ).catch((err) => console.error('[DISPUTES] Push notification failed:', err));
         }
       }

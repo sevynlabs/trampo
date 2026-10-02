@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Redis } from 'ioredis';
 import { env } from './env';
 
@@ -62,14 +63,21 @@ export async function scheduleJob(
 export async function acquireLock(
   key: string,
   ttlSeconds: number
-): Promise<boolean> {
-  const result = await redis.set(key, '1', 'EX', ttlSeconds, 'NX');
-  return result === 'OK';
+): Promise<string | null> {
+  const token = randomUUID();
+  const result = await redis.set(key, token, 'EX', ttlSeconds, 'NX');
+  return result === 'OK' ? token : null;
 }
 
 /**
- * Release a distributed lock by deleting the key
+ * Release a distributed lock, but only if we still own it (compare-and-delete),
+ * so an expired lock re-acquired by another request is never deleted.
  */
-export async function releaseLock(key: string): Promise<void> {
-  await redis.del(key);
+export async function releaseLock(key: string, token: string): Promise<void> {
+  await redis.eval(
+    "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+    1,
+    key,
+    token
+  );
 }

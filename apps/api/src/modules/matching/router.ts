@@ -6,7 +6,7 @@ import { assertTransition, canCancel } from '../../domain/state-machine';
 import { calculateCancellationPenalty } from '../../domain/pricing';
 import { scheduleEscrowRelease } from '../webhooks';
 import { env } from '../../lib/env';
-import { notify, notifications } from '../../integrations/push';
+import { notify, notifications, withTask } from '../../integrations/push';
 
 export const matchingRouter = router({
   /**
@@ -17,6 +17,20 @@ export const matchingRouter = router({
     .input(z.object({ taskId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const { taskId } = input;
+
+      const target = await prisma.task.findUnique({
+        where: { id: taskId },
+        select: { clientId: true },
+      });
+      if (!target) {
+        throw new TRPCError({ code: 'NOT_FOUND' });
+      }
+      if (target.clientId === ctx.user.id) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Você não pode aceitar o seu próprio trampo',
+        });
+      }
 
       // Use transaction with conditional update (optimistic lock)
       const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -66,7 +80,7 @@ export const matchingRouter = router({
       if (result) {
         notify(
           result.client.id,
-          notifications.taskAccepted(result.title, ctx.user.name ?? 'Um profissional')
+          withTask(notifications.taskAccepted(result.title, ctx.user.name ?? 'Um profissional'), taskId)
         ).catch((err) => console.error('[MATCHING] Push notification failed:', err));
       }
 
@@ -96,21 +110,32 @@ export const matchingRouter = router({
       // Validate state transition
       assertTransition(task.status, 'IN_PROGRESS');
 
-      // Check payment is confirmed (money is secured)
+      // Check payment is confirmed (money is secured) and matches the price
+      // the tasker accepted
       if (!task.payment || task.payment.status !== 'CONFIRMED') {
         throw new TRPCError({
           code: 'PRECONDITION_FAILED',
           message: 'Aguardando confirmação do pagamento',
         });
       }
+      if (task.payment.amount !== task.totalValue) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'O valor pago não confere com o valor do trampo',
+        });
+      }
 
-      await prisma.task.update({
-        where: { id: input.taskId },
+      // Guarded transition: a concurrent cancel/dispute wins
+      const started = await prisma.task.updateMany({
+        where: { id: input.taskId, status: 'ACCEPTED' },
         data: {
           status: 'IN_PROGRESS',
           startedAt: new Date(),
         },
       });
+      if (started.count === 0) {
+        throw new TRPCError({ code: 'CONFLICT', message: 'O status do trampo mudou' });
+      }
 
       console.log(`[MATCHING] Task ${input.taskId} started`);
 
@@ -139,14 +164,17 @@ export const matchingRouter = router({
       // Validate state transition
       assertTransition(task.status, 'COMPLETED');
 
-      // Update task status
-      await prisma.task.update({
-        where: { id: input.taskId },
+      // Guarded transition: a concurrent dispute wins
+      const completed = await prisma.task.updateMany({
+        where: { id: input.taskId, status: 'IN_PROGRESS' },
         data: {
           status: 'COMPLETED',
           completedAt: new Date(),
         },
       });
+      if (completed.count === 0) {
+        throw new TRPCError({ code: 'CONFLICT', message: 'O status do trampo mudou' });
+      }
 
       // Schedule escrow release (1 hour from now)
       if (task.payment) {
@@ -158,7 +186,7 @@ export const matchingRouter = router({
       // Send push notification to client
       notify(
         task.client.id,
-        notifications.taskCompleted(task.title, ctx.user.name ?? 'Um profissional')
+        withTask(notifications.taskCompleted(task.title, ctx.user.name ?? 'Um profissional'), input.taskId)
       ).catch((err) => console.error('[MATCHING] Push notification failed:', err));
 
       return { success: true };
@@ -200,43 +228,49 @@ export const matchingRouter = router({
         });
       }
 
-      // Calculate penalty
-      const penalty = calculateCancellationPenalty(
-        task.totalValue,
-        task.scheduledAt,
-        new Date()
-      );
+      const now = new Date();
+      const payment = task.payment;
 
-      // Process the Asaas refund BEFORE recording the cancellation, so we never
-      // mark the payment as REFUNDED for money that didn't actually move back.
-      // If the refund throws, the whole cancellation aborts and can be retried.
-      const refundConfirmed =
-        !!task.payment && task.payment.status === 'CONFIRMED';
-      if (refundConfirmed && env.NODE_ENV === 'production') {
-        const { refundPayment } = await import('../../integrations/asaas');
-        const refundAmount = penalty > 0 ? task.payment!.amount - penalty : undefined;
-
-        await refundPayment({
-          chargeId: task.payment!.asaasPaymentId!,
-          amount: refundAmount, // undefined = full refund
-          description: `Cancelamento: ${input.reason || 'Sem motivo informado'}`,
+      // A tasker backing out of an accepted task just releases it back to the
+      // feed: no penalty for the client, and any payment stays attached to the
+      // task for the next tasker.
+      if (isTasker && !isClient) {
+        if (task.status !== 'ACCEPTED') {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Não é possível desistir neste estado' });
+        }
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+          const reopened = await tx.task.updateMany({
+            where: { id: input.taskId, status: 'ACCEPTED' },
+            data: { status: 'OPEN', acceptedAt: null },
+          });
+          if (reopened.count === 0) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'O status do trampo mudou' });
+          }
+          await tx.taskAssignment.deleteMany({ where: { taskId: input.taskId } });
         });
-
-        console.log(`[MATCHING] Refunded payment for task ${input.taskId}`);
+        console.log(`[MATCHING] Tasker ${ctx.user.id} released task ${input.taskId}`);
+        return { success: true, penalty: 0 };
       }
 
-      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        // Update task
-        await tx.task.update({
-          where: { id: input.taskId },
-          data: {
-            status: 'CANCELLED',
-            cancelledAt: new Date(),
-          },
-        });
+      // Client cancellation: the penalty only applies once a tasker has
+      // committed to the task (ACCEPTED) and it is too close to the schedule.
+      const penalty =
+        task.status === 'ACCEPTED'
+          ? calculateCancellationPenalty(task.totalValue, task.scheduledAt, now)
+          : 0;
 
-        // Create cancellation record
-        await tx.cancellation.create({
+      // 1. Claim the cancellation first with a status guard, so a concurrent
+      //    start/accept can't proceed on a task we're refunding.
+      const previousStatus = task.status;
+      const cancellationId = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const claimed = await tx.task.updateMany({
+          where: { id: input.taskId, status: { in: ['OPEN', 'ACCEPTED'] } },
+          data: { status: 'CANCELLED', cancelledAt: now },
+        });
+        if (claimed.count === 0) {
+          throw new TRPCError({ code: 'CONFLICT', message: 'O status do trampo mudou' });
+        }
+        const record = await tx.cancellation.create({
           data: {
             taskId: input.taskId,
             cancelledById: ctx.user.id,
@@ -245,18 +279,50 @@ export const matchingRouter = router({
             wasPenalized: penalty > 0,
           },
         });
+        return record.id;
+      });
 
-        // Update payment status (only meaningful once a refund was due/processed)
-        if (task.payment) {
-          await tx.payment.update({
-            where: { id: task.payment.id },
-            data: {
-              status: 'REFUNDED',
-              refundedAt: new Date(),
-            },
+      // 2. Settle the money. If Asaas fails, roll the cancellation back so it
+      //    can be retried and we never record a refund that didn't happen.
+      try {
+        if (payment?.status === 'CONFIRMED') {
+          if (env.NODE_ENV === 'production') {
+            const { refundPayment } = await import('../../integrations/asaas');
+            await refundPayment({
+              chargeId: payment.asaasPaymentId!,
+              amount: penalty > 0 ? payment.amount - penalty : undefined, // undefined = full refund
+              description: `Cancelamento: ${input.reason || 'Sem motivo informado'}`,
+            });
+          }
+          await prisma.payment.updateMany({
+            where: { id: payment.id, status: 'CONFIRMED' },
+            data: { status: 'REFUNDED', refundedAt: new Date() },
+          });
+        } else if (payment?.status === 'PENDING') {
+          // Kill the outstanding Pix so it can't be paid after cancelling
+          if (env.NODE_ENV === 'production' && payment.asaasPaymentId) {
+            const { cancelCharge } = await import('../../integrations/asaas');
+            await cancelCharge(payment.asaasPaymentId);
+          }
+          await prisma.payment.updateMany({
+            where: { id: payment.id, status: 'PENDING' },
+            data: { status: 'EXPIRED' },
           });
         }
-      });
+      } catch (error) {
+        await prisma.$transaction([
+          prisma.cancellation.delete({ where: { id: cancellationId } }),
+          prisma.task.update({
+            where: { id: input.taskId },
+            data: { status: previousStatus, cancelledAt: null },
+          }),
+        ]);
+        console.error(`[MATCHING] Refund failed for task ${input.taskId}, cancellation reverted:`, error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Não foi possível processar o estorno. Tente novamente.',
+        });
+      }
 
       console.log(`[MATCHING] Task ${input.taskId} cancelled by ${ctx.user.id}, penalty: ${penalty}`);
 
