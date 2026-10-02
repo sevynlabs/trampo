@@ -95,6 +95,24 @@ export const kycRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { type, path } = input;
 
+      // The path must be one we issued to THIS user for THIS document type
+      const expected = new RegExp(`^${ctx.user.id}/${type}_[0-9]+[.](jpg|png)$`);
+      if (!expected.test(path)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Caminho de documento inválido' });
+      }
+
+      // Documents are frozen while under review or after approval
+      const current = await prisma.taskerProfile.findUnique({
+        where: { userId: ctx.user.id },
+        select: { kycStatus: true },
+      });
+      if (current && (current.kycStatus === 'SUBMITTED' || current.kycStatus === 'APPROVED')) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Seus documentos já estão em análise ou aprovados',
+        });
+      }
+
       const fieldMap = {
         document_front: 'documentFrontPath',
         document_back: 'documentBackPath',
@@ -119,8 +137,8 @@ export const kycRouter = router({
     .input(z.object({ path: z.string() }))
     .query(async ({ ctx, input }) => {
       // SECURITY: Verify ownership - path format is "{userId}/{type}_{timestamp}.{ext}"
-      const pathUserId = input.path.split('/')[0];
-      const isOwner = pathUserId === ctx.user.id;
+      const isOwner = /^[0-9a-f-]{36}\/(document_front|document_back|selfie)_\d+\.(jpg|png)$/.test(input.path) &&
+        input.path.startsWith(`${ctx.user.id}/`);
       const isAdmin = isAdminUser(ctx.user.id);
 
       if (!isOwner && !isAdmin) {
@@ -151,6 +169,11 @@ export const kycRouter = router({
 
     if (!profile) {
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Perfil não encontrado' });
+    }
+
+    // Re-submitting would pull an approved tasker out of APPROVED mid-task
+    if (profile.kycStatus === 'SUBMITTED' || profile.kycStatus === 'APPROVED') {
+      return { success: true };
     }
 
     if (!profile.documentFrontPath || !profile.selfiePath) {

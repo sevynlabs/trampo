@@ -3,7 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../../trpc';
 import { submitReviewInput } from '@trampo/contracts';
 import { prisma } from '@trampo/db';
-import { notify, notifications } from '../../integrations/push';
+import { notify, notifications, withTask } from '../../integrations/push';
 
 export const reviewsRouter = router({
   /**
@@ -42,6 +42,9 @@ export const reviewsRouter = router({
       }
 
       const revieweeId = isClient ? task.assignment!.taskerId : task.clientId;
+      if (revieweeId === ctx.user.id) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Você não pode se autoavaliar' });
+      }
 
       // Check for existing review
       const existing = await prisma.review.findUnique({
@@ -75,24 +78,21 @@ export const reviewsRouter = router({
       // Send push notification to reviewee
       notify(
         revieweeId,
-        notifications.newReview(rating, ctx.user.name ?? 'Alguém')
+        withTask(notifications.newReview(rating, ctx.user.name ?? 'Alguém'), taskId)
       ).catch((err) => console.error('[REVIEWS] Push notification failed:', err));
 
-      // Update tasker profile rating (if reviewee is tasker)
-      if (!isClient) {
-        // Reviewee is tasker
+      // Client reviewing the tasker: refresh the tasker's rating, counting only
+      // reviews received while acting as tasker. (totalTasks is incremented on
+      // escrow release, not here.)
+      if (isClient) {
         const avgRating = await prisma.review.aggregate({
-          where: { revieweeId },
+          where: { revieweeId, task: { assignment: { taskerId: revieweeId } } },
           _avg: { rating: true },
-          _count: { rating: true },
         });
 
-        await prisma.taskerProfile.update({
+        await prisma.taskerProfile.updateMany({
           where: { userId: revieweeId },
-          data: {
-            rating: avgRating._avg.rating ?? 0,
-            totalTasks: avgRating._count.rating,
-          },
+          data: { rating: avgRating._avg.rating ?? 0 },
         });
       }
 

@@ -42,6 +42,11 @@ export async function createContext(honoContext: HonoContext): Promise<Context> 
           where: { id: payload.sub },
         });
 
+        // Blocked users lose access immediately, even with a valid token
+        if (user && !user.isActive) {
+          user = null;
+        }
+
         // Verify role hasn't changed (token might have stale role)
         if (user && user.role !== payload.role) {
           console.log(`[AUTH] Role mismatch - token: ${payload.role}, db: ${user.role}`);
@@ -214,11 +219,19 @@ export function requireAdminRole(...roles: string[]) {
 /**
  * Middleware: Rate limiting
  */
+export function getClientIp(ctx: Context): string {
+  // The edge proxy appends the real client IP as the LAST hop; anything to
+  // the left is client-controlled and must not be trusted.
+  const xff = ctx.honoContext.req.header('x-forwarded-for');
+  const lastHop = xff?.split(',').map((s) => s.trim()).filter(Boolean).pop();
+  return lastHop || ctx.honoContext.req.header('x-real-ip') || 'unknown';
+}
+
 export function withRateLimit(limit: number, windowSeconds: number) {
-  return t.middleware(async ({ ctx, next }) => {
-    // Use IP or user ID as key
-    const key = ctx.user?.id || ctx.honoContext.req.header('x-forwarded-for') || 'anonymous';
-    const rateLimitKey = `ratelimit:${key}`;
+  return t.middleware(async ({ ctx, next, path }) => {
+    // Separate bucket per procedure, keyed by user (or IP when anonymous)
+    const key = ctx.user?.id || getClientIp(ctx);
+    const rateLimitKey = `ratelimit:${path}:${key}`;
 
     const allowed = await checkRateLimit(rateLimitKey, limit, windowSeconds);
 

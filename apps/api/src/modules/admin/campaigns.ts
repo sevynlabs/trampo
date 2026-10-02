@@ -251,7 +251,7 @@ export const campaignsRouter = router({
             const res = await sendEmail({
               to: u.email!,
               subject: renderTemplate(c.title, vars),
-              html: renderTemplate(c.body, vars),
+              html: renderTemplate(c.body, vars, { html: true }),
             });
             ok = res.ok;
             error = res.error ?? null;

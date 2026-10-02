@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { router, taskerProcedure } from '../../trpc';
-import { feedInput } from '@trampo/contracts';
+import { feedInput, coordinatesSchema } from '@trampo/contracts';
 import { prisma } from '@trampo/db';
 
 export interface FeedTask {
@@ -34,7 +34,9 @@ export const feedRouter = router({
   nearby: taskerProcedure
     .input(feedInput)
     .query(async ({ ctx, input }) => {
-      const { location, radiusMeters, categoryId, limit, offset } = input;
+      const { location, categoryId, limit, offset } = input;
+      // Never search beyond the service area the tasker configured
+      const radiusMeters = Math.min(input.radiusMeters, ctx.taskerProfile.serviceRadius);
 
       // Get tasker's categories
       const taskerCategories = await prisma.taskerProfileCategory.findMany({
@@ -80,6 +82,7 @@ export const feedRouter = router({
         JOIN categories c ON t.category_id = c.id
         JOIN users u ON t.client_id = u.id
         WHERE t.status = 'OPEN'
+          AND t.client_id <> ${ctx.user.id}::uuid
           AND t.category_id = ANY(${categoryIds}::uuid[])
           AND ST_DWithin(
             t.location,
@@ -96,6 +99,7 @@ export const feedRouter = router({
         SELECT COUNT(*) as count
         FROM tasks t
         WHERE t.status = 'OPEN'
+          AND t.client_id <> ${ctx.user.id}::uuid
           AND t.category_id = ANY(${categoryIds}::uuid[])
           AND ST_DWithin(
             t.location,
@@ -143,11 +147,8 @@ export const feedRouter = router({
           .min(2)
           .max(100)
           .regex(/^[\p{L}\p{N}\s]+$/u, 'Busca contém caracteres inválidos'),
-        location: z.object({
-          latitude: z.number(),
-          longitude: z.number(),
-        }),
-        radiusMeters: z.number().default(10000),
+        location: coordinatesSchema,
+        radiusMeters: z.number().int().min(1000).max(50000).default(10000),
       })
     )
     .query(async ({ input }) => {

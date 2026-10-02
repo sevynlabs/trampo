@@ -60,9 +60,29 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
 }
 
 /** Render `{{var}}` placeholders in a template body against a values map. */
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+export function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]);
+}
+
+/**
+ * Substitute {{var}} placeholders. Pass `html: true` when the result is HTML so
+ * user-controlled values (e.g. names) can't inject markup or links.
+ */
 export function renderTemplate(
   body: string,
-  vars: Record<string, string>
+  vars: Record<string, string>,
+  options: { html?: boolean } = {}
 ): string {
-  return body.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => vars[key] ?? '');
+  return body.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => {
+    const value = vars[key] ?? '';
+    return options.html ? escapeHtml(value) : value;
+  });
 }
