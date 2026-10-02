@@ -11,6 +11,7 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../src/lib/trpc';
 import { EmptyState, EmptyInboxIllustration } from '../src/components/illustrations';
+import { getNotificationRoute } from '../src/lib/notificationRoutes';
 
 const ICON_BY_TYPE: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   task_accepted: { icon: 'checkmark-circle', color: '#0E9F6E' },
@@ -61,7 +62,13 @@ export default function NotificationsScreen() {
           title: 'Notificações',
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
-            <Pressable onPress={() => router.back()} className="mr-4">
+            <Pressable
+              onPress={() => router.back()}
+              className="mr-4"
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar"
+            >
               <Ionicons name="arrow-back" size={24} color="#001B48" />
             </Pressable>
           ),
@@ -88,9 +95,13 @@ export default function NotificationsScreen() {
         >
           {items.map((n) => {
             const cfg = ICON_BY_TYPE[n.type] ?? ICON_BY_TYPE.generic;
+            const route = getNotificationRoute(n.data as Record<string, unknown> | null);
             return (
-              <View
+              <Pressable
                 key={n.id}
+                disabled={!route}
+                onPress={() => route && router.push(route as never)}
+                accessibilityRole={route ? 'button' : undefined}
                 className={`flex-row items-start rounded-card p-4 mb-2 border ${
                   n.read ? 'bg-surface border-border' : 'bg-accent/5 border-accent/20'
                 }`}
@@ -106,12 +117,12 @@ export default function NotificationsScreen() {
                     <Text className="font-bold text-ink flex-1 mr-2" numberOfLines={1}>
                       {n.title}
                     </Text>
-                    <Text className="text-ink-faint text-xs">{timeAgo(n.createdAt)}</Text>
+                    <Text className="text-ink-muted text-xs">{timeAgo(n.createdAt)}</Text>
                   </View>
                   <Text className="text-ink-muted text-sm mt-0.5 leading-5">{n.body}</Text>
                 </View>
                 {!n.read && <View className="w-2 h-2 rounded-full bg-accent ml-2 mt-2" />}
-              </View>
+              </Pressable>
             );
           })}
         </ScrollView>

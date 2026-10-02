@@ -26,7 +26,8 @@ export const notificationsRouter = router({
 
       let nextCursor: string | undefined;
       if (items.length > limit) {
-        nextCursor = items.pop()!.id;
+        items.pop(); // the extra row only signals there's another page
+        nextCursor = items[items.length - 1].id; // cursor + skip:1 resumes after it
       }
 
       return {

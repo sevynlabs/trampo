@@ -1,12 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsModule from 'expo-notifications';
 import * as Device from 'expo-device';
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { router } from 'expo-router';
 import { trpc } from '../lib/trpc';
+import { getNotificationRoute } from '../lib/notificationRoutes';
+
+// Remote push was removed from Expo Go (SDK 53+): importing expo-notifications
+// there throws on Android. Load it only in development/production builds.
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const Notifications: typeof NotificationsModule | null = isExpoGo
+  ? null
+  : // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('expo-notifications');
 
 // Configure notification behavior
-Notifications.setNotificationHandler({
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
@@ -18,12 +28,17 @@ Notifications.setNotificationHandler({
 
 export function usePushNotifications() {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
-  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
-  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const notificationListener = useRef<NotificationsModule.EventSubscription | null>(null);
+  const responseListener = useRef<NotificationsModule.EventSubscription | null>(null);
 
   const registerMutation = trpc.profiles.registerPushToken.useMutation();
 
   useEffect(() => {
+    if (!Notifications) {
+      if (__DEV__) console.log('[PUSH] Expo Go: push notifications disabled');
+      return;
+    }
+
     // Register for push notifications
     registerForPushNotificationsAsync().then((token) => {
       if (token) {
@@ -56,6 +71,8 @@ export function usePushNotifications() {
 }
 
 async function registerForPushNotificationsAsync(): Promise<string | null> {
+  if (!Notifications) return null;
+
   // Must be a physical device
   if (!Device.isDevice) {
     if (__DEV__) console.log('[PUSH] Push notifications require a physical device');
@@ -99,21 +116,8 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
 }
 
 function handleNotificationTap(data: Record<string, unknown> | undefined) {
-  // Navigation will be handled by the app based on notification type
-  // This is a placeholder - integrate with your navigation
-  const type = data?.type as string;
-
-  switch (type) {
-    case 'task_accepted':
-    case 'task_completed':
-    case 'payment_confirmed':
-      // Navigate to task details
-      break;
-    case 'new_message':
-      // Navigate to chat
-      break;
-    case 'payment_released':
-      // Navigate to earnings
-      break;
+  const route = getNotificationRoute(data);
+  if (route) {
+    router.push(route as never);
   }
 }
