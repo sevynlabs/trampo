@@ -8,8 +8,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../../src/lib/trpc';
 import { subscribeToChatMessages } from '../../../src/lib/supabase';
@@ -32,6 +34,9 @@ export default function ChatScreen() {
   const [message, setMessage] = useState('');
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const scrollRef = useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
+  // Native stack header: 44pt bar below the status bar (iOS only matters here)
+  const headerHeight = insets.top + 44;
 
   const { data: me } = trpc.profiles.getMe.useQuery();
 
@@ -57,45 +62,21 @@ export default function ChatScreen() {
     }
   }, [initialMessages]);
 
-  // Subscribe to Realtime messages
+  // Realtime only tells us "there's a new message"; fetch it from the API
+  const localIdsRef = useRef(new Set<string>());
+  useEffect(() => {
+    localIdsRef.current = new Set(localMessages.map((m) => m.id));
+  }, [localMessages]);
+
   useEffect(() => {
     if (!id) return;
-
-    console.log('[CHAT] Subscribing to realtime messages');
-
-    const unsubscribe = subscribeToChatMessages(id, (newMessage) => {
-      console.log('[CHAT] Received realtime message:', newMessage.id);
-
-      // Add message to local state if not already present
-      setLocalMessages((prev) => {
-        // Check if message already exists
-        if (prev.some((m) => m.id === newMessage.id)) {
-          return prev;
-        }
-
-        // Add new message
-        return [
-          ...prev,
-          {
-            id: newMessage.id,
-            senderId: newMessage.senderId,
-            content: newMessage.content,
-            createdAt: newMessage.createdAt,
-            sender: {
-              id: newMessage.senderId,
-              name: newMessage.senderName,
-              avatarUrl: newMessage.senderAvatar,
-            },
-          },
-        ];
-      });
+    const unsubscribe = subscribeToChatMessages(id, (messageId) => {
+      if (!localIdsRef.current.has(messageId)) {
+        refetch();
+      }
     });
-
-    return () => {
-      console.log('[CHAT] Unsubscribing from realtime');
-      unsubscribe();
-    };
-  }, [id]);
+    return unsubscribe;
+  }, [id, refetch]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -105,12 +86,29 @@ export default function ChatScreen() {
   }, [localMessages]);
 
   const sendMessage = trpc.chat.send.useMutation({
-    onSuccess: () => {
+    onSuccess: (sent) => {
       setMessage('');
-      // No need to refetch - Realtime will deliver the message
+      // Show our own message right away, even if Realtime is down
+      setLocalMessages((prev) =>
+        prev.some((m) => m.id === sent.id)
+          ? prev
+          : [
+              ...prev,
+              {
+                id: sent.id,
+                senderId: sent.senderId,
+                content: sent.content,
+                createdAt:
+                  typeof sent.createdAt === 'string'
+                    ? sent.createdAt
+                    : new Date(sent.createdAt).toISOString(),
+                sender: sent.sender,
+              },
+            ]
+      );
     },
-    onError: () => {
-      // On error, refetch to ensure consistency
+    onError: (err) => {
+      Alert.alert('Mensagem não enviada', err.message);
       refetch();
     },
   });
@@ -128,7 +126,13 @@ export default function ChatScreen() {
           title: 'Chat',
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
-            <Pressable onPress={() => router.back()} className="mr-4">
+            <Pressable
+              onPress={() => router.back()}
+              className="mr-4"
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar"
+            >
               <Ionicons name="arrow-back" size={24} color="#001B48" />
             </Pressable>
           ),
@@ -136,9 +140,9 @@ export default function ChatScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1 bg-background"
-        keyboardVerticalOffset={90}
+        keyboardVerticalOffset={headerHeight}
       >
         <ScrollView
           ref={scrollRef}
@@ -177,7 +181,7 @@ export default function ChatScreen() {
                       </Text>
                     </View>
                     <Text
-                      className={`text-xs text-ink-faint mt-1 ${
+                      className={`text-xs text-ink-muted mt-1 ${
                         isMe ? 'text-right' : 'text-left'
                       }`}
                     >
@@ -194,12 +198,16 @@ export default function ChatScreen() {
         </ScrollView>
 
         {/* Input */}
-        <View className="bg-surface border-t border-border px-4 py-3 pb-6">
+        <View
+          className="bg-surface border-t border-border px-4 pt-3"
+          style={{ paddingBottom: Math.max(insets.bottom, 12) + 4 }}
+        >
           <View className="flex-row items-center gap-2">
             <TextInput
               value={message}
               onChangeText={setMessage}
               placeholder="Digite sua mensagem..."
+              placeholderTextColor="#5B7A91"
               multiline
               maxLength={500}
               className="flex-1 bg-background border border-border rounded-button px-4 py-3 text-ink max-h-[100px]"
@@ -207,6 +215,8 @@ export default function ChatScreen() {
             <Pressable
               onPress={handleSend}
               disabled={!message.trim() || sendMessage.isPending}
+              accessibilityRole="button"
+              accessibilityLabel="Enviar mensagem"
               className={`p-3 rounded-button ${
                 message.trim() ? 'bg-accent' : 'bg-border'
               }`}

@@ -40,8 +40,16 @@ export default function OtpScreen() {
         }
       }, 500);
     },
-    onError: () => {
-      setError('Código inválido. Tente novamente.');
+    onError: (err) => {
+      // Only a rejected code is "invalid"; network/limit errors say so
+      const code = err.data?.code;
+      setError(
+        code === 'BAD_REQUEST'
+          ? 'Código inválido. Tente novamente.'
+          : code === 'TOO_MANY_REQUESTS' || code === 'FORBIDDEN'
+            ? err.message
+            : 'Não foi possível verificar agora. Confira sua conexão e tente de novo.'
+      );
       setCode('');
     },
   });
@@ -51,6 +59,7 @@ export default function OtpScreen() {
       setCountdown(60);
       setError('');
     },
+    onError: (err) => setError(err.message),
   });
 
   useEffect(() => {
@@ -88,7 +97,13 @@ export default function OtpScreen() {
       <View style={styles.content}>
         {/* Back button */}
         <Animated.View entering={FadeInDown.delay(50).duration(420)}>
-          <Pressable onPress={handleBack} style={styles.backButton}>
+          <Pressable
+            onPress={handleBack}
+            style={styles.backButton}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+          >
             <Ionicons name="arrow-back" size={24} color="#001B48" />
           </Pressable>
         </Animated.View>

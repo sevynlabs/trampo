@@ -7,6 +7,8 @@ import { storeEncryptedCpf } from '../../lib/pii';
 import { isAdminUser } from '../../lib/admin';
 import crypto from 'crypto';
 
+const isTaskerRole = (role: string) => role === 'TASKER' || role === 'BOTH';
+
 export const profilesRouter = router({
   /**
    * Get current user profile
@@ -27,7 +29,9 @@ export const profilesRouter = router({
 
     if (!user) return null;
 
-    return { ...user, isAdmin: isAdminUser(user.id) };
+    // Never send PII hashes, the encrypted CPF blob or the device token back
+    const { cpfHash, cpfEncrypted: _cpfEncrypted, pushToken: _pushToken, ...safeUser } = user;
+    return { ...safeUser, hasCpf: !!cpfHash, isAdmin: isAdminUser(user.id) };
   }),
 
   /**
@@ -41,21 +45,34 @@ export const profilesRouter = router({
       // Hash CPF for lookups (never store plain CPF)
       const cpfHash = crypto.createHash('sha256').update(cpf).digest('hex');
 
+      // CPF is set once: it backs KYC and payouts, so it can't be swapped later
+      if (ctx.user.cpfHash && ctx.user.cpfHash !== cpfHash) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'O CPF não pode ser alterado. Fale com o suporte.',
+        });
+      }
+
       // Check if CPF already used by another user
       const existingCpf = await prisma.user.findFirst({
         where: {
           cpfHash,
           id: { not: ctx.user.id },
         },
+        select: { id: true },
       });
 
       if (existingCpf) {
-        throw new Error('CPF já cadastrado');
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Não foi possível concluir o cadastro com este CPF. Fale com o suporte.',
+        });
       }
 
-      // Whether the user was already a tasker BEFORE this update (decides if we
-      // need to create a TaskerProfile). Must read the pre-update role.
-      const wasTasker = ctx.user.role.includes('TASKER');
+      const existingProfile = await prisma.taskerProfile.findUnique({
+        where: { userId: ctx.user.id },
+        select: { id: true },
+      });
 
       // Persist the profile, the encrypted CPF and the tasker profile atomically:
       // if CPF encryption fails we must not leave a half-written profile (which
@@ -72,14 +89,14 @@ export const profilesRouter = router({
         await storeEncryptedCpf(ctx.user.id, cpf, tx);
 
         // Create tasker profile if becoming tasker
-        if ((role === 'TASKER' || role === 'BOTH') && !wasTasker) {
+        if (isTaskerRole(role) && !existingProfile) {
           await tx.taskerProfile.create({ data: { userId: ctx.user.id } });
         }
 
         return updated;
       });
 
-      return user;
+      return { id: user.id, name: user.name, email: user.email, role: user.role };
     }),
 
   /**
@@ -144,7 +161,7 @@ export const profilesRouter = router({
     const profile = await prisma.taskerProfile.findUnique({
       where: { userId: ctx.user.id },
     });
-    const alreadyTasker = ctx.user.role.includes('TASKER');
+    const alreadyTasker = isTaskerRole(ctx.user.role);
 
     if (alreadyTasker && profile) {
       return { success: true, alreadyTasker: true };
@@ -154,7 +171,7 @@ export const profilesRouter = router({
       if (!alreadyTasker) {
         await tx.user.update({
           where: { id: ctx.user.id },
-          data: { role: ctx.user.role === 'CLIENT' ? 'BOTH' : 'TASKER' },
+          data: { role: 'BOTH' }, // keeps the client role
         });
       }
       if (!profile) {
@@ -169,7 +186,7 @@ export const profilesRouter = router({
    * Update tasker categories
    */
   updateCategories: protectedProcedure
-    .input(z.object({ categoryIds: z.array(z.string().uuid()) }))
+    .input(z.object({ categoryIds: z.array(z.string().uuid()).min(1).max(20) }))
     .mutation(async ({ ctx, input }) => {
       const { categoryIds } = input;
 
@@ -179,7 +196,7 @@ export const profilesRouter = router({
       });
 
       if (!profile) {
-        throw new Error('Tasker profile not found');
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Perfil de profissional não encontrado' });
       }
 
       // Delete existing and create new
@@ -192,6 +209,7 @@ export const profilesRouter = router({
             taskerProfileId: profile.id,
             categoryId,
           })),
+          skipDuplicates: true,
         }),
       ]);
 
@@ -216,7 +234,7 @@ export const profilesRouter = router({
    * Register push notification token
    */
   registerPushToken: protectedProcedure
-    .input(z.object({ token: z.string().min(1) }))
+    .input(z.object({ token: z.string().regex(/^Expo(nent)?PushToken\[[^\]]{10,200}\]$/) }))
     .mutation(async ({ ctx, input }) => {
       await prisma.user.update({
         where: { id: ctx.user.id },

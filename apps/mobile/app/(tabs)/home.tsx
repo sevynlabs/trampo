@@ -11,6 +11,7 @@ import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trpc } from '../../src/lib/trpc';
 import { formatCurrency } from '../../src/lib/format';
 import { GradientButton } from '../../src/components/GradientButton';
@@ -28,6 +29,9 @@ const STATUS_LABELS: Record<string, { label: string; bg: string; text: string }>
   DISPUTED: { label: 'Em disputa', bg: 'rgba(225, 29, 72, 0.1)', text: '#E11D48' },
 };
 
+// Tasks a tasker picked up that still need action from them
+const ACTIVE_ASSIGNED = ['ACCEPTED', 'IN_PROGRESS', 'COMPLETED', 'DISPUTED'];
+
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return 'Bom dia';
@@ -37,20 +41,30 @@ function getGreeting() {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: user, isLoading: userLoading } = trpc.profiles.getMe.useQuery();
-  const { data: tasks, refetch, isLoading: tasksLoading } = trpc.tasks.listMine.useQuery(undefined, {
+  const isTasker = user?.role === 'TASKER' || user?.role === 'BOTH';
+  const {
+    data: tasks,
+    refetch,
+    isLoading: tasksLoading,
+    isError: tasksError,
+  } = trpc.tasks.listMine.useQuery(undefined, {
     enabled: !!user,
   });
+  const { data: assigned, refetch: refetchAssigned } = trpc.tasks.listAssigned.useQuery(undefined, {
+    enabled: isTasker,
+  });
+  const activeAssigned = (assigned ?? []).filter((t) => ACTIVE_ASSIGNED.includes(t.status));
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refetch();
+    await Promise.all([refetch(), isTasker ? refetchAssigned() : null]);
     setRefreshing(false);
   };
 
-  const isTasker = user?.role === 'TASKER' || user?.role === 'BOTH';
   const { data: unread } = trpc.notifications.unreadCount.useQuery(undefined, {
     enabled: !!user,
   });
@@ -60,7 +74,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       {/* Header with subtle gradient */}
-      <View style={styles.headerContainer}>
+      <View style={[styles.headerContainer, { paddingTop: insets.top + 16 }]}>
         <LinearGradient
           colors={['#EEF6FA', '#F3F8FB']}
           style={StyleSheet.absoluteFill}
@@ -84,6 +98,10 @@ export default function HomeScreen() {
           <Pressable
             onPress={() => router.push('/notifications')}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={
+              unread ? `Notificações, ${unread} não lidas` : 'Notificações'
+            }
             style={styles.notificationButton}
           >
             <Ionicons name="notifications-outline" size={22} color="#001B48" />
@@ -121,7 +139,7 @@ export default function HomeScreen() {
               <View style={styles.actionIcon}>
                 <Ionicons name="add-circle" size={28} color="#ffffff" />
               </View>
-              <Text style={styles.actionTitleLight}>Criar serviço</Text>
+              <Text style={styles.actionTitleLight}>Criar trampo</Text>
               <Text style={styles.actionSubtitleLight}>
                 Encontre quem resolve
               </Text>
@@ -143,15 +161,67 @@ export default function HomeScreen() {
           )}
         </Animated.View>
 
+        {/* Tasks the tasker accepted: the way back to start/complete/chat */}
+        {isTasker && activeAssigned.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Trampos que peguei</Text>
+            </View>
+            <View style={[styles.taskList, { marginBottom: 24 }]}>
+              {activeAssigned.map((task, i) => {
+                const status = STATUS_LABELS[task.status] || STATUS_LABELS.OPEN;
+                return (
+                  <PressableCard
+                    key={task.id}
+                    index={i}
+                    variant="highlighted"
+                    onPress={() => router.push(`/task/${task.id}`)}
+                  >
+                    <View style={styles.taskHeader}>
+                      <Text style={styles.taskTitle} numberOfLines={1}>
+                        {task.title}
+                      </Text>
+                      <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+                        <Text style={[styles.statusText, { color: status.text }]}>
+                          {status.label}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.taskAddress}>
+                      <Ionicons name="location-outline" size={14} color="#5B7A91" />
+                      <Text style={styles.taskAddressText} numberOfLines={1}>
+                        {task.address}
+                      </Text>
+                    </View>
+
+                    <View style={styles.taskFooter}>
+                      <Text style={styles.taskCategory}>{task.category.name}</Text>
+                      <Text style={styles.taskValue}>{formatCurrency(task.taskerValue)}</Text>
+                    </View>
+                  </PressableCard>
+                );
+              })}
+            </View>
+          </>
+        )}
+
         {/* My tasks */}
         <Animated.View
           entering={FadeInDown.delay(300).duration(420)}
           style={styles.sectionHeader}
         >
-          <Text style={styles.sectionTitle}>Meus serviços</Text>
+          <Text style={styles.sectionTitle}>Meus trampos</Text>
         </Animated.View>
 
-        {isLoading ? (
+        {tasksError ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>Não foi possível carregar seus trampos.</Text>
+            <Pressable onPress={() => refetch()} accessibilityRole="button" hitSlop={8}>
+              <Text style={styles.retryText}>Tentar novamente</Text>
+            </Pressable>
+          </View>
+        ) : isLoading ? (
           <View style={styles.skeletonContainer}>
             {[0, 1, 2].map((i) => (
               <SkeletonCard key={i} index={i} style={styles.skeletonCard} />
@@ -221,8 +291,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F3F8FB',
   },
+  errorBox: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 12,
+  },
+  errorText: {
+    color: '#5B7A91',
+    fontSize: 15,
+  },
+  retryText: {
+    color: '#018ABE',
+    fontSize: 15,
+    fontWeight: '600',
+    paddingVertical: 8,
+  },
   headerContainer: {
-    paddingTop: 60,
     paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#DCEAF1',

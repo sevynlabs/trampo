@@ -194,6 +194,14 @@ async function sendBatch(messages: ExpoPushMessage[]): Promise<ExpoPushTicket[]>
 // Notification Templates
 // ============================================
 
+/**
+ * Attach the task id to a notification so tapping it (push or in-app list)
+ * opens the task.
+ */
+export function withTask<T extends { data: Record<string, unknown> }>(n: T, taskId: string): T {
+  return { ...n, data: { ...n.data, taskId } };
+}
+
 export const notifications = {
   /**
    * Task accepted by tasker - notify client
@@ -227,7 +235,7 @@ export const notifications = {
    */
   paymentReleased: (amount: number, taskTitle: string) => ({
     title: 'Pagamento Liberado! 🎊',
-    body: `R$ ${(amount / 100).toFixed(2)} do trampo "${taskTitle}" foi liberado para você.`,
+    body: `R$ ${(amount / 100).toFixed(2).replace('.', ',')} do trampo "${taskTitle}" foi liberado para você.`,
     data: { type: 'payment_released' },
   }),
 

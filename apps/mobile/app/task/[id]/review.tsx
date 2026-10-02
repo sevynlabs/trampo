@@ -7,6 +7,8 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +26,9 @@ const TAGS = [
   'Educado',
 ] as const;
 
+// Tag values come from the API enum; this is just how they're shown
+const TAG_LABELS: Record<string, string> = { Rapido: 'Rápido' };
+
 export default function ReviewScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,9 +37,11 @@ export default function ReviewScreen() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const { data: task } = trpc.tasks.getById.useQuery({ id: id! });
+  const utils = trpc.useUtils();
 
   const submitReview = trpc.reviews.submit.useMutation({
     onSuccess: () => {
+      utils.tasks.getById.invalidate({ id: id! });
       Alert.alert('Obrigado!', 'Sua avaliação foi enviada.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
@@ -81,7 +88,16 @@ export default function ReviewScreen() {
         }}
       />
 
-      <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 24 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={100}
+        className="flex-1"
+      >
+      <ScrollView
+        className="flex-1 bg-background"
+        contentContainerStyle={{ padding: 24 }}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Task info */}
         <View className="bg-surface rounded-card border border-border p-4 mb-6">
           <Text className="text-ink-muted text-sm">Avaliando trampo:</Text>
@@ -94,7 +110,14 @@ export default function ReviewScreen() {
         </Text>
         <View className="flex-row justify-center gap-2 mb-8">
           {[1, 2, 3, 4, 5].map((star) => (
-            <Pressable key={star} onPress={() => setRating(star)}>
+            <Pressable
+              key={star}
+              onPress={() => setRating(star)}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel={`Nota ${star} de 5`}
+              accessibilityState={{ selected: star === rating }}
+            >
               <Ionicons
                 name={star <= rating ? 'star' : 'star-outline'}
                 size={40}
@@ -122,7 +145,7 @@ export default function ReviewScreen() {
                 }`}
               >
                 <Text className={selected ? 'text-white font-medium' : 'text-ink'}>
-                  {tag}
+                  {TAG_LABELS[tag] ?? tag}
                 </Text>
               </Pressable>
             );
@@ -145,13 +168,14 @@ export default function ReviewScreen() {
 
         {/* Submit */}
         <GradientButton
-          label="Enviar Avaliação"
+          label="Enviar avaliação"
           onPress={handleSubmit}
           disabled={rating === 0}
           loading={submitReview.isPending}
           icon="star"
         />
       </ScrollView>
+      </KeyboardAvoidingView>
     </>
   );
 }

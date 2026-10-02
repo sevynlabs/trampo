@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure } from '../../trpc';
+import { router, protectedProcedure, taskerProcedure } from '../../trpc';
 import { prisma } from '@trampo/db';
 import { env } from '../../lib/env';
 import {
@@ -14,6 +14,30 @@ import { getDecryptedCpf } from '../../lib/pii';
 import { acquireLock, releaseLock } from '../../lib/redis';
 
 const isDev = env.NODE_ENV === 'development';
+
+/**
+ * Money a tasker can withdraw: released earnings minus withdrawals that are
+ * paid OR still pending (a pending transfer may already have gone through).
+ */
+async function getAvailableBalance(userId: string, taskerProfileId: string): Promise<number> {
+  const [released, withdrawals] = await Promise.all([
+    prisma.payment.aggregate({
+      where: { task: { assignment: { taskerId: userId } }, status: 'RELEASED' },
+      _sum: { taskerAmount: true },
+    }),
+    prisma.withdrawal.aggregate({
+      where: { taskerProfileId, status: { in: ['PENDING', 'PAID'] } },
+      _sum: { amount: true },
+    }),
+  ]);
+  return Math.max(0, (released._sum.taskerAmount ?? 0) - (withdrawals._sum.amount ?? 0));
+}
+
+/** Start of the current month in Brasília time (UTC-3, no DST). */
+function startOfMonthBrt(now = new Date()): Date {
+  const brt = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+  return new Date(Date.UTC(brt.getUTCFullYear(), brt.getUTCMonth(), 1, 3, 0, 0));
+}
 
 export const paymentsRouter = router({
   /**
@@ -39,10 +63,26 @@ export const paymentsRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Você não é o cliente desta task' });
       }
 
+      // Only charge once a tasker accepted: the price is locked from then on
+      // (tasks can only be edited while OPEN).
+      if (task.status !== 'ACCEPTED') {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'O pagamento só é liberado depois que um profissional aceitar o trampo',
+        });
+      }
+
       // Check for existing payment
-      const existing = await prisma.payment.findUnique({
+      let existing = await prisma.payment.findUnique({
         where: { taskId: input.taskId },
       });
+
+      // A dead charge (expired Pix or one cancelled before payment) is replaced
+      // by a fresh one; never hand back an unpayable QR code.
+      if (existing && (existing.status === 'EXPIRED' || (existing.status === 'PENDING' && existing.amount !== task.totalValue))) {
+        await prisma.payment.delete({ where: { id: existing.id } });
+        existing = null;
+      }
 
       if (existing) {
         // Return existing payment with Pix data
@@ -78,7 +118,7 @@ export const paymentsRouter = router({
           pixCode: '',
           pixQrCode: '',
           amount: task.totalValue,
-          platformFee: task.serviceFee + Math.round(task.taskerValue * 0.15),
+          platformFee: task.totalValue - task.taskerValue, // 5% client fee + 15% commission
           taskerAmount: task.taskerValue,
           status: 'PENDING',
         },
@@ -220,53 +260,42 @@ export const paymentsRouter = router({
       };
     }
 
-    // Get all payments for tasks completed by this tasker
-    const payments = await prisma.payment.findMany({
-      where: {
-        task: {
-          assignment: {
-            taskerId: ctx.user.id,
+    const where = { task: { assignment: { taskerId: ctx.user.id } } };
+
+    // Totals come from DB aggregates (not the paginated list) and match
+    // payments.balance exactly.
+    const [payments, available, held, thisMonthAgg] = await Promise.all([
+      prisma.payment.findMany({
+        where: { ...where, status: { in: ['HELD', 'RELEASED'] } },
+        include: {
+          task: {
+            select: {
+              id: true,
+              title: true,
+              completedAt: true,
+              category: { select: { name: true, icon: true } },
+              client: { select: { name: true } },
+            },
           },
         },
-        status: { in: ['HELD', 'RELEASED'] },
-      },
-      include: {
-        task: {
-          select: {
-            id: true,
-            title: true,
-            completedAt: true,
-            category: { select: { name: true, icon: true } },
-            client: { select: { name: true } },
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-
-    // Calculate totals
-    const available = payments
-      .filter((p) => p.status === 'RELEASED')
-      .reduce((sum, p) => sum + p.taskerAmount, 0);
-
-    const held = payments
-      .filter((p) => p.status === 'HELD')
-      .reduce((sum, p) => sum + p.taskerAmount, 0);
-
-    const now = new Date();
-    const thisMonth = payments
-      .filter((p) => {
-        const date = p.releasedAt ?? p.createdAt;
-        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-      })
-      .filter((p) => p.status === 'RELEASED')
-      .reduce((sum, p) => sum + p.taskerAmount, 0);
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      getAvailableBalance(ctx.user.id, taskerProfile.id),
+      prisma.payment.aggregate({
+        where: { ...where, status: 'HELD' },
+        _sum: { taskerAmount: true },
+      }),
+      prisma.payment.aggregate({
+        where: { ...where, status: 'RELEASED', releasedAt: { gte: startOfMonthBrt() } },
+        _sum: { taskerAmount: true },
+      }),
+    ]);
 
     return {
       available,
-      held,
-      thisMonth,
+      held: held._sum.taskerAmount ?? 0,
+      thisMonth: thisMonthAgg._sum.taskerAmount ?? 0,
       payments: payments.map((p) => ({
         id: p.id,
         taskId: p.task.id,
@@ -341,11 +370,8 @@ export const paymentsRouter = router({
       return { available: 0, pending: 0, withdrawn: 0, pixKey: null };
     }
 
-    const [released, held, withdrawals] = await Promise.all([
-      prisma.payment.aggregate({
-        where: { task: { assignment: { taskerId: ctx.user.id } }, status: 'RELEASED' },
-        _sum: { taskerAmount: true },
-      }),
+    const [available, held, withdrawals] = await Promise.all([
+      getAvailableBalance(ctx.user.id, profile.id),
       prisma.payment.aggregate({
         where: { task: { assignment: { taskerId: ctx.user.id } }, status: 'HELD' },
         _sum: { taskerAmount: true },
@@ -356,11 +382,10 @@ export const paymentsRouter = router({
       }),
     ]);
 
-    const releasedTotal = released._sum.taskerAmount ?? 0;
     const withdrawnTotal = withdrawals._sum.amount ?? 0;
 
     return {
-      available: Math.max(0, releasedTotal - withdrawnTotal),
+      available,
       pending: held._sum.taskerAmount ?? 0,
       withdrawn: withdrawnTotal,
       pixKey: profile.pixKey,
@@ -371,7 +396,7 @@ export const paymentsRouter = router({
    * Request a withdrawal of the available balance to a Pix key.
    * Processes the withdrawal immediately via Asaas Pix transfer.
    */
-  requestWithdrawal: protectedProcedure
+  requestWithdrawal: taskerProcedure
     .input(
       z.object({
         amount: z.number().int().min(1000), // min R$ 10,00
@@ -388,9 +413,10 @@ export const paymentsRouter = router({
 
       // Acquire lock to prevent concurrent withdrawals
       const lockKey = `withdrawal:${ctx.user.id}`;
-      const lockAcquired = await acquireLock(lockKey, 30);
+      // TTL comfortably above the Asaas request timeout (20s)
+      const lockToken = await acquireLock(lockKey, 120);
 
-      if (!lockAcquired) {
+      if (!lockToken) {
         throw new TRPCError({
           code: 'TOO_MANY_REQUESTS',
           message: 'Saque já em andamento. Aguarde alguns segundos.',
@@ -398,21 +424,8 @@ export const paymentsRouter = router({
       }
 
       try {
-        // Check available balance
-        const [released, withdrawals] = await Promise.all([
-          prisma.payment.aggregate({
-            where: { task: { assignment: { taskerId: ctx.user.id } }, status: 'RELEASED' },
-            _sum: { taskerAmount: true },
-          }),
-          prisma.withdrawal.aggregate({
-            where: { taskerProfileId: profile.id, status: 'PAID' },
-            _sum: { amount: true },
-          }),
-        ]);
-        const available = Math.max(
-          0,
-          (released._sum.taskerAmount ?? 0) - (withdrawals._sum.amount ?? 0)
-        );
+        // Check available balance (pending withdrawals already count against it)
+        const available = await getAvailableBalance(ctx.user.id, profile.id);
 
         if (input.amount > available) {
           throw new TRPCError({
@@ -461,8 +474,18 @@ export const paymentsRouter = router({
           );
 
           return { id: updated.id, status: updated.status, amount: updated.amount };
+        } else if ('pending' in result && result.pending) {
+          // Outcome unknown (timeout/5xx): the transfer may have been executed.
+          // Keep it PENDING (still counted against the balance) for
+          // reconciliation instead of letting the tasker withdraw again.
+          await prisma.withdrawal.update({
+            where: { id: withdrawal.id },
+            data: { failureReason: `Pendente de conciliação: ${result.error ?? 'sem resposta'}` },
+          });
+          console.error(`[PAYMENTS] Withdrawal ${withdrawal.id} outcome unknown: ${result.error}`);
+          return { id: withdrawal.id, status: 'PENDING' as const, amount: withdrawal.amount };
         } else {
-          // Update withdrawal to FAILED with error reason
+          // Definitive rejection: mark FAILED so the balance is freed again
           await prisma.withdrawal.update({
             where: { id: withdrawal.id },
             data: {
@@ -498,7 +521,7 @@ export const paymentsRouter = router({
         }
       } finally {
         // Always release the lock
-        await releaseLock(lockKey);
+        await releaseLock(lockKey, lockToken);
       }
     }),
 });

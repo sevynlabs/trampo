@@ -21,6 +21,22 @@ interface AsaasError {
   errors: Array<{ code: string; description: string }>;
 }
 
+/**
+ * Error returned by the Asaas API with an HTTP status. A 4xx means Asaas
+ * definitively rejected the request; anything else (5xx, network failure,
+ * timeout) leaves the outcome unknown.
+ */
+export class AsaasApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'AsaasApiError';
+  }
+}
+
+export function isDefinitiveRejection(error: unknown): boolean {
+  return error instanceof AsaasApiError && error.status >= 400 && error.status < 500;
+}
+
 interface AsaasCustomer {
   id: string;
   name: string;
@@ -66,6 +82,8 @@ interface PixTransferParams {
 
 interface PixTransferResult {
   success: boolean;
+  /** True when the outcome is unknown (timeout/5xx): the transfer may have gone through. */
+  pending?: boolean;
   transferId?: string;
   error?: string;
   errorCode?: string;
@@ -80,30 +98,18 @@ interface PixTransferResult {
  * - EVP: random/UUID key (default)
  */
 function detectPixKeyType(pixKey: string): PixKeyType {
-  // Remove non-digits to check length
-  const digitsOnly = pixKey.replace(/\D/g, '');
+  const key = pixKey.trim();
+  const digitsOnly = key.replace(/\D/g, '');
 
-  // Check CNPJ (14 digits)
-  if (digitsOnly.length === 14) {
-    return 'CNPJ';
-  }
+  if (key.includes('@')) return 'EMAIL';
+  // Phone keys must be informed with the country code (+55...), otherwise an
+  // 11-digit number is indistinguishable from a CPF.
+  if (key.startsWith('+')) return 'PHONE';
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) return 'EVP';
+  if (digitsOnly.length === 14) return 'CNPJ';
+  if (digitsOnly.length === 11) return 'CPF';
+  if (digitsOnly.length === 10) return 'PHONE';
 
-  // Check CPF (11 digits)
-  if (digitsOnly.length === 11) {
-    return 'CPF';
-  }
-
-  // Check EMAIL (contains @)
-  if (pixKey.includes('@')) {
-    return 'EMAIL';
-  }
-
-  // Check PHONE (starts with + or has 10-11 digits)
-  if (pixKey.startsWith('+') || (digitsOnly.length === 10 || digitsOnly.length === 11)) {
-    return 'PHONE';
-  }
-
-  // Default to EVP (random/UUID key)
   return 'EVP';
 }
 
@@ -127,6 +133,7 @@ export async function createPixTransfer(params: PixTransferParams): Promise<PixT
       method: 'POST',
       body: JSON.stringify({
         pixAddressKey: formattedPixKey,
+        pixAddressKeyType: pixKeyType,
         value: valueInReais,
         description: params.description,
       }),
@@ -154,6 +161,8 @@ export async function createPixTransfer(params: PixTransferParams): Promise<PixT
 
     return {
       success: false,
+      // Only a 4xx is a definitive failure; otherwise the transfer may exist.
+      pending: !isDefinitiveRejection(error),
       error: errorMessage,
       errorCode,
     };
@@ -165,6 +174,7 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const response = await fetch(`${BASE_URL}${endpoint}`, {
+    signal: AbortSignal.timeout(20_000),
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -173,13 +183,13 @@ async function request<T>(
     },
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     const error = data as AsaasError;
     const message = error.errors?.[0]?.description || 'Asaas API error';
-    console.error('[ASAAS] Error:', message, error);
-    throw new Error(message);
+    console.error('[ASAAS] Error:', response.status, message, error);
+    throw new AsaasApiError(message, response.status);
   }
 
   return data as T;
@@ -404,6 +414,15 @@ export async function refundPayment(params: {
 
   console.log(`[ASAAS] Refund ${refund.id} for charge ${params.chargeId}`);
   return refund;
+}
+
+/**
+ * Cancel (delete) a charge that hasn't been paid yet, so its Pix can no
+ * longer be paid.
+ */
+export async function cancelCharge(chargeId: string): Promise<void> {
+  await request<{ deleted: boolean }>(`/payments/${chargeId}`, { method: 'DELETE' });
+  console.log(`[ASAAS] Cancelled charge ${chargeId}`);
 }
 
 /**

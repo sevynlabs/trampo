@@ -37,6 +37,18 @@ const ROLES: { value: Role; title: string; description: string; icon: keyof type
   },
 ];
 
+/** CPF check digits (mod 11). Rejects repeated-digit numbers like 111.111.111-11. */
+function isValidCpfNumber(digits: string): boolean {
+  if (!/^\d{11}$/.test(digits) || new Set(digits).size === 1) return false;
+  const calc = (len: number) => {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(digits[i]) * (len + 1 - i);
+    const rest = (sum * 10) % 11;
+    return rest === 10 ? 0 : rest;
+  };
+  return calc(9) === Number(digits[9]) && calc(10) === Number(digits[10]);
+}
+
 export default function ProfileSetupScreen() {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -50,7 +62,9 @@ export default function ProfileSetupScreen() {
     onSuccess: () => {
       utils.profiles.getMe.invalidate();
       if (role === 'TASKER' || role === 'BOTH') {
-        router.replace('/(tabs)/feed');
+        // A new tasker has no categories yet (empty feed): set them up first
+        router.replace('/(tabs)/home');
+        router.push('/profile/categories');
       } else {
         router.replace('/(tabs)/home');
       }
@@ -70,7 +84,7 @@ export default function ProfileSetupScreen() {
   };
 
   const cpfDigits = cpf.replace(/\D/g, '');
-  const isValidCpf = cpfDigits.length === 11;
+  const isValidCpf = isValidCpfNumber(cpfDigits);
   const isValid = name.length >= 2 && isValidCpf && role;
 
   const handleSubmit = () => {
@@ -119,7 +133,13 @@ export default function ProfileSetupScreen() {
               keyboardType="number-pad"
               maxLength={14}
               success={isValidCpf}
-              error={cpfDigits.length > 0 && cpfDigits.length < 11 ? 'CPF incompleto' : undefined}
+              error={
+                cpfDigits.length > 0 && cpfDigits.length < 11
+                  ? 'CPF incompleto'
+                  : cpfDigits.length === 11 && !isValidCpf
+                    ? 'CPF inválido'
+                    : undefined
+              }
             />
           </Animated.View>
 

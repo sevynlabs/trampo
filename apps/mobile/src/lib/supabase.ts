@@ -64,7 +64,7 @@ export interface RealtimeChatMessage {
  */
 export function subscribeToChatMessages(
   taskId: string,
-  onMessage: (message: RealtimeChatMessage) => void
+  onNewMessage: (messageId: string) => void
 ): () => void {
   if (!supabase) {
     if (__DEV__) console.warn('[REALTIME] Supabase not configured, skipping subscription');
@@ -75,10 +75,12 @@ export function subscribeToChatMessages(
 
   const channel = supabase
     .channel(channelName)
+    // The broadcast is only a content-free ping (the public channel can be
+    // spoofed); message content is always fetched through the authorized API.
     .on('broadcast', { event: 'new_message' }, (payload) => {
-      const message = payload.payload?.message as RealtimeChatMessage;
-      if (message) {
-        onMessage(message);
+      const id = payload.payload?.message?.id;
+      if (typeof id === 'string') {
+        onNewMessage(id);
       }
     })
     .subscribe((status) => {

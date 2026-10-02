@@ -9,12 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown, BounceIn } from 'react-native-reanimated';
 import { trpc } from '../src/lib/trpc';
-import { formatCurrency } from '../src/lib/format';
+import { formatCurrency, centsToInput, parseMoneyToCents } from '../src/lib/format';
 import { GradientButton } from '../src/components/GradientButton';
 
 type ScreenState = 'form' | 'processing' | 'success' | 'error';
@@ -23,12 +24,19 @@ export default function WithdrawScreen() {
   const router = useRouter();
   const utils = trpc.useUtils();
 
-  const { data: balance, isLoading } = trpc.payments.balance.useQuery();
+  const { data: balance, isLoading, isError: balanceError, refetch: refetchBalance } =
+    trpc.payments.balance.useQuery();
   const [amount, setAmount] = useState(''); // reais string
   const [pixKey, setPixKey] = useState('');
   const [screenState, setScreenState] = useState<ScreenState>('form');
   const [errorMessage, setErrorMessage] = useState('');
-  const [successData, setSuccessData] = useState<{ amount: number; id: string } | null>(null);
+  const [successData, setSuccessData] = useState<{
+    amount: number;
+    id: string;
+    pending: boolean;
+  } | null>(null);
+  // Unknown outcome (network failure): the transfer may have gone through
+  const [outcomeUnknown, setOutcomeUnknown] = useState(false);
 
   const available = balance?.available ?? 0;
 
@@ -36,7 +44,7 @@ export default function WithdrawScreen() {
   useEffect(() => {
     if (balance) {
       if (balance.pixKey) setPixKey(balance.pixKey);
-      setAmount((balance.available / 100).toFixed(2));
+      setAmount(centsToInput(balance.available));
     }
   }, [balance]);
 
@@ -48,22 +56,45 @@ export default function WithdrawScreen() {
     onSuccess: (res) => {
       utils.payments.balance.invalidate();
       utils.payments.listForTasker.invalidate();
-      setSuccessData({ amount: res.amount, id: res.id });
+      setSuccessData({ amount: res.amount, id: res.id, pending: res.status === 'PENDING' });
       setScreenState('success');
     },
     onError: (err) => {
+      // No tRPC error code = the request never got a definitive answer
+      setOutcomeUnknown(!err.data?.code);
+      utils.payments.balance.invalidate();
       setErrorMessage(err.message);
       setScreenState('error');
     },
   });
 
-  const amountCents = Math.round(parseFloat(amount.replace(',', '.') || '0') * 100);
-  const valid =
-    amountCents >= 1000 && amountCents <= available && pixKey.trim().length >= 3;
+  const amountCents = parseMoneyToCents(amount);
+  const amountValid = Number.isFinite(amountCents);
+  const validationMessage = !amountValid
+    ? 'Informe um valor válido'
+    : amountCents < 1000
+      ? 'O valor mínimo é R$ 10,00'
+      : amountCents > available
+        ? 'O valor é maior que o seu saldo disponível'
+        : pixKey.trim().length < 3
+          ? 'Informe a chave Pix'
+          : null;
+  const valid = validationMessage === null;
 
   const handleSubmit = () => {
     if (!valid) return;
-    requestWithdrawal.mutate({ amount: amountCents, pixKey: pixKey.trim() });
+    const key = pixKey.trim();
+    Alert.alert(
+      'Confirmar saque',
+      `Enviar ${formatCurrency(amountCents)} para a chave Pix ${maskPixKey(key)}?\n\nConfira a chave: transferências Pix não podem ser desfeitas.`,
+      [
+        { text: 'Revisar', style: 'cancel' },
+        {
+          text: 'Confirmar saque',
+          onPress: () => requestWithdrawal.mutate({ amount: amountCents, pixKey: key }),
+        },
+      ]
+    );
   };
 
   const handleRetry = () => {
@@ -72,8 +103,7 @@ export default function WithdrawScreen() {
   };
 
   const handleCancel = () => {
-    setScreenState('form');
-    setErrorMessage('');
+    router.back();
   };
 
   const handleBackToHome = () => {
@@ -112,7 +142,7 @@ export default function WithdrawScreen() {
         </Animated.View>
 
         <Animated.Text entering={FadeInDown.delay(400)} style={styles.successTitle}>
-          Pix Enviado!
+          {successData.pending ? 'Saque em processamento' : 'Pix enviado!'}
         </Animated.Text>
 
         <Animated.Text entering={FadeInDown.delay(500)} style={styles.successAmount}>
@@ -122,6 +152,13 @@ export default function WithdrawScreen() {
         <Animated.Text entering={FadeInDown.delay(600)} style={styles.successDetail}>
           para {maskedKey}
         </Animated.Text>
+
+        {successData.pending && (
+          <Animated.Text entering={FadeInDown.delay(650)} style={styles.successDetail}>
+            O banco ainda não confirmou a transferência. Ela aparece no seu extrato
+            assim que for concluída.
+          </Animated.Text>
+        )}
 
         <Animated.Text entering={FadeInDown.delay(700)} style={styles.successId}>
           ID: {shortId}
@@ -157,7 +194,9 @@ export default function WithdrawScreen() {
         </Animated.Text>
 
         <Animated.Text entering={FadeInDown.delay(600)} style={styles.balanceMaintained}>
-          Seu saldo foi mantido.
+          {outcomeUnknown
+            ? 'Não recebemos confirmação. Confira seu saldo antes de tentar de novo.'
+            : 'Seu saldo foi mantido.'}
         </Animated.Text>
 
         <Animated.View entering={FadeInDown.delay(700)} style={styles.errorButtonContainer}>
@@ -184,6 +223,13 @@ export default function WithdrawScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#018ABE" />
         </View>
+      ) : balanceError ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.errorMessage}>Não foi possível carregar seu saldo.</Text>
+          <Pressable onPress={() => refetchBalance()} accessibilityRole="button" hitSlop={8}>
+            <Text style={styles.maxButton}>Tentar novamente</Text>
+          </Pressable>
+        </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Available */}
@@ -204,8 +250,13 @@ export default function WithdrawScreen() {
               placeholderTextColor="#94B2C4"
               style={styles.amountInput}
             />
-            <Pressable onPress={() => setAmount((available / 100).toFixed(2))} hitSlop={8}>
-              <Text style={styles.maxButton}>TUDO</Text>
+            <Pressable
+              onPress={() => setAmount(centsToInput(available))}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Sacar todo o saldo"
+            >
+              <Text style={styles.maxButton}>Tudo</Text>
             </Pressable>
           </View>
           <Text style={styles.minAmountHint}>Mínimo R$ 10,00</Text>
@@ -217,7 +268,7 @@ export default function WithdrawScreen() {
             onChangeText={setPixKey}
             autoCapitalize="none"
             autoCorrect={false}
-            placeholder="CPF, e-mail, telefone ou chave aleatória"
+            placeholder="CPF, e-mail, +55 telefone ou chave aleatória"
             placeholderTextColor="#94B2C4"
             style={styles.pixKeyInput}
           />
@@ -229,10 +280,14 @@ export default function WithdrawScreen() {
             disabled={!valid}
             loading={requestWithdrawal.isPending}
           />
-          {available < 1000 && (
+          {available < 1000 ? (
             <Text style={styles.insufficientFundsText}>
               Você precisa de pelo menos R$ 10,00 disponíveis para sacar.
             </Text>
+          ) : (
+            validationMessage && (
+              <Text style={styles.insufficientFundsText}>{validationMessage}</Text>
+            )
           )}
         </ScrollView>
       )}
@@ -246,11 +301,20 @@ export default function WithdrawScreen() {
           headerShown: true,
           title: 'Sacar',
           headerTitleStyle: { fontWeight: 'bold' },
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} style={styles.headerBackButton}>
-              <Ionicons name="arrow-back" size={24} color="#001B48" />
-            </Pressable>
-          ),
+          // Don't let the user leave mid-transfer
+          gestureEnabled: screenState !== 'processing',
+          headerLeft: () =>
+            screenState === 'processing' ? null : (
+              <Pressable
+                onPress={() => router.back()}
+                style={styles.headerBackButton}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Voltar"
+              >
+                <Ionicons name="arrow-back" size={24} color="#001B48" />
+              </Pressable>
+            ),
         }}
       />
 

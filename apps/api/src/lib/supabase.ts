@@ -44,14 +44,7 @@ export async function broadcastToChannel(
  */
 export async function broadcastChatMessage(
   taskId: string,
-  message: {
-    id: string;
-    senderId: string;
-    senderName: string | null;
-    senderAvatar: string | null;
-    content: string;
-    createdAt: string;
-  }
+  message: { id: string }
 ): Promise<void> {
   const channel = `task:${taskId}:chat`;
 

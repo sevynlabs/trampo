@@ -56,6 +56,8 @@ export function GradientButton({
   return (
     <AnimatedPressable
       accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: inactive, busy: loading }}
       onPress={inactive ? undefined : onPress}
       onPressIn={() => {
         if (!inactive) scale.value = withTiming(0.97, { duration: 90 });
@@ -89,6 +91,7 @@ export function GradientButton({
 
 const styles = StyleSheet.create({
   gradient: {
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,14 +1,21 @@
 import type { Context } from 'hono';
+import { timingSafeEqual } from 'node:crypto';
 import { prisma } from '@trampo/db';
 import { env } from '../../lib/env';
 import { scheduleJob } from '../../lib/redis';
-import { notify, notifications } from '../../integrations/push';
+import { notify, notifications, withTask } from '../../integrations/push';
 
 // Escrow release delay: 1 hour
 const ESCROW_RELEASE_DELAY_MS = 60 * 60 * 1000;
 
 // Job queue name
 const ESCROW_RELEASE_QUEUE = 'jobs:escrow-release';
+
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
+}
 
 /**
  * Asaas Webhook Handler
@@ -24,7 +31,7 @@ export async function webhookHandler(c: Context): Promise<Response> {
   // 1. Validate signature
   const token = c.req.header('asaas-access-token');
 
-  if (token !== env.ASAAS_WEBHOOK_TOKEN) {
+  if (!token || !safeEqual(token, env.ASAAS_WEBHOOK_TOKEN)) {
     console.error('[WEBHOOK] Invalid Asaas token');
     return c.text('Unauthorized', 401);
   }
@@ -47,6 +54,10 @@ export async function webhookHandler(c: Context): Promise<Response> {
     event = await c.req.json();
   } catch {
     return c.text('Invalid JSON', 400);
+  }
+
+  if (!event?.event || !event.payment?.id) {
+    return c.text('Invalid payload', 400);
   }
 
   console.log(`[WEBHOOK] Received: ${event.event} for payment ${event.payment.id}`);
@@ -75,9 +86,9 @@ export async function webhookHandler(c: Context): Promise<Response> {
     return c.text('ok');
   } catch (error) {
     console.error('[WEBHOOK] Error processing:', error);
-    // Return 200 to prevent Asaas from retrying
-    // Log the error for investigation
-    return c.text('ok');
+    // Every handler is idempotent, so a non-2xx lets Asaas retry instead of
+    // silently losing the event (e.g. on a transient DB error).
+    return c.text('error', 500);
   }
 }
 
@@ -108,20 +119,44 @@ async function handlePaymentConfirmed(paymentData: {
     return;
   }
 
-  // Idempotency check
-  if (payment.status !== 'PENDING') {
-    console.log(`[WEBHOOK] Payment ${paymentId} already processed: ${payment.status}`);
+  // Money arrived for a charge we no longer honour (task cancelled or the
+  // charge was already given up): give it back instead of swallowing it.
+  // (Asaas sends both PAYMENT_CONFIRMED and PAYMENT_RECEIVED, so only charges
+  // never marked as paid qualify.)
+  if (
+    !payment.paidAt &&
+    (payment.status === 'EXPIRED' ||
+      payment.status === 'REFUNDED' ||
+      payment.task.status === 'CANCELLED')
+  ) {
+    console.warn(`[WEBHOOK] Late payment ${paymentId} for cancelled/expired charge, refunding`);
+    if (env.NODE_ENV === 'production') {
+      const { refundPayment } = await import('../../integrations/asaas');
+      await refundPayment({
+        chargeId: paymentData.id,
+        description: 'Reembolso automático: trampo cancelado',
+      });
+    }
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: 'REFUNDED', paidAt: new Date(), refundedAt: new Date() },
+    });
     return;
   }
 
-  // Update payment status
-  await prisma.payment.update({
-    where: { id: paymentId },
+  // Idempotent, race-free flip PENDING -> CONFIRMED
+  const confirmed = await prisma.payment.updateMany({
+    where: { id: paymentId, status: 'PENDING' },
     data: {
       status: 'CONFIRMED',
       paidAt: new Date(),
     },
   });
+
+  if (confirmed.count === 0) {
+    console.log(`[WEBHOOK] Payment ${paymentId} already processed: ${payment.status}`);
+    return;
+  }
 
   console.log(`[WEBHOOK] Payment ${paymentId} confirmed for task ${payment.taskId}`);
 
@@ -130,7 +165,7 @@ async function handlePaymentConfirmed(paymentData: {
   if (taskerId) {
     notify(
       taskerId,
-      notifications.paymentConfirmed(payment.task.title)
+      withTask(notifications.paymentConfirmed(payment.task.title), payment.taskId)
     ).catch((err) => console.error('[WEBHOOK] Push notification failed:', err));
   }
 }
@@ -150,25 +185,22 @@ async function handlePaymentOverdue(paymentData: { externalReference?: string })
     return;
   }
 
-  // Mark as expired
-  await prisma.payment.update({
-    where: { id: paymentId },
-    data: {
-      status: 'EXPIRED',
-    },
-  });
+  await prisma.$transaction(async (tx) => {
+    const expired = await tx.payment.updateMany({
+      where: { id: paymentId, status: 'PENDING' },
+      data: { status: 'EXPIRED' },
+    });
+    if (expired.count === 0) return;
 
-  // Revert task to OPEN so another tasker can accept
-  await prisma.task.update({
-    where: { id: payment.taskId },
-    data: {
-      status: 'OPEN',
-    },
-  });
-
-  // Delete the assignment
-  await prisma.taskAssignment.deleteMany({
-    where: { taskId: payment.taskId },
+    // Revert task to OPEN so another tasker can accept (only if it is still
+    // waiting for this payment)
+    const reverted = await tx.task.updateMany({
+      where: { id: payment.taskId, status: 'ACCEPTED' },
+      data: { status: 'OPEN', acceptedAt: null },
+    });
+    if (reverted.count > 0) {
+      await tx.taskAssignment.deleteMany({ where: { taskId: payment.taskId } });
+    }
   });
 
   console.log(`[WEBHOOK] Payment ${paymentId} expired, task reverted to OPEN`);
@@ -181,35 +213,43 @@ async function handlePaymentRefunded(paymentData: { externalReference?: string }
   const paymentId = paymentData.externalReference;
   if (!paymentId) return;
 
-  await prisma.payment.update({
-    where: { id: paymentId },
+  // Never overwrite a payment that already reached a final state.
+  const result = await prisma.payment.updateMany({
+    where: { id: paymentId, status: { in: ['PENDING', 'CONFIRMED', 'HELD', 'DISPUTED'] } },
     data: {
       status: 'REFUNDED',
       refundedAt: new Date(),
     },
   });
 
-  console.log(`[WEBHOOK] Payment ${paymentId} refunded`);
+  console.log(`[WEBHOOK] Payment ${paymentId} refunded (updated: ${result.count})`);
 }
 
 /**
  * Schedule escrow release job
  * Called when task is completed
  */
-export async function scheduleEscrowRelease(paymentId: string): Promise<void> {
-  // Update payment to HELD status
-  await prisma.payment.update({
-    where: { id: paymentId },
+export async function scheduleEscrowRelease(paymentId: string): Promise<boolean> {
+  // Only a confirmed payment can go into escrow; a refunded/disputed one must
+  // never be scheduled for release.
+  const held = await prisma.payment.updateMany({
+    where: { id: paymentId, status: 'CONFIRMED' },
     data: {
       status: 'HELD',
       heldAt: new Date(),
     },
   });
 
+  if (held.count === 0) {
+    console.warn(`[ESCROW] Payment ${paymentId} is not CONFIRMED, release not scheduled`);
+    return false;
+  }
+
   // Schedule job for 1 hour from now
   await scheduleJob(ESCROW_RELEASE_QUEUE, paymentId, { paymentId }, ESCROW_RELEASE_DELAY_MS);
 
   console.log(`[ESCROW] Scheduled release for payment ${paymentId} in 1 hour`);
+  return true;
 }
 
 /**
@@ -254,20 +294,9 @@ export async function processEscrowRelease(paymentId: string): Promise<void> {
     return;
   }
 
-  // In production, transfer to tasker via Asaas. Idempotent: skips the transfer
-  // if we already recorded one, or if Asaas already has one for this payment.
-  let transferId: string | undefined = payment.asaasTransferId ?? undefined;
-  if (env.NODE_ENV === 'production' && taskerProfile.asaasWalletId && !transferId) {
-    const { ensureTransferToTasker } = await import('../../integrations/asaas');
-
-    const transfer = await ensureTransferToTasker({
-      walletId: taskerProfile.asaasWalletId,
-      amount: payment.taskerAmount,
-      description: `TRAMPO: ${payment.task.title}`,
-      externalReference: paymentId,
-    });
-    transferId = transfer.id;
-  }
+  // Payout model: the RELEASED amount becomes withdrawable balance and the
+  // tasker withdraws it via Pix (payments.requestWithdrawal). No wallet
+  // transfer happens here - doing both would pay the tasker twice.
 
   // Atomically flip HELD -> RELEASED and update the task in one transaction.
   // The optimistic `where status: 'HELD'` guard makes a concurrent fire (e.g.
@@ -276,13 +305,20 @@ export async function processEscrowRelease(paymentId: string): Promise<void> {
   const released = await prisma.$transaction(async (tx) => {
     const result = await tx.payment.updateMany({
       where: { id: paymentId, status: 'HELD' },
-      data: { status: 'RELEASED', releasedAt: new Date(), asaasTransferId: transferId },
+      data: { status: 'RELEASED', releasedAt: new Date() },
     });
     if (result.count === 0) return false;
 
     await tx.task.update({
       where: { id: payment.taskId },
-      data: { status: 'RELEASED' },
+      data: { status: 'RELEASED', releasedAt: new Date() },
+    });
+    await tx.taskerProfile.update({
+      where: { id: taskerProfile.id },
+      data: {
+        totalTasks: { increment: 1 },
+        totalEarnings: { increment: payment.taskerAmount },
+      },
     });
     return true;
   });
@@ -299,7 +335,7 @@ export async function processEscrowRelease(paymentId: string): Promise<void> {
   if (taskerId) {
     notify(
       taskerId,
-      notifications.paymentReleased(payment.taskerAmount, payment.task.title)
+      withTask(notifications.paymentReleased(payment.taskerAmount, payment.task.title), payment.taskId)
     ).catch((err) => console.error('[ESCROW] Push notification failed:', err));
   }
 }

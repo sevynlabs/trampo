@@ -3,7 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../../trpc';
 import { prisma } from '@trampo/db';
 import { broadcastChatMessage } from '../../lib/supabase';
-import { notify, notifications } from '../../integrations/push';
+import { notify, notifications, withTask } from '../../integrations/push';
 
 export const chatRouter = router({
   /**
@@ -58,21 +58,19 @@ export const chatRouter = router({
         },
       });
 
-      // Broadcast via Supabase Realtime
-      await broadcastChatMessage(taskId, {
-        id: message.id,
-        senderId: message.senderId,
-        senderName: message.sender.name,
-        senderAvatar: message.sender.avatarUrl,
-        content: message.content,
-        createdAt: message.createdAt.toISOString(),
-      });
+      // Notify listeners via Supabase Realtime. The public channel only gets a
+      // content-free "new message" ping; clients then fetch through the
+      // authorized listByTask. A broadcast failure must not fail the send
+      // (the message is already saved and the client would retry -> duplicate).
+      broadcastChatMessage(taskId, { id: message.id }).catch((err) =>
+        console.error('[CHAT] Realtime broadcast failed:', err)
+      );
 
       // Send push notification to other party
       const recipientId = isClient ? task.assignment!.taskerId : task.clientId;
       notify(
         recipientId,
-        notifications.newMessage(message.sender.name ?? 'Alguém', task.title)
+        withTask(notifications.newMessage(message.sender.name ?? 'Alguém', task.title), taskId)
       ).catch((err) => console.error('[CHAT] Push notification failed:', err));
 
       return message;
@@ -135,10 +133,12 @@ export const chatRouter = router({
 
       const hasMore = messages.length > limit;
       const items = hasMore ? messages.slice(0, -1) : messages;
+      // Cursor = oldest message on this page (read BEFORE reversing)
+      const nextCursor = hasMore ? items[items.length - 1]?.id : undefined;
 
       return {
-        items: items.reverse(), // Return in chronological order
-        nextCursor: hasMore ? items[items.length - 1]?.id : undefined,
+        items: [...items].reverse(), // Return in chronological order
+        nextCursor,
       };
     }),
 });

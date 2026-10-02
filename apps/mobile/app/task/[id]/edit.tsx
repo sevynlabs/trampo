@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../../src/lib/trpc';
 import { GradientButton } from '../../../src/components/GradientButton';
+import { centsToInput, parseMoneyToCents } from '../../../src/lib/format';
 
 export default function EditTaskScreen() {
   const router = useRouter();
@@ -28,11 +29,14 @@ export default function EditTaskScreen() {
   const [value, setValue] = useState('');
   const [isUrgent, setIsUrgent] = useState(false);
 
+  // Prefill once; a background refetch must not overwrite what the user typed
+  const prefilled = useRef(false);
   useEffect(() => {
-    if (task) {
+    if (task && !prefilled.current) {
+      prefilled.current = true;
       setTitle(task.title);
       setDescription(task.description ?? '');
-      setValue((task.baseValue / 100).toFixed(2));
+      setValue(centsToInput(task.baseValue));
       setIsUrgent(task.isUrgent);
     }
   }, [task]);
@@ -48,8 +52,16 @@ export default function EditTaskScreen() {
     onError: (err) => Alert.alert('Erro', err.message),
   });
 
-  const cents = Math.round(parseFloat(value.replace(',', '.') || '0') * 100);
-  const valid = title.trim().length >= 3 && cents >= 5000;
+  const cents = parseMoneyToCents(value);
+  const validationMessage =
+    title.trim().length < 5
+      ? 'O título precisa ter pelo menos 5 caracteres'
+      : !Number.isFinite(cents) || cents < 5000
+        ? 'O valor mínimo é R$ 50,00'
+        : cents > 10_000_000
+          ? 'O valor máximo é R$ 100.000,00'
+          : null;
+  const valid = validationMessage === null;
 
   const handleSave = () => {
     if (!valid) return;
@@ -146,10 +158,13 @@ export default function EditTaskScreen() {
               <Switch
                 value={isUrgent}
                 onValueChange={setIsUrgent}
-                trackColor={{ true: '#018ABE', false: '#C7DEE9' }}
+                trackColor={{ true: '#018ABE', false: '#DCEAF1' }}
               />
             </View>
 
+            {validationMessage && (
+              <Text className="text-danger text-sm mb-3">{validationMessage}</Text>
+            )}
             <GradientButton
               label="Salvar alterações"
               onPress={handleSave}

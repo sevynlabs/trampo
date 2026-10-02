@@ -6,7 +6,7 @@ import { prisma } from '@trampo/db';
 import { sendOtp, verifyOtp } from '../../integrations/twilio';
 import { generateTokenPair, verifyToken } from '../../lib/jwt';
 import { env } from '../../lib/env';
-import { redis } from '../../lib/redis';
+import { redis, checkRateLimit } from '../../lib/redis';
 
 // Development bypass code - requires BOTH NODE_ENV=development AND DEV_OTP_ENABLED=true
 const DEV_OTP_CODE = '123456';
@@ -14,6 +14,21 @@ const isDevOtpEnabled = env.NODE_ENV === 'development' && env.DEV_OTP_ENABLED;
 
 // Token blocklist prefix for Redis
 const TOKEN_BLOCKLIST_PREFIX = 'token:blocked:';
+const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+/** Per-phone limit, independent of IP (stops SMS pumping and code guessing). */
+async function assertPhoneRateLimit(kind: 'send' | 'verify', phone: string) {
+  const [limit, windowSeconds] = kind === 'send' ? [3, 600] : [5, 600];
+  const allowed = await checkRateLimit(`ratelimit:otp:${kind}:${phone}`, limit, windowSeconds);
+  if (!allowed) {
+    throw new TRPCError({
+      code: 'TOO_MANY_REQUESTS',
+      message: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+    });
+  }
+}
+
+const maskPhone = (phone: string) => `${phone.slice(0, 5)}*****${phone.slice(-2)}`;
 
 export const authRouter = router({
   /**
@@ -25,6 +40,7 @@ export const authRouter = router({
     .input(requestOtpInput)
     .mutation(async ({ input }) => {
       const { phone } = input;
+      await assertPhoneRateLimit('send', phone);
 
       // In development with DEV_OTP_ENABLED=true, skip Twilio
       if (isDevOtpEnabled) {
@@ -36,9 +52,10 @@ export const authRouter = router({
       const result = await sendOtp(phone);
 
       if (!result.success) {
+        console.error('[AUTH] Failed to send OTP:', result.error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: result.error || 'Failed to send OTP',
+          message: 'Não foi possível enviar o código. Tente novamente.',
         });
       }
 
@@ -53,6 +70,7 @@ export const authRouter = router({
     .input(verifyOtpInput)
     .mutation(async ({ input }) => {
       const { phone, code } = input;
+      await assertPhoneRateLimit('verify', phone);
 
       // Verify OTP
       if (isDevOtpEnabled) {
@@ -63,7 +81,7 @@ export const authRouter = router({
             message: 'Invalid OTP code',
           });
         }
-        console.warn(`[AUTH] ⚠️ DEV MODE - OTP bypass accepted for ${phone}`);
+        console.warn(`[AUTH] ⚠️ DEV MODE - OTP bypass accepted for ${maskPhone(phone)}`);
       } else {
         // Verify with Twilio in production
         const result = await verifyOtp(phone, code);
@@ -71,7 +89,7 @@ export const authRouter = router({
         if (!result.success) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
-            message: result.error || 'Invalid OTP code',
+            message: 'Código inválido ou expirado',
           });
         }
       }
@@ -82,6 +100,10 @@ export const authRouter = router({
       });
 
       const isNewUser = !user;
+
+      if (user && !user.isActive) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Conta bloqueada. Fale com o suporte.' });
+      }
 
       if (!user) {
         user = await prisma.user.create({
@@ -163,12 +185,20 @@ export const authRouter = router({
         where: { id: payload.sub },
       });
 
-      if (!user) {
+      if (!user || !user.isActive) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
           message: 'User not found',
         });
       }
+
+      // Rotate: the used refresh token can't be replayed
+      await redis.set(
+        `${TOKEN_BLOCKLIST_PREFIX}${refreshToken}`,
+        '1',
+        'EX',
+        REFRESH_TOKEN_TTL_SECONDS
+      );
 
       // Generate new token pair
       const tokens = await generateTokenPair({
@@ -193,12 +223,11 @@ export const authRouter = router({
 
       if (refreshToken) {
         // Block the refresh token for 30 days (its max lifetime)
-        const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
         await redis.set(
           `${TOKEN_BLOCKLIST_PREFIX}${refreshToken}`,
           '1',
           'EX',
-          THIRTY_DAYS_IN_SECONDS
+          REFRESH_TOKEN_TTL_SECONDS
         );
         console.log('[AUTH] Refresh token added to blocklist');
       }
