@@ -23,7 +23,9 @@ export default function PaymentScreen() {
 
   // Create (or fetch existing) the Pix charge once on mount.
   const createCharge = trpc.payments.createCharge.useMutation({
-    onError: (err) => Alert.alert('Erro', err.message),
+    // The status query may have resolved to "no payment yet" before the charge
+    // existed; refetch so polling starts.
+    onSuccess: () => utils.payments.getStatus.invalidate({ taskId: id! }),
   });
 
   useEffect(() => {
@@ -36,21 +38,23 @@ export default function PaymentScreen() {
     { taskId: id! },
     {
       enabled: !!id,
+      // Poll while there's no payment yet or it's still waiting for the Pix
       refetchInterval: (query) => {
         const s = query.state.data?.status;
-        return s === 'PENDING' ? 4000 : false;
+        return !s || s === 'PENDING' ? 4000 : false;
       },
     }
   );
 
   const charge = createCharge.data;
-  const isConfirmed = status?.status && status.status !== 'PENDING';
+  const isConfirmed = ['CONFIRMED', 'HELD', 'RELEASED'].includes(status?.status ?? '');
 
   // When payment is confirmed, refresh the task and dismiss.
   useEffect(() => {
     if (isConfirmed) {
       utils.tasks.getById.invalidate({ id: id! });
       utils.tasks.listMine.invalidate();
+      utils.payments.getStatus.invalidate({ taskId: id! });
     }
   }, [isConfirmed]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -74,7 +78,13 @@ export default function PaymentScreen() {
           title: 'Pagamento Pix',
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
-            <Pressable onPress={() => router.back()} className="mr-4">
+            <Pressable
+              onPress={() => router.back()}
+              className="mr-4"
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar"
+            >
               <Ionicons name="close" size={24} color="#001B48" />
             </Pressable>
           ),
@@ -99,6 +109,21 @@ export default function PaymentScreen() {
               label="Voltar ao trampo"
               onPress={() => router.back()}
               iconRight="arrow-forward"
+            />
+          </View>
+        ) : createCharge.isError ? (
+          <View className="py-20 items-center">
+            <Ionicons name="alert-circle-outline" size={48} color="#E11D48" />
+            <Text className="text-ink font-semibold text-lg mt-3 text-center">
+              Não foi possível gerar o Pix
+            </Text>
+            <Text className="text-ink-muted mt-1 mb-6 text-center">
+              {createCharge.error.message}
+            </Text>
+            <GradientButton
+              label="Tentar novamente"
+              icon="refresh"
+              onPress={() => createCharge.mutate({ taskId: id! })}
             />
           </View>
         ) : createCharge.isPending || !charge ? (

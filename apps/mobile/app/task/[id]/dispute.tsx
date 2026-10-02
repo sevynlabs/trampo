@@ -7,6 +7,8 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,9 +23,14 @@ export default function DisputeScreen() {
   const [reason, setReason] = useState('');
 
   const { data: task } = trpc.tasks.getById.useQuery({ id: id! });
+  const utils = trpc.useUtils();
 
   const openDispute = trpc.disputes.open.useMutation({
     onSuccess: () => {
+      utils.tasks.getById.invalidate({ id: id! });
+      utils.tasks.listMine.invalidate();
+      utils.tasks.listAssigned.invalidate();
+      utils.payments.getStatus.invalidate({ taskId: id! });
       Alert.alert(
         'Disputa aberta',
         'Nossa equipe vai analisar o caso. O pagamento ficará retido até a resolução.',
@@ -61,7 +68,16 @@ export default function DisputeScreen() {
         }}
       />
 
-      <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 24 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={100}
+        className="flex-1"
+      >
+      <ScrollView
+        className="flex-1 bg-background"
+        contentContainerStyle={{ padding: 24 }}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Task info */}
         <View className="bg-surface rounded-card border border-border p-4 mb-6">
           <Text className="text-ink-muted text-sm">Trampo em disputa:</Text>
@@ -90,13 +106,18 @@ export default function DisputeScreen() {
           className="bg-surface border border-border rounded-card p-4 text-ink min-h-[160px] mb-2"
           textAlignVertical="top"
         />
-        <Text className="text-ink-muted text-xs mb-8 text-right">
-          {reason.trim().length}/1000
-        </Text>
+        <View className="flex-row justify-between mb-8">
+          <Text className="text-ink-muted text-xs">
+            {reason.trim().length < MIN_REASON
+              ? `Mínimo de ${MIN_REASON} caracteres`
+              : ' '}
+          </Text>
+          <Text className="text-ink-muted text-xs">{reason.trim().length}/1000</Text>
+        </View>
 
         {/* Submit */}
         <GradientButton
-          label="Abrir Disputa"
+          label="Abrir disputa"
           onPress={handleSubmit}
           disabled={!canSubmit}
           loading={openDispute.isPending}
@@ -104,6 +125,7 @@ export default function DisputeScreen() {
           icon="alert-circle-outline"
         />
       </ScrollView>
+      </KeyboardAvoidingView>
     </>
   );
 }

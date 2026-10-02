@@ -2,8 +2,8 @@ import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { trpc } from '../../src/lib/trpc';
-import { clearToken } from '../../src/lib/trpc';
+import { useQueryClient } from '@tanstack/react-query';
+import { trpc, clearTokens, getRefreshToken } from '../../src/lib/trpc';
 
 const KYC_STATUS_LABELS: Record<string, { label: string; color: string }> = {
   PENDING: { label: 'Pendente', color: 'text-warning' },
@@ -16,6 +16,9 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { data: user } = trpc.profiles.getMe.useQuery();
   const utils = trpc.useUtils();
+  const queryClient = useQueryClient();
+  const logout = trpc.auth.logout.useMutation();
+  const unregisterPush = trpc.profiles.unregisterPushToken.useMutation();
 
   const isTasker = user?.role === 'TASKER' || user?.role === 'BOTH';
   const kycStatus = user?.taskerProfile?.kycStatus;
@@ -42,8 +45,15 @@ export default function ProfileScreen() {
         text: 'Sair',
         style: 'destructive',
         onPress: async () => {
-          await clearToken();
-          utils.invalidate();
+          // Revoke the session server-side and stop pushes to this device;
+          // local sign-out happens even if the network calls fail.
+          const refreshToken = await getRefreshToken();
+          await Promise.allSettled([
+            unregisterPush.mutateAsync(),
+            logout.mutateAsync({ refreshToken: refreshToken ?? undefined }),
+          ]);
+          await clearTokens();
+          queryClient.clear();
           router.replace('/');
         },
       },
@@ -93,11 +103,11 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {isTasker && user?.taskerProfile?.rating && (
+        {isTasker && (user?.taskerProfile?.rating ?? 0) > 0 && (
           <View className="flex-row items-center mt-2">
             <Ionicons name="star" size={16} color="#018ABE" />
             <Text className="text-ink-soft font-medium ml-1">
-              {user.taskerProfile.rating.toFixed(1)}
+              {user?.taskerProfile?.rating?.toFixed(1)}
             </Text>
           </View>
         )}

@@ -6,8 +6,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { trpc } from '../../src/lib/trpc';
 import { GradientButton } from '../../src/components/GradientButton';
@@ -33,7 +35,7 @@ export default function PhoneScreen() {
   });
 
   const phone = `+55${ddd}${number}`;
-  const isValid = ddd.length === 2 && number.length >= 8;
+  const isValid = ddd.length === 2 && number.length === 9;
 
   const handleSubmit = () => {
     if (!isValid) return;
@@ -52,11 +54,22 @@ export default function PhoneScreen() {
       </View>
 
       <View style={styles.content}>
+        {router.canGoBack() && (
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backButton}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+          >
+            <Ionicons name="arrow-back" size={24} color="#001B48" />
+          </Pressable>
+        )}
         <Animated.Text
           entering={FadeInDown.delay(100).duration(420)}
           style={styles.title}
         >
-          TESTE REFRESH 123
+          Qual é o seu celular?
         </Animated.Text>
         <Animated.Text
           entering={FadeInDown.delay(200).duration(420)}
@@ -132,7 +145,16 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 100,
+    paddingTop: 60,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
   },
   title: {
     fontSize: 28,

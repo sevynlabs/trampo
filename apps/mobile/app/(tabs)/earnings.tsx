@@ -1,5 +1,7 @@
-import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
 import { useState } from 'react';
@@ -9,9 +11,10 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function EarningsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data: earnings, refetch } = trpc.payments.listForTasker.useQuery();
+  const { data: earnings, refetch, isLoading, isError } = trpc.payments.listForTasker.useQuery();
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -25,13 +28,32 @@ export default function EarningsScreen() {
 
   return (
     <View className="flex-1 bg-background">
+      {/* Light icons on the blue header */}
+      <StatusBar style="light" />
       {/* Header */}
-      <View className="bg-accent px-6 pt-16 pb-8">
+      <View className="bg-accent px-6 pb-8" style={{ paddingTop: insets.top + 20 }}>
         <Text className="text-white/80 text-sm mb-1">Saldo disponível</Text>
-        <Text className="font-display text-4xl font-bold text-white">
-          {formatCurrency(available)}
-        </Text>
+        {isLoading ? (
+          <ActivityIndicator color="#fff" style={{ alignSelf: 'flex-start', marginTop: 8 }} />
+        ) : (
+          <Text className="font-display text-4xl font-bold text-white">
+            {isError ? '--' : formatCurrency(available)}
+          </Text>
+        )}
       </View>
+
+      {isError && (
+        <Pressable
+          onPress={() => refetch()}
+          className="bg-danger/10 px-6 py-3 flex-row items-center"
+          accessibilityRole="button"
+        >
+          <Ionicons name="alert-circle-outline" size={18} color="#E11D48" />
+          <Text className="text-danger ml-2 flex-1">
+            Não foi possível carregar seus ganhos. Toque para tentar novamente.
+          </Text>
+        </Pressable>
+      )}
 
       <ScrollView
         className="flex-1"
@@ -92,7 +114,9 @@ export default function EarningsScreen() {
           Histórico
         </Text>
 
-        {!earnings?.payments?.length ? (
+        {isLoading ? (
+          <ActivityIndicator color="#018ABE" style={{ marginTop: 24 }} />
+        ) : isError ? null : !earnings?.payments?.length ? (
           <EmptyState
             illustration={EmptyEarningsIllustration}
             title="Sem ganhos ainda"
@@ -105,13 +129,17 @@ export default function EarningsScreen() {
               <Animated.View
                 key={tx.id}
                 entering={FadeInDown.delay(Math.min(i, 8) * 50).duration(380)}
+              >
+              <Pressable
+                onPress={() => router.push(`/task/${tx.taskId}`)}
+                accessibilityRole="button"
                 className={`flex-row items-center p-4 ${
                   i > 0 ? 'border-t border-border' : ''
                 }`}
               >
                 <View
                   className={`w-10 h-10 rounded-full items-center justify-center ${
-                    tx.status === 'RELEASED' ? 'bg-success/10' : 'bg-warning/10'
+                    tx.status === 'RELEASED' ? 'bg-success/10' : 'bg-accent/10'
                   }`}
                 >
                   <Ionicons
@@ -129,12 +157,12 @@ export default function EarningsScreen() {
                   </Text>
                 </View>
                 <Text
-                  className={`font-bold ${
-                    tx.status === 'RELEASED' ? 'text-success' : 'text-warning'
-                  }`}
+                  className="font-bold"
+                  style={{ color: tx.status === 'RELEASED' ? '#047857' : '#5B7A91' }}
                 >
                   +{formatCurrency(tx.amount)}
                 </Text>
+              </Pressable>
               </Animated.View>
             ))}
           </View>

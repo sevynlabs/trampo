@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +32,8 @@ export default function FeedScreen() {
     null
   );
   const [locationError, setLocationError] = useState('');
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const { data: me } = trpc.profiles.getMe.useQuery();
   const [searchFocused, setSearchFocused] = useState(false);
 
   const { data: categories } = trpc.categories.list.useQuery();
@@ -42,21 +45,26 @@ export default function FeedScreen() {
     data: tasks,
     refetch,
     isLoading,
+    isError,
   } = trpc.feed.nearby.useQuery(
     {
       location: location!,
-      radiusMeters: 15000,
+      // The tasker's configured service area (the server also caps it)
+      radiusMeters: me?.taskerProfile?.serviceRadius ?? 10000,
       categoryId: selectedCategory,
       limit: 50,
     },
     { enabled: !!location }
   );
 
-  useEffect(() => {
-    (async () => {
+  const loadLocation = useCallback(async () => {
+    setLocationError('');
+    setPermissionDenied(false);
+    try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setLocationError('Precisamos da sua localização para mostrar serviços próximos');
+        setPermissionDenied(true);
+        setLocationError('Precisamos da sua localização para mostrar serviços próximos.');
         return;
       }
 
@@ -65,8 +73,15 @@ export default function FeedScreen() {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
       });
-    })();
+    } catch {
+      // e.g. location services turned off
+      setLocationError('Não conseguimos obter sua localização. Verifique se o GPS está ligado.');
+    }
   }, []);
+
+  useEffect(() => {
+    loadLocation();
+  }, [loadLocation]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -101,6 +116,20 @@ export default function FeedScreen() {
           </View>
           <Text style={styles.errorTitle}>Localização necessária</Text>
           <Text style={styles.errorText}>{locationError}</Text>
+          <Pressable
+            onPress={() => (permissionDenied ? Linking.openSettings() : loadLocation())}
+            accessibilityRole="button"
+            style={styles.locationAction}
+          >
+            <Text style={styles.locationActionText}>
+              {permissionDenied ? 'Abrir configurações' : 'Tentar novamente'}
+            </Text>
+          </Pressable>
+          {permissionDenied && (
+            <Pressable onPress={loadLocation} accessibilityRole="button" hitSlop={8}>
+              <Text style={styles.locationRetryText}>Já permiti, tentar de novo</Text>
+            </Pressable>
+          )}
         </Animated.View>
       </View>
     );
@@ -250,6 +279,12 @@ export default function FeedScreen() {
               <SkeletonCard key={i} index={i} />
             ))}
           </View>
+        ) : isError ? (
+          <EmptyState
+            illustration={EmptyTasksIllustration}
+            title="Não foi possível carregar"
+            subtitle="Verifique sua conexão e puxe a tela para atualizar."
+          />
         ) : !visibleTasks.length ? (
           <EmptyState
             illustration={EmptyTasksIllustration}
@@ -289,7 +324,7 @@ export default function FeedScreen() {
                   <Text style={styles.taskAddress} numberOfLines={1}>
                     {task.address}
                   </Text>
-                  {task.distance && (
+                  {task.distance != null && (
                     <View style={styles.distanceBadge}>
                       <Text style={styles.distanceText}>
                         {formatDistance(task.distance)}
@@ -323,6 +358,24 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
+  locationAction: {
+    marginTop: 20,
+    backgroundColor: '#018ABE',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  locationActionText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  locationRetryText: {
+    color: '#018ABE',
+    fontWeight: '600',
+    marginTop: 16,
+    paddingVertical: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F3F8FB',

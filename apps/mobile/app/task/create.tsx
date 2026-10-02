@@ -8,6 +8,7 @@ import {
   Platform,
   Switch,
   StyleSheet,
+  Linking,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +33,9 @@ export default function CreateTaskScreen() {
   const [isUrgent, setIsUrgent] = useState(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [error, setError] = useState('');
+  const [locationStatus, setLocationStatus] = useState<'loading' | 'ok' | 'denied' | 'failed'>(
+    'loading'
+  );
 
   const { data: categories } = trpc.categories.list.useQuery();
   const utils = trpc.useUtils();
@@ -46,21 +50,33 @@ export default function CreateTaskScreen() {
     },
   });
 
-  useEffect(() => {
-    (async () => {
+  const loadLocation = async () => {
+    setLocationStatus('loading');
+    try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
+      if (status !== 'granted') {
+        setLocationStatus('denied');
+        return;
+      }
 
       const loc = await Location.getCurrentPositionAsync({});
       setLocation({
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
       });
-    })();
+      setLocationStatus('ok');
+    } catch {
+      setLocationStatus('failed');
+    }
+  };
+
+  useEffect(() => {
+    loadLocation();
   }, []);
 
   const parsedValue = parseInt(baseValue.replace(/\D/g, '')) || 0;
-  const isValidValue = parsedValue >= TASK_CONSTANTS.MIN_VALUE;
+  const isValidValue =
+    parsedValue >= TASK_CONSTANTS.MIN_VALUE && parsedValue <= TASK_CONSTANTS.MAX_VALUE;
 
   const urgencyFee = isUrgent ? Math.round(parsedValue * TASK_CONSTANTS.URGENCY_FEE) : 0;
   const serviceFee = Math.round((parsedValue + urgencyFee) * TASK_CONSTANTS.CLIENT_FEE);
@@ -72,6 +88,23 @@ export default function CreateTaskScreen() {
     address.length >= 5 &&
     isValidValue &&
     location;
+
+  // Tell the user why "Publicar" is disabled
+  const missingHint = !categoryId
+    ? 'Escolha uma categoria'
+    : title.length < 5
+      ? 'O título precisa ter pelo menos 5 caracteres'
+      : address.length < 5
+        ? 'Informe o endereço'
+        : !isValidValue
+          ? parsedValue > TASK_CONSTANTS.MAX_VALUE
+            ? 'O valor máximo é R$ 100.000,00'
+            : 'O valor mínimo é R$ 50,00'
+          : !location
+            ? locationStatus === 'loading'
+              ? 'Obtendo sua localização...'
+              : 'Precisamos da sua localização para publicar'
+            : null;
 
   const handleValueChange = (text: string) => {
     const digits = text.replace(/\D/g, '');
@@ -274,7 +307,30 @@ export default function CreateTaskScreen() {
             </Animated.View>
           )}
 
-          {error && (
+          {(locationStatus === 'denied' || locationStatus === 'failed') && (
+            <View style={styles.locationBanner}>
+              <Text style={styles.locationBannerText}>
+                {locationStatus === 'denied'
+                  ? 'Permita o acesso à localização para que profissionais próximos vejam seu trampo.'
+                  : 'Não conseguimos obter sua localização. Verifique se o GPS está ligado.'}
+              </Text>
+              <Pressable
+                onPress={() => (locationStatus === 'denied' ? Linking.openSettings() : loadLocation())}
+                accessibilityRole="button"
+                hitSlop={8}
+              >
+                <Text style={styles.locationBannerAction}>
+                  {locationStatus === 'denied' ? 'Abrir configurações' : 'Tentar novamente'}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          {!isValid && !createTask.isPending && missingHint && (
+            <Text style={styles.missingHint}>{missingHint}</Text>
+          )}
+
+          {!!error && (
             <Animated.Text
               entering={FadeIn.duration(200)}
               style={styles.errorText}
@@ -316,6 +372,29 @@ export default function CreateTaskScreen() {
 }
 
 const styles = StyleSheet.create({
+  locationBanner: {
+    backgroundColor: 'rgba(225, 29, 72, 0.08)',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 16,
+  },
+  locationBannerText: {
+    color: '#9F1239',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  locationBannerAction: {
+    color: '#018ABE',
+    fontWeight: '700',
+    marginTop: 8,
+    paddingVertical: 4,
+  },
+  missingHint: {
+    color: '#5B7A91',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 16,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F3F8FB',

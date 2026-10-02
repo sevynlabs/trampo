@@ -173,11 +173,13 @@ export function OtpInput({
         keyboardType="number-pad"
         maxLength={OTP_LENGTH}
         autoComplete="one-time-code"
+        textContentType="oneTimeCode"
+        autoFocus
         editable={!disabled}
         style={styles.hiddenInput}
       />
 
-      {error && (
+      {!!error && (
         <Animated.View
           entering={FadeIn.duration(200)}
           style={styles.errorContainer}

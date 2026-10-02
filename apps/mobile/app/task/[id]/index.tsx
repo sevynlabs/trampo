@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trpc } from '../../../src/lib/trpc';
 import { formatCurrency } from '../../../src/lib/format';
 
@@ -72,36 +73,81 @@ const PAYMENT_STATUS_CONFIG: Record<
   },
 };
 
+// Mirrors the server rule: free up to 30 min before the scheduled time,
+// 20% of the total after that (only once a tasker accepted).
+const FREE_CANCEL_MINUTES = 30;
+const CANCEL_PENALTY_RATE = 0.2;
+
+function BackButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="mr-4"
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel="Voltar"
+    >
+      <Ionicons name="arrow-back" size={24} color="#001B48" />
+    </Pressable>
+  );
+}
+
 export default function TaskDetailScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { data: task, isLoading, refetch } = trpc.tasks.getById.useQuery({ id: id! });
+  const {
+    data: task,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isRefetching,
+  } = trpc.tasks.getById.useQuery({ id: id! });
   const { data: me } = trpc.profiles.getMe.useQuery();
 
   const utils = trpc.useUtils();
 
+  // Anything that changes a task's status must refresh every list showing it
+  const refreshTaskEverywhere = () => {
+    refetch();
+    utils.tasks.listMine.invalidate();
+    utils.tasks.listAssigned.invalidate();
+    utils.payments.getStatus.invalidate({ taskId: id! });
+  };
+
   const acceptTask = trpc.matching.accept.useMutation({
     onSuccess: () => {
-      refetch();
-      utils.tasks.listMine.invalidate();
+      refreshTaskEverywhere();
+      utils.feed.nearby.invalidate();
     },
-    onError: (err) => Alert.alert('Erro', err.message),
+    onError: (err) => {
+      Alert.alert('Erro', err.message);
+      refetch();
+    },
   });
 
   const startTask = trpc.matching.start.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: refreshTaskEverywhere,
     onError: (err) => Alert.alert('Erro', err.message),
   });
 
   const completeTask = trpc.matching.complete.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: refreshTaskEverywhere,
     onError: (err) => Alert.alert('Erro', err.message),
   });
 
   const cancelTask = trpc.matching.cancel.useMutation({
-    onSuccess: () => {
-      refetch();
+    onSuccess: (result) => {
+      refreshTaskEverywhere();
+      utils.feed.nearby.invalidate();
+      Alert.alert(
+        'Pronto',
+        result.penalty > 0
+          ? `Trampo cancelado. Taxa de cancelamento: ${formatCurrency(result.penalty)}.`
+          : 'Trampo cancelado.'
+      );
       router.back();
     },
     onError: (err) => Alert.alert('Erro', err.message),
@@ -114,11 +160,53 @@ export default function TaskDetailScreen() {
     { enabled: !!id && !!task && isParty && task.status !== 'OPEN' }
   );
 
+  if (isError || (!isLoading && !task)) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: 'Detalhes',
+            headerLeft: () => <BackButton onPress={() => router.back()} />,
+          }}
+        />
+        <View className="flex-1 bg-background items-center justify-center px-8">
+          <Ionicons name="alert-circle-outline" size={48} color="#5B7A91" />
+          <Text className="text-ink font-semibold text-lg mt-3 text-center">
+            Não foi possível abrir este trampo
+          </Text>
+          <Text className="text-ink-muted mt-1 text-center">
+            {error?.message ?? 'Ele pode ter sido removido.'}
+          </Text>
+          <Pressable
+            onPress={() => refetch()}
+            disabled={isRefetching}
+            className="mt-6 px-6 py-3 rounded-button bg-accent/10"
+            accessibilityRole="button"
+          >
+            <Text className="text-accent font-bold">
+              {isRefetching ? 'Carregando...' : 'Tentar novamente'}
+            </Text>
+          </Pressable>
+        </View>
+      </>
+    );
+  }
+
   if (isLoading || !task) {
     return (
-      <View className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color="#018ABE" />
-      </View>
+      <>
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: 'Detalhes',
+            headerLeft: () => <BackButton onPress={() => router.back()} />,
+          }}
+        />
+        <View className="flex-1 bg-background items-center justify-center">
+          <ActivityIndicator size="large" color="#018ABE" />
+        </View>
+      </>
     );
   }
 
@@ -133,7 +221,10 @@ export default function TaskDetailScreen() {
   const canAccept = !isClient && task.status === 'OPEN' && me?.role !== 'CLIENT';
   const canStart = isTasker && task.status === 'ACCEPTED';
   const canComplete = isTasker && task.status === 'IN_PROGRESS';
-  const canCancel = (isClient || isTasker) && ['OPEN', 'ACCEPTED'].includes(task.status);
+  // Clients cancel; a tasker can only give up an accepted task (it reopens)
+  const canCancel =
+    (isClient && ['OPEN', 'ACCEPTED'].includes(task.status)) ||
+    (isTasker && task.status === 'ACCEPTED');
   const canChat = (isClient || isTasker) && task.status !== 'OPEN' && task.status !== 'CANCELLED';
   const canReview = (isClient || isTasker) && ['COMPLETED', 'RELEASED'].includes(task.status);
   const canDispute =
@@ -165,19 +256,48 @@ export default function TaskDetailScreen() {
   };
 
   const handleCancel = () => {
+    if (isTasker) {
+      Alert.alert(
+        'Desistir do trampo',
+        'O trampo volta para o feed e outro profissional poderá aceitá-lo.',
+        [
+          { text: 'Voltar', style: 'cancel' },
+          {
+            text: 'Desistir',
+            style: 'destructive',
+            onPress: () => cancelTask.mutate({ taskId: task.id }),
+          },
+        ]
+      );
+      return;
+    }
+
+    const minutesLeft = task.scheduledAt
+      ? (new Date(task.scheduledAt).getTime() - Date.now()) / 60000
+      : Infinity;
+    const penalty =
+      task.status === 'ACCEPTED' && minutesLeft < FREE_CANCEL_MINUTES
+        ? Math.round(task.totalValue * CANCEL_PENALTY_RATE)
+        : 0;
+
     Alert.alert(
-      'Cancelar serviço',
-      'Tem certeza? Pode haver cobrança de taxa de cancelamento.',
+      'Cancelar trampo',
+      penalty > 0
+        ? `Faltam menos de ${FREE_CANCEL_MINUTES} minutos para o horário marcado. Será cobrada uma taxa de ${formatCurrency(penalty)} (20%).`
+        : 'O cancelamento é gratuito. Se você já pagou, o valor será estornado.',
       [
         { text: 'Voltar', style: 'cancel' },
         {
-          text: 'Cancelar serviço',
+          text: 'Cancelar trampo',
           style: 'destructive',
           onPress: () => cancelTask.mutate({ taskId: task.id }),
         },
       ]
     );
   };
+
+  const hasActions =
+    canChat || canPay || canAccept || canStart || canComplete || canCancel || canReview || canDispute;
 
   return (
     <>
@@ -186,14 +306,16 @@ export default function TaskDetailScreen() {
           headerShown: true,
           title: 'Detalhes',
           headerTitleStyle: { fontWeight: 'bold' },
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="arrow-back" size={24} color="#001B48" />
-            </Pressable>
-          ),
+          headerLeft: () => <BackButton onPress={() => router.back()} />,
           headerRight: () =>
             isClient && task.status === 'OPEN' ? (
-              <Pressable onPress={() => router.push(`/task/${task.id}/edit`)} className="ml-4">
+              <Pressable
+                onPress={() => router.push(`/task/${task.id}/edit`)}
+                className="ml-4"
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Editar trampo"
+              >
                 <Ionicons name="create-outline" size={22} color="#018ABE" />
               </Pressable>
             ) : null,
@@ -217,8 +339,10 @@ export default function TaskDetailScreen() {
           <View className="flex-row items-center mb-4">
             <Text className="text-ink-muted">{task.category.name}</Text>
             {task.isUrgent && (
-              <View className="bg-warning px-2 py-1 rounded-chip ml-2">
-                <Text className="text-white text-xs font-medium">Urgente</Text>
+              <View className="bg-warning/15 px-2 py-1 rounded-chip ml-2">
+                <Text className="text-xs font-bold" style={{ color: '#92400E' }}>
+                  Urgente
+                </Text>
               </View>
             )}
           </View>
@@ -295,7 +419,7 @@ export default function TaskDetailScreen() {
             </View>
           )}
 
-          {/* Price breakdown */}
+          {/* Price breakdown: the client sees what they pay, the tasker what they get */}
           <View className="bg-surface rounded-card border border-border p-4">
             <Text className="text-ink font-medium mb-3">Valores</Text>
             <View className="flex-row justify-between mb-2">
@@ -305,13 +429,22 @@ export default function TaskDetailScreen() {
             {task.urgencyFee > 0 && (
               <View className="flex-row justify-between mb-2">
                 <Text className="text-ink-muted">Taxa de urgência</Text>
-                <Text className="text-warning">+{formatCurrency(task.urgencyFee)}</Text>
+                <Text className="text-ink">+{formatCurrency(task.urgencyFee)}</Text>
               </View>
             )}
-            <View className="flex-row justify-between mb-3">
-              <Text className="text-ink-muted">Taxa de serviço</Text>
-              <Text className="text-ink-muted">+{formatCurrency(task.serviceFee)}</Text>
-            </View>
+            {isClient ? (
+              <View className="flex-row justify-between mb-3">
+                <Text className="text-ink-muted">Taxa de serviço (5%)</Text>
+                <Text className="text-ink-muted">+{formatCurrency(task.serviceFee)}</Text>
+              </View>
+            ) : (
+              <View className="flex-row justify-between mb-3">
+                <Text className="text-ink-muted">Comissão TRAMPO (15%)</Text>
+                <Text className="text-ink-muted">
+                  -{formatCurrency(task.baseValue + task.urgencyFee - task.taskerValue)}
+                </Text>
+              </View>
+            )}
             <View className="flex-row justify-between pt-3 border-t border-border">
               <Text className="text-ink font-bold">
                 {isClient ? 'Total a pagar' : 'Você recebe'}
@@ -325,7 +458,11 @@ export default function TaskDetailScreen() {
       </ScrollView>
 
       {/* Action buttons */}
-      <View className="absolute bottom-0 left-0 right-0 bg-surface border-t border-border p-4 pb-8">
+      {hasActions && (
+      <View
+        className="absolute bottom-0 left-0 right-0 bg-surface border-t border-border p-4"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+      >
         <View className="flex-row gap-3">
           {canChat && (
             <Link href={`/task/${task.id}/chat`} asChild>
@@ -392,14 +529,19 @@ export default function TaskDetailScreen() {
               onPress={handleCancel}
               disabled={cancelTask.isPending}
               className="bg-danger/10 py-4 px-6 rounded-button items-center"
+              accessibilityRole="button"
             >
-              <Text className="text-danger font-bold">Cancelar</Text>
+              {cancelTask.isPending ? (
+                <ActivityIndicator color="#E11D48" />
+              ) : (
+                <Text className="text-danger font-bold">{isTasker ? 'Desistir' : 'Cancelar'}</Text>
+              )}
             </Pressable>
           )}
 
           {canReview && (
             <Link href={`/task/${task.id}/review`} asChild>
-              <Pressable className="flex-1 bg-warning py-4 rounded-button items-center flex-row justify-center">
+              <Pressable className="flex-1 bg-accent py-4 rounded-button items-center flex-row justify-center">
                 <Ionicons name="star" size={20} color="#fff" />
                 <Text className="text-white font-bold ml-2">Avaliar</Text>
               </Pressable>
@@ -416,6 +558,7 @@ export default function TaskDetailScreen() {
           </Link>
         )}
       </View>
+      )}
     </>
   );
 }
