@@ -15,7 +15,8 @@
     "db:migrate": "pnpm --filter @trampo/db migrate",
     "db:studio": "pnpm --filter @trampo/db studio",
     "db:seed": "pnpm --filter @trampo/db seed",
-    "clean": "turbo clean && rm -rf node_modules"
+    "clean": "turbo clean && rm -rf node_modules",
+    "db:migrate:deploy": "pnpm --filter @trampo/db migrate:deploy"
   },
   "pnpm": {
     "overrides": {
