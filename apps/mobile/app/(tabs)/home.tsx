@@ -26,6 +26,7 @@ import {
   categoryIcon,
   colors,
 } from '../../src/components/ds';
+import { MaintenanceBanner } from '../../src/components/MaintenanceBanner';
 
 const ACTIVE_CLIENT = ['OPEN', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED', 'DISPUTED'];
 
@@ -76,6 +77,7 @@ function ClientHome() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, paddingBottom: 120 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <MaintenanceBanner />
         <AdBannerCarousel />
         <Animated.View entering={FadeInDown.duration(380)} style={{ marginTop: 18 }}>
           <Text style={{ fontSize: 26, fontWeight: '900', color: colors.ink, letterSpacing: -0.6 }}>

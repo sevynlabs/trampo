@@ -17,6 +17,7 @@ import Animated, { FadeIn, FadeInDown, BounceIn } from 'react-native-reanimated'
 import { trpc } from '../src/lib/trpc';
 import { formatCurrency, centsToInput, parseMoneyToCents } from '../src/lib/format';
 import { GradientButton } from '../src/components/GradientButton';
+import { usePlatformConfig } from '../src/lib/platform-config';
 
 type ScreenState = 'form' | 'processing' | 'success' | 'error';
 
@@ -68,12 +69,14 @@ export default function WithdrawScreen() {
     },
   });
 
+  // Minimum set in the admin (the API enforces it too)
+  const { withdrawalMinAmount: minWithdrawal } = usePlatformConfig();
   const amountCents = parseMoneyToCents(amount);
   const amountValid = Number.isFinite(amountCents);
   const validationMessage = !amountValid
     ? 'Informe um valor válido'
-    : amountCents < 1000
-      ? 'O valor mínimo é R$ 10,00'
+    : amountCents < minWithdrawal
+      ? `O valor mínimo é ${formatCurrency(minWithdrawal)}`
       : amountCents > available
         ? 'O valor é maior que o seu saldo disponível'
         : pixKey.trim().length < 3
@@ -259,7 +262,7 @@ export default function WithdrawScreen() {
               <Text style={styles.maxButton}>Tudo</Text>
             </Pressable>
           </View>
-          <Text style={styles.minAmountHint}>Mínimo R$ 10,00</Text>
+          <Text style={styles.minAmountHint}>Mínimo {formatCurrency(minWithdrawal)}</Text>
 
           {/* Pix key */}
           <Text style={styles.inputLabel}>Chave Pix</Text>
@@ -280,9 +283,9 @@ export default function WithdrawScreen() {
             disabled={!valid}
             loading={requestWithdrawal.isPending}
           />
-          {available < 1000 ? (
+          {available < minWithdrawal ? (
             <Text style={styles.insufficientFundsText}>
-              Você precisa de pelo menos R$ 10,00 disponíveis para sacar.
+              Você precisa de pelo menos {formatCurrency(minWithdrawal)} disponíveis para sacar.
             </Text>
           ) : (
             validationMessage && (

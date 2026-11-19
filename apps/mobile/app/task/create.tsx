@@ -18,7 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Location from 'expo-location';
 import { trpc } from '../../src/lib/trpc';
-import { TASK_CONSTANTS } from '@trampo/contracts';
+import { usePlatformConfig, pct } from '../../src/lib/platform-config';
 import { formatCurrency } from '../../src/lib/format';
 import { GradientButton } from '../../src/components/GradientButton';
 import { Input } from '../../src/components/Input';
@@ -94,12 +94,13 @@ export default function CreateTaskScreen() {
     loadLocation();
   }, []);
 
+  // Live fees/limits set in the admin (the server recalculates on submit)
+  const config = usePlatformConfig();
   const parsedValue = parseInt(baseValue.replace(/\D/g, '')) || 0;
-  const isValidValue =
-    parsedValue >= TASK_CONSTANTS.MIN_VALUE && parsedValue <= TASK_CONSTANTS.MAX_VALUE;
+  const isValidValue = parsedValue >= config.minTaskValue && parsedValue <= config.maxTaskValue;
 
-  const urgencyFee = isUrgent ? Math.round(parsedValue * TASK_CONSTANTS.URGENCY_FEE) : 0;
-  const serviceFee = Math.round((parsedValue + urgencyFee) * TASK_CONSTANTS.CLIENT_FEE);
+  const urgencyFee = isUrgent ? Math.round(parsedValue * config.urgencyFee) : 0;
+  const serviceFee = Math.round((parsedValue + urgencyFee) * config.clientFee);
   const totalValue = parsedValue + urgencyFee + serviceFee;
 
   const isValid =
@@ -117,9 +118,9 @@ export default function CreateTaskScreen() {
       : address.length < 5
         ? 'Informe o endereço'
         : !isValidValue
-          ? parsedValue > TASK_CONSTANTS.MAX_VALUE
-            ? 'O valor máximo é R$ 100.000,00'
-            : 'O valor mínimo é R$ 50,00'
+          ? parsedValue > config.maxTaskValue
+            ? `O valor máximo é ${formatCurrency(config.maxTaskValue)}`
+            : `O valor mínimo é ${formatCurrency(config.minTaskValue)}`
           : !location
             ? locationStatus === 'loading'
               ? 'Obtendo sua localização...'
@@ -137,6 +138,10 @@ export default function CreateTaskScreen() {
   };
 
   const handleSubmit = () => {
+    if (config.maintenanceMode) {
+      Alert.alert('Em manutenção', 'O Trampo está em manutenção. Tente publicar novamente em alguns minutos.');
+      return;
+    }
     if (me && !identitySent) {
       askForIdentity();
       return;
@@ -261,7 +266,7 @@ export default function CreateTaskScreen() {
               icon="cash-outline"
               error={
                 baseValue && !isValidValue
-                  ? `Valor mínimo: ${formatCurrency(TASK_CONSTANTS.MIN_VALUE)}`
+                  ? `Valor mínimo: ${formatCurrency(config.minTaskValue)}`
                   : undefined
               }
             />
@@ -279,7 +284,7 @@ export default function CreateTaskScreen() {
               <View style={styles.urgentText}>
                 <Text style={styles.urgentTitle}>Urgente</Text>
                 <Text style={styles.urgentDescription}>
-                  +30% para serviços em até 1h
+                  +{pct(config.urgencyFee)} para serviços em até 1h
                 </Text>
               </View>
             </View>
@@ -314,7 +319,7 @@ export default function CreateTaskScreen() {
               )}
 
               <View style={styles.breakdownRow}>
-                <Text style={styles.breakdownLabel}>Taxa de serviço (5%)</Text>
+                <Text style={styles.breakdownLabel}>Taxa de serviço ({pct(config.clientFee)})</Text>
                 <Text style={styles.breakdownValueMuted}>
                   +{formatCurrency(serviceFee)}
                 </Text>

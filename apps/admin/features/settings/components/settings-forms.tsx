@@ -101,14 +101,14 @@ export function PlatformForm({ data, readOnly }: { data: SettingsData; readOnly:
               </Field>
             </div>
           </FormSection>
-          <FormSection title="Disponibilidade" description="Sinaliza manutenção programada.">
+          <FormSection title="Disponibilidade" description="Pausa temporária de novas atividades no app.">
             <Controller
               control={form.control}
               name="maintenanceMode"
               render={({ field }) => (
                 <SettingRow
                   title="Modo manutenção"
-                  description="Registra que a plataforma está em manutenção. Por enquanto é informativo: o app ainda não bloqueia o acesso."
+                  description="Pausa novas solicitações e aceites de trampos e mostra um aviso no app. Serviços em andamento, pagamentos e saques continuam."
                   control={<Switch checked={field.value} onCheckedChange={field.onChange} disabled={readOnly} aria-label="Modo manutenção" />}
                 />
               )}
@@ -131,8 +131,9 @@ const financeSchema = z.object({
   clientFeePercent: pct,
   taskerFeePercent: pct,
   urgencyFeePercent: pct,
-  minTaskValue: reais,
-  withdrawalMinAmount: reais,
+  // Must match the API limits (platform-settings.ts): task ≥ R$ 10, withdrawal ≥ R$ 1
+  minTaskValue: reais.min(10, "Mínimo R$ 10,00"),
+  withdrawalMinAmount: reais.min(1, "Mínimo R$ 1,00"),
 });
 type FinanceValues = z.infer<typeof financeSchema>;
 
@@ -170,9 +171,9 @@ export function FinanceForm({ data, readOnly }: { data: SettingsData; readOnly: 
   const num = { valueAsNumber: true } as const;
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-4">
-      <InfoCard icon={Info} tone="warning" title="Valores informativos">
-        Estes parâmetros ficam registrados, mas o cálculo de taxas e o saque mínimo ainda usam as constantes do sistema. Alterá-los
-        aqui não muda cobranças nem repasses por enquanto.
+      <InfoCard icon={Info} tone="warning" title="Valores em vigor">
+        Estas taxas e mínimos passam a valer em poucos segundos para <b>novas</b> solicitações e saques. Solicitações já criadas
+        mantêm os valores calculados na criação. O app mostra a estimativa com os valores atuais.
       </InfoCard>
       <SectionCard footer={<SaveBar form={form} saving={update.isPending} readOnly={readOnly} updatedAt={data.updatedAt} />}>
         <fieldset disabled={readOnly} className="contents">

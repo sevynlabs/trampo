@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trpc } from '../lib/trpc';
 import { formatCurrency } from '../lib/format';
 import { Avatar, Card, Button, SectionHeader, IconButton, TaskRow, ListRow, AdBannerCarousel, colors } from '../components/ds';
+import { MaintenanceBanner } from '../components/MaintenanceBanner';
 
 const ACTIVE_ASSIGNED = ['ACCEPTED', 'IN_PROGRESS', 'COMPLETED', 'DISPUTED'];
 const AVAILABLE_KEY = 'trampo_tasker_available';
@@ -76,6 +77,7 @@ export function TaskerHome({ embedded = false }: { embedded?: boolean }) {
         contentContainerStyle={{ padding: 20, paddingTop: 8, paddingBottom: 120 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        <MaintenanceBanner />
         <View style={{ marginBottom: 16 }}>
           <AdBannerCarousel />
         </View>
