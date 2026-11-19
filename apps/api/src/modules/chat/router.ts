@@ -141,4 +141,50 @@ export const chatRouter = router({
         nextCursor,
       };
     }),
+
+  /**
+   * Conversations inbox: every task (as client or assigned tasker) that has a
+   * chat (accepted onwards), with the other party and the latest message.
+   */
+  conversations: protectedProcedure.query(async ({ ctx }) => {
+    const tasks = await prisma.task.findMany({
+      where: {
+        status: { not: 'OPEN' },
+        OR: [{ clientId: ctx.user.id }, { assignment: { taskerId: ctx.user.id } }],
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        updatedAt: true,
+        client: { select: { id: true, name: true, avatarUrl: true } },
+        assignment: { select: { tasker: { select: { id: true, name: true, avatarUrl: true } } } },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { content: true, createdAt: true, senderId: true },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+
+    return tasks
+      .map((t) => {
+        const isClient = t.client.id === ctx.user.id;
+        const other = isClient ? t.assignment?.tasker ?? null : t.client;
+        const last = t.messages[0] ?? null;
+        return {
+          taskId: t.id,
+          taskTitle: t.title,
+          status: t.status,
+          other,
+          lastMessage: last
+            ? { content: last.content, createdAt: last.createdAt.toISOString(), mine: last.senderId === ctx.user.id }
+            : null,
+          sortAt: (last?.createdAt ?? t.updatedAt).toISOString(),
+        };
+      })
+      .sort((a, b) => b.sortAt.localeCompare(a.sortAt));
+  }),
 });

@@ -10,7 +10,7 @@ export default {
     splash: {
       image: "./assets/splash.png",
       resizeMode: "contain",
-      backgroundColor: "#F3F8FB"
+      backgroundColor: "#041E42"
     },
     assetBundlePatterns: ["**/*"],
     ios: {
@@ -25,7 +25,7 @@ export default {
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
-        backgroundColor: "#F3F8FB"
+        backgroundColor: "#041E42"
       },
       package: "com.sevynlabs.trampo",
       permissions: [

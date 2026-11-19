@@ -5,18 +5,21 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  StyleSheet,
   Pressable,
+  ScrollView,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { trpc } from '../../src/lib/trpc';
-import { GradientButton } from '../../src/components/GradientButton';
-import { GradientMesh } from '../../src/components/GradientMesh';
+import { Logo, Button, colors, shadow } from '../../src/components/ds';
 
+/** "Entrar na sua conta" — phone + SMS code (OTP). The same flow creates new accounts. */
 export default function PhoneScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [ddd, setDdd] = useState('');
   const [number, setNumber] = useState('');
   const [error, setError] = useState('');
@@ -24,69 +27,57 @@ export default function PhoneScreen() {
 
   const requestOtp = trpc.auth.requestOtp.useMutation({
     onSuccess: () => {
-      router.push({
-        pathname: '/(auth)/otp',
-        params: { phone: `+55${ddd}${number}` },
-      });
+      router.push({ pathname: '/(auth)/otp', params: { phone: `+55${ddd}${number}` } });
     },
-    onError: (err) => {
-      setError(err.message);
-    },
+    onError: (err) => setError(err.message),
   });
 
-  const phone = `+55${ddd}${number}`;
   const isValid = ddd.length === 2 && number.length === 9;
-
   const handleSubmit = () => {
     if (!isValid) return;
     setError('');
-    requestOtp.mutate({ phone });
+    requestOtp.mutate({ phone: `+55${ddd}${number}` });
   };
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      {/* Gradient Mesh Background */}
-      <View style={styles.meshContainer} pointerEvents="none">
-        <GradientMesh height={220} intensity="normal" animated={false} />
-      </View>
+  const socialSoon = (provider: string) =>
+    Alert.alert(`Entrar com ${provider}`, 'Em breve! Por enquanto, entre com o seu celular.');
 
-      <View style={styles.content}>
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: '#fff' }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }} keyboardShouldPersistTaps="handled">
         {router.canGoBack() && (
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.backButton}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Voltar"
-          >
-            <Ionicons name="arrow-back" size={24} color="#041E42" />
+          <Pressable onPress={() => router.back()} hitSlop={10} accessibilityRole="button" accessibilityLabel="Voltar" style={{ alignSelf: 'flex-start', padding: 4 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.ink} />
           </Pressable>
         )}
-        <Animated.Text
-          entering={FadeInDown.delay(100).duration(420)}
-          style={styles.title}
-        >
-          Qual é o seu celular?
-        </Animated.Text>
-        <Animated.Text
-          entering={FadeInDown.delay(200).duration(420)}
-          style={styles.subtitle}
-        >
-          Vamos enviar um código SMS para confirmar
-        </Animated.Text>
 
-        {/* Phone input - original working design */}
+        <Animated.View entering={FadeInDown.duration(420)} style={{ alignItems: 'center', marginTop: 24, marginBottom: 40 }}>
+          <Logo size={52} />
+        </Animated.View>
+
+        <Animated.Text entering={FadeInDown.delay(100).duration(420)} style={{ fontSize: 22, fontWeight: '800', color: colors.ink, marginBottom: 6 }}>
+          Entrar na sua conta
+        </Animated.Text>
+        <Text style={{ fontSize: 14.5, color: colors.inkMuted, marginBottom: 20 }}>
+          Vamos enviar um código por SMS para confirmar o seu número.
+        </Text>
+
         <Animated.View
-          entering={FadeInDown.delay(300).duration(420)}
-          style={styles.phoneRow}
+          entering={FadeInDown.delay(200).duration(420)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            height: 56,
+            borderRadius: 16,
+            borderWidth: 1.5,
+            borderColor: error ? colors.danger : colors.input,
+            paddingHorizontal: 14,
+            backgroundColor: '#fff',
+            marginBottom: 8,
+          }}
         >
-          <View style={styles.prefix}>
-            <Text style={styles.prefixText}>+55</Text>
-          </View>
-
+          <Text style={{ fontSize: 18 }}>🇧🇷</Text>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.ink, marginLeft: 8 }}>+55</Text>
           <TextInput
             value={ddd}
             onChangeText={(text) => {
@@ -94,124 +85,75 @@ export default function PhoneScreen() {
               setDdd(digits);
               if (digits.length >= 2) numberRef.current?.focus();
             }}
-            placeholder="DDD"
-            placeholderTextColor="#9AA5B8"
+            placeholder="(34)"
+            placeholderTextColor={colors.inkFaint}
             keyboardType="number-pad"
             maxLength={2}
-            style={styles.dddInput}
+            accessibilityLabel="DDD"
+            style={{ width: 48, fontSize: 16, color: colors.ink, textAlign: 'center', marginLeft: 8, paddingVertical: 0 }}
           />
-
           <TextInput
             ref={numberRef}
             value={number}
             onChangeText={(text) => setNumber(text.replace(/\D/g, '').slice(0, 9))}
-            placeholder="00000-0000"
-            placeholderTextColor="#9AA5B8"
+            placeholder="9 9999-9999"
+            placeholderTextColor={colors.inkFaint}
             keyboardType="number-pad"
             maxLength={9}
-            style={styles.numberInput}
+            accessibilityLabel="Número do celular"
+            style={{ flex: 1, fontSize: 16, color: colors.ink, marginLeft: 4, paddingVertical: 0 }}
+            onSubmitEditing={handleSubmit}
           />
         </Animated.View>
 
-        {error ? (
-          <Text style={styles.error}>{error}</Text>
-        ) : null}
+        {error ? <Text style={{ color: colors.danger, fontSize: 13.5, marginBottom: 8 }}>{error}</Text> : null}
 
-        <Animated.View entering={FadeInDown.delay(400).duration(420)}>
-          <GradientButton
-            label="Continuar"
-            onPress={handleSubmit}
-            disabled={!isValid}
-            loading={requestOtp.isPending}
-            iconRight="arrow-forward"
-          />
-        </Animated.View>
-      </View>
+        <Button label="Continuar" onPress={handleSubmit} disabled={!isValid} loading={requestOtp.isPending} style={{ marginTop: 12 }} />
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 22 }}>
+          <View style={{ flex: 1, height: 1, backgroundColor: colors.hairline }} />
+          <Text style={{ marginHorizontal: 12, color: colors.inkMuted, fontSize: 13 }}>ou</Text>
+          <View style={{ flex: 1, height: 1, backgroundColor: colors.hairline }} />
+        </View>
+
+        <SocialButton icon="logo-google" iconColor="#EA4335" label="Continuar com Google" onPress={() => socialSoon('Google')} />
+        <SocialButton icon="logo-apple" iconColor="#000" label="Continuar com Apple" onPress={() => socialSoon('Apple')} />
+
+        <View style={{ flex: 1 }} />
+        <Text style={{ textAlign: 'center', fontSize: 13.5, color: colors.inkMuted, marginTop: 24 }}>
+          Ainda não tem conta?{' '}
+          <Text style={{ color: colors.orange, fontWeight: '700' }} onPress={() => numberRef.current?.focus()}>
+            Criar agora
+          </Text>
+        </Text>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F8FC',
-  },
-  meshContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#041E42',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#5F6B7E',
-    marginBottom: 32,
-  },
-  phoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 24,
-  },
-  prefix: {
-    backgroundColor: '#EEF3F9',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: '#E6EBF2',
-  },
-  prefixText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#5F6B7E',
-  },
-  dddInput: {
-    width: 72,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1.5,
-    borderColor: '#E6EBF2',
-    fontSize: 16,
-    color: '#041E42',
-    textAlign: 'center',
-  },
-  numberInput: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1.5,
-    borderColor: '#E6EBF2',
-    fontSize: 16,
-    color: '#041E42',
-  },
-  error: {
-    color: '#E11D48',
-    fontSize: 14,
-    marginBottom: 16,
-  },
-});
+function SocialButton({ icon, iconColor, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; iconColor: string; label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [
+        {
+          height: 52,
+          borderRadius: 16,
+          backgroundColor: '#fff',
+          borderWidth: 1,
+          borderColor: colors.hairline,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 12,
+          ...shadow.card,
+        },
+        pressed && { opacity: 0.85 },
+      ]}
+    >
+      <Ionicons name={icon} size={20} color={iconColor} />
+      <Text style={{ marginLeft: 10, fontSize: 15, fontWeight: '600', color: colors.ink }}>{label}</Text>
+    </Pressable>
+  );
+}

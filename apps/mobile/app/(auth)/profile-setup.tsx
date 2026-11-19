@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import {
   View,
+  Text,
+  Pressable,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -9,30 +11,30 @@ import {
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { trpc } from '../../src/lib/trpc';
-import { GradientButton } from '../../src/components/GradientButton';
-import { OnboardingHeader } from '../../src/components/OnboardingHeader';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Input } from '../../src/components/Input';
-import { SelectionCard, SelectionCardGroup } from '../../src/components/SelectionCard';
+import { Button, IconCircle, colors } from '../../src/components/ds';
 
 type Role = 'CLIENT' | 'TASKER' | 'BOTH';
 
 const ROLES: { value: Role; title: string; description: string; icon: keyof typeof import('@expo/vector-icons').Ionicons.glyphMap }[] = [
   {
     value: 'CLIENT',
-    title: 'Preciso de ajuda',
-    description: 'Contratar pessoas para fazer serviços',
-    icon: 'person-outline',
+    title: 'Quero contratar serviços',
+    description: 'Encontre profissionais para o que você precisa.',
+    icon: 'people-outline',
   },
   {
     value: 'TASKER',
-    title: 'Quero trabalhar',
-    description: 'Oferecer meus serviços e ganhar dinheiro',
-    icon: 'briefcase-outline',
+    title: 'Quero prestar serviços',
+    description: 'Divulgue seu trabalho e conquiste clientes.',
+    icon: 'construct-outline',
   },
   {
     value: 'BOTH',
-    title: 'Os dois',
-    description: 'Contratar e também oferecer serviços',
+    title: 'Quero os dois',
+    description: 'Contratar e também oferecer serviços.',
     icon: 'swap-horizontal-outline',
   },
 ];
@@ -51,6 +53,7 @@ function isValidCpfNumber(digits: string): boolean {
 
 export default function ProfileSetupScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [cpf, setCpf] = useState('');
   const [role, setRole] = useState<Role | null>(null);
@@ -97,35 +100,46 @@ export default function ProfileSetupScreen() {
     });
   };
 
+  const [step, setStep] = useState<'role' | 'data'>('role');
+
+  if (step === 'role') {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 20 }]}>
+        <View style={{ paddingHorizontal: 24, flex: 1 }}>
+          <Text style={styles.bigTitle}>Como você quer{`\n`}usar o Trampo?</Text>
+          <Text style={styles.subtitle}>Você pode mudar isso depois no seu perfil.</Text>
+          {ROLES.map((item, index) => (
+            <Animated.View key={item.value} entering={FadeInDown.delay(100 + index * 80).duration(380)}>
+              <RoleCard item={item} selected={role === item.value} onPress={() => setRole(item.value)} />
+            </Animated.View>
+          ))}
+        </View>
+        <View style={{ paddingHorizontal: 24 }}>
+          <Button label="Continuar" disabled={!role} onPress={() => setStep('data')} />
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 8 }]}
         keyboardShouldPersistTaps="handled"
       >
-        <OnboardingHeader
-          title="Complete seu perfil"
-          subtitle="Precisamos de algumas informações para começar"
-          meshHeight={180}
-          meshIntensity="subtle"
-        />
-
         <View style={styles.form}>
-          <Animated.View entering={FadeInDown.delay(300).duration(420)}>
-            <Input
-              label="Nome completo"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              autoComplete="name"
-            />
+          <Pressable onPress={() => setStep('role')} hitSlop={10} accessibilityRole="button" accessibilityLabel="Voltar" style={{ alignSelf: 'flex-start', padding: 4, marginBottom: 12 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.ink} />
+          </Pressable>
+          <Text style={styles.bigTitle}>Complete seu perfil</Text>
+          <Text style={styles.subtitle}>Precisamos de algumas informações para começar.</Text>
+
+          <Animated.View entering={FadeInDown.delay(100).duration(420)}>
+            <Input label="Nome completo" value={name} onChangeText={setName} autoCapitalize="words" autoComplete="name" />
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(400).duration(420)}>
+          <Animated.View entering={FadeInDown.delay(200).duration(420)}>
             <Input
               label="CPF"
               value={cpf}
@@ -142,57 +156,37 @@ export default function ProfileSetupScreen() {
               }
             />
           </Animated.View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <Ionicons name="lock-closed-outline" size={14} color={colors.inkMuted} />
+            <Text style={{ marginLeft: 6, fontSize: 12.5, color: colors.inkMuted }}>Seu CPF é criptografado e nunca fica visível.</Text>
+          </View>
 
-          <Animated.View
-            entering={FadeInDown.delay(500).duration(420)}
-            style={styles.roleSection}
-          >
-            <Animated.Text
-              entering={FadeInDown.delay(500).duration(420)}
-              style={styles.roleLabel}
-            >
-              O que você quer fazer?
-            </Animated.Text>
+          {error ? <Animated.Text entering={FadeInDown.duration(200)} style={styles.errorText}>{error}</Animated.Text> : null}
 
-            <SelectionCardGroup>
-              {ROLES.map((item, index) => (
-                <SelectionCard
-                  key={item.value}
-                  title={item.title}
-                  description={item.description}
-                  icon={item.icon}
-                  selected={role === item.value}
-                  onPress={() => setRole(item.value)}
-                  index={index}
-                />
-              ))}
-            </SelectionCardGroup>
-          </Animated.View>
-
-          {error ? (
-            <Animated.Text
-              entering={FadeInDown.duration(200)}
-              style={styles.errorText}
-            >
-              {error}
-            </Animated.Text>
-          ) : null}
-
-          <Animated.View
-            entering={FadeInDown.delay(700).duration(420)}
-            style={styles.submitContainer}
-          >
-            <GradientButton
-              label="Finalizar cadastro"
-              onPress={handleSubmit}
-              disabled={!isValid}
-              loading={updateProfile.isPending}
-              iconRight="arrow-forward"
-            />
-          </Animated.View>
+          <View style={styles.submitContainer}>
+            <Button label="Finalizar cadastro" onPress={handleSubmit} disabled={!isValid} loading={updateProfile.isPending} iconRight="arrow-forward" />
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+function RoleCard({ item, selected, onPress }: { item: (typeof ROLES)[number]; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      style={[styles.roleCard, selected && { borderColor: colors.orange, backgroundColor: colors.orangeTint }]}
+    >
+      <IconCircle icon={item.icon} size={54} bg={selected ? '#fff' : colors.orangeTint} />
+      <View style={{ flex: 1, marginLeft: 14 }}>
+        <Text style={{ fontSize: 16, fontWeight: '800', color: colors.ink }}>{item.title}</Text>
+        <Text style={{ fontSize: 13, color: colors.inkMuted, marginTop: 3 }}>{item.description}</Text>
+      </View>
+      <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={selected ? colors.orange : colors.inkFaint} />
+    </Pressable>
   );
 }
 
@@ -211,14 +205,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 24,
   },
-  roleSection: {
-    marginTop: 8,
-  },
-  roleLabel: {
-    fontSize: 16,
-    fontWeight: '500',
+  bigTitle: {
+    fontSize: 26,
+    fontWeight: '900',
     color: '#041E42',
-    marginBottom: 16,
+    letterSpacing: -0.6,
+    marginTop: 12,
+  },
+  subtitle: {
+    fontSize: 14.5,
+    color: '#5F6B7E',
+    marginTop: 6,
+    marginBottom: 24,
+  },
+  roleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#E6EBF2',
+    backgroundColor: '#fff',
+    marginBottom: 14,
   },
   errorText: {
     color: '#E11D48',
