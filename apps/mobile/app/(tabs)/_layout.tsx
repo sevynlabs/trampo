@@ -100,11 +100,13 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="publish"
-        options={{
-          href: show(!taskerOnly, '/(tabs)/publish'),
-          tabBarAccessibilityLabel: 'Publicar',
-          tabBarButton: () => <PublishButton />,
-        }}
+        // expo-router (SDK 58+) forbids `href` together with `tabBarButton`:
+        // visible → custom button only; hidden → href: null only.
+        options={
+          taskerOnly
+            ? { href: null }
+            : { tabBarAccessibilityLabel: 'Publicar', tabBarButton: () => <PublishButton /> }
+        }
       />
       <Tabs.Screen
         name="agenda"
