@@ -53,7 +53,7 @@ export default function PhoneScreen() {
         )}
 
         <Animated.View entering={FadeInDown.duration(420)} style={{ alignItems: 'center', marginTop: 24, marginBottom: 40 }}>
-          <Logo size={52} />
+          <Logo size={52} maxWidth={300} />
         </Animated.View>
 
         <Animated.Text entering={FadeInDown.delay(100).duration(420)} style={{ fontSize: 22, fontWeight: '800', color: colors.ink, marginBottom: 6 }}>
