@@ -79,11 +79,11 @@ export function ReviewSheet({
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl border border-border/70 p-3">
                     <div className="mb-2 text-2xs font-medium text-muted-foreground">Cliente</div>
-                    <UserCell name={parties.client.name} avatarUrl={parties.client.avatarUrl} size="sm" />
+                    <UserCell name={parties.client.name} avatarUrl={parties.client.avatarUrl} publicCode={parties.client.publicCode} size="sm" />
                   </div>
                   <div className="rounded-xl border border-border/70 p-3">
                     <div className="mb-2 text-2xs font-medium text-muted-foreground">Profissional</div>
-                    <UserCell name={parties.professional.name} avatarUrl={parties.professional.avatarUrl} size="sm" />
+                    <UserCell name={parties.professional.name} avatarUrl={parties.professional.avatarUrl} publicCode={parties.professional.publicCode} size="sm" />
                   </div>
                 </div>
               </Section>

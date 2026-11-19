@@ -2,11 +2,13 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, adminAuthProcedure, requireAdminRole } from '../../trpc';
 import { prisma, Prisma } from '@trampo/db';
+import { parsePublicCode } from '../../lib/public-code';
 import { logAudit } from '../../lib/audit';
 import { resolveDispute } from '../../lib/disputes';
 import { periodSchema, sinceFilter, paginationShape, shortCode, codePrefix, uuidPrefixRange, toNum } from './period';
 
-const person = { select: { id: true, name: true, avatarUrl: true } } as const;
+/** Person shape for admin views; publicCode = in-app ID (raw "TR4F9A2C"; the panel formats it). */
+const person = { select: { id: true, name: true, avatarUrl: true, publicCode: true } } as const;
 const DISPUTE_STATUS = z.enum(['OPEN', 'RESOLVED_RELEASED', 'RESOLVED_REFUNDED']);
 
 const listSelect = {
@@ -82,6 +84,10 @@ export const disputesAdminRouter = router({
           { task: { client: { name: { contains: s, mode: 'insensitive' } } } },
           { task: { assignment: { tasker: { name: { contains: s, mode: 'insensitive' } } } } },
         ];
+        const userCode = parsePublicCode(s);
+        if (userCode) {
+          or.push({ task: { client: { publicCode: userCode } } }, { task: { assignment: { tasker: { publicCode: userCode } } } });
+        }
         const prefix = codePrefix(s);
         if (prefix) {
           or.push({ id: uuidPrefixRange(prefix) }, { taskId: uuidPrefixRange(prefix) });

@@ -118,7 +118,7 @@ export function PaymentsView() {
             <SearchInput
               value={url.q}
               onChange={(v) => setUrl({ q: v })}
-              placeholder="Buscar por ID, usuário ou serviço"
+              placeholder="Buscar por ID do pagamento, ID do usuário (TR-…) ou serviço"
             />
             <PeriodSelect value={period} onChange={(p) => setUrl({ period: p })} />
             <FilterSelect

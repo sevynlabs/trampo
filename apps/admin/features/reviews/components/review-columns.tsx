@@ -59,7 +59,7 @@ export function buildReviewColumns({
       header: "Cliente",
       cell: ({ row: { original: r } }) => {
         const p = reviewParties(r).client;
-        return <UserCell name={p.name} avatarUrl={p.avatarUrl} size="sm" />;
+        return <UserCell name={p.name} avatarUrl={p.avatarUrl} publicCode={p.publicCode} size="sm" />;
       },
     },
     {
@@ -67,7 +67,7 @@ export function buildReviewColumns({
       header: "Profissional",
       cell: ({ row: { original: r } }) => {
         const p = reviewParties(r).professional;
-        return <UserCell name={p.name} avatarUrl={p.avatarUrl} size="sm" />;
+        return <UserCell name={p.name} avatarUrl={p.avatarUrl} publicCode={p.publicCode} size="sm" />;
       },
     },
     {

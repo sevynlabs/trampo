@@ -42,7 +42,7 @@ export function requestColumns({ onOpen }: { onOpen: (row: RequestRow) => void }
       id: "client",
       header: "Cliente",
       cell: ({ row }) => (
-        <UserCell name={row.original.client.name} avatarUrl={row.original.client.avatarUrl} size="sm" className="min-w-[150px]" />
+        <UserCell name={row.original.client.name} avatarUrl={row.original.client.avatarUrl} publicCode={row.original.client.publicCode} size="sm" className="min-w-[150px]" />
       ),
     },
     {
@@ -50,7 +50,7 @@ export function requestColumns({ onOpen }: { onOpen: (row: RequestRow) => void }
       header: "Profissional",
       cell: ({ row }) =>
         row.original.tasker ? (
-          <UserCell name={row.original.tasker.name} avatarUrl={row.original.tasker.avatarUrl} size="sm" className="min-w-[150px]" />
+          <UserCell name={row.original.tasker.name} avatarUrl={row.original.tasker.avatarUrl} publicCode={row.original.tasker.publicCode} size="sm" className="min-w-[150px]" />
         ) : (
           <span className="text-muted-foreground">—</span>
         ),

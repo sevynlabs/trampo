@@ -6,6 +6,7 @@ import {
   requireAdminRole,
 } from '../../trpc';
 import { prisma, Prisma } from '@trampo/db';
+import { parsePublicCode } from '../../lib/public-code';
 import { logAudit } from '../../lib/audit';
 import { codePrefix, uuidPrefixRange } from './period';
 
@@ -61,6 +62,7 @@ export const financeRouter = router({
         const or: Prisma.PaymentWhereInput[] = [
           { task: { title: { contains: q, mode: 'insensitive' } } },
           { user: { name: { contains: q, mode: 'insensitive' } } },
+          ...(parsePublicCode(q) ? [{ user: { publicCode: parsePublicCode(q)! } }] : []),
           { user: { phone: { contains: q } } },
         ];
         const prefix = codePrefix(q);
@@ -94,7 +96,7 @@ export const financeRouter = router({
             createdAt: true,
             paidAt: true,
             task: { select: { id: true, title: true } },
-            user: { select: { id: true, name: true, avatarUrl: true } },
+            user: { select: { id: true, name: true, avatarUrl: true, publicCode: true } },
           },
         }),
       ]);
@@ -113,6 +115,7 @@ export const financeRouter = router({
           payerName: p.user?.name ?? null,
           payerId: p.user?.id ?? null,
           avatarUrl: p.user?.avatarUrl ?? null,
+          payerPublicCode: p.user?.publicCode ?? null,
         })),
         total,
         page: input.page,

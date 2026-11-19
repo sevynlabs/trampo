@@ -113,7 +113,7 @@ export function ReviewsView() {
             <SearchInput
               value={s.q}
               onChange={(v) => set({ q: v })}
-              placeholder="Buscar por comentário, pessoa, serviço ou código"
+              placeholder="Buscar por comentário, pessoa, ID (TR-…), serviço ou código"
             />
             <PeriodSelect value={period} onChange={(p) => set({ period: p })} />
             <FilterSelect label="Nota" value={s.rating} onChange={(v) => set({ rating: v })} options={RATING_OPTIONS} />

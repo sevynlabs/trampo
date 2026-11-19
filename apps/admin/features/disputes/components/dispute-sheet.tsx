@@ -105,12 +105,12 @@ function DisputeBody({ d }: { d: DisputeDetail }) {
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-border/70 bg-card p-3">
             <div className="mb-2 text-2xs font-medium text-muted-foreground">Cliente</div>
-            <UserCell name={d.client.name} avatarUrl={d.client.avatarUrl} size="sm" />
+            <UserCell name={d.client.name} avatarUrl={d.client.avatarUrl} publicCode={d.client.publicCode} size="sm" />
           </div>
           <div className="rounded-xl border border-border/70 bg-card p-3">
             <div className="mb-2 text-2xs font-medium text-muted-foreground">Profissional</div>
             {d.tasker ? (
-              <UserCell name={d.tasker.name} avatarUrl={d.tasker.avatarUrl} size="sm" />
+              <UserCell name={d.tasker.name} avatarUrl={d.tasker.avatarUrl} publicCode={d.tasker.publicCode} size="sm" />
             ) : (
               <span className="text-sm text-muted-foreground">Sem profissional atribuído</span>
             )}

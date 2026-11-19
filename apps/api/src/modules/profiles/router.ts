@@ -11,14 +11,9 @@ import { supabase } from '../../lib/supabase';
 
 const isTaskerRole = (role: string) => role === 'TASKER' || role === 'BOTH';
 
-/** Stored as "TR4F9A2C"; shown to people as "TR-4F9A2C". */
-export const formatPublicCode = (code: string) => `${code.slice(0, 2)}-${code.slice(2)}`;
-
-/** Accepts "TR-4F9A2C", "tr4f9a2c", "#TR 4F9A2C"… → "TR4F9A2C" (or null). */
-export function parsePublicCode(raw: string): string | null {
-  const c = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  return /^TR[0-9A-F]{6}$/.test(c) ? c : null;
-}
+// Public in-app ID helpers live in lib/public-code (shared with the admin API)
+export { formatPublicCode, parsePublicCode } from '../../lib/public-code';
+import { formatPublicCode, parsePublicCode } from '../../lib/public-code';
 
 export const profilesRouter = router({
   /**

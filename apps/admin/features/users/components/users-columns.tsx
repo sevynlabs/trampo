@@ -27,6 +27,7 @@ export function userColumns(h: UserRowHandlers): ColumnDef<UserRow, unknown>[] {
         <UserCell
           name={row.original.name}
           avatarUrl={row.original.avatarUrl}
+          publicCode={row.original.publicCode}
           subtitle={row.original.email ? `${row.original.email} · ${row.original.phone}` : row.original.phone}
         />
       ),

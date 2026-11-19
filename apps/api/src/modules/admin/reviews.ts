@@ -2,10 +2,12 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, adminAuthProcedure, requireAdminRole } from '../../trpc';
 import { prisma, Prisma } from '@trampo/db';
+import { parsePublicCode } from '../../lib/public-code';
 import { logAudit } from '../../lib/audit';
 import { periodSchema, sinceFilter, paginationShape, shortCode, codePrefix, uuidPrefixRange } from './period';
 
-const person = { select: { id: true, name: true, avatarUrl: true } } as const;
+/** Person shape for admin views; publicCode = in-app ID (raw "TR4F9A2C"; the panel formats it). */
+const person = { select: { id: true, name: true, avatarUrl: true, publicCode: true } } as const;
 
 /**
  * Recompute a professional's rating the same way reviews.submit does
@@ -79,6 +81,8 @@ export const reviewsAdminRouter = router({
           { reviewee: { name: { contains: s, mode: 'insensitive' } } },
           { task: { title: { contains: s, mode: 'insensitive' } } },
         ];
+        const userCode = parsePublicCode(s);
+        if (userCode) or.push({ reviewer: { publicCode: userCode } }, { reviewee: { publicCode: userCode } });
         const prefix = codePrefix(s);
         if (prefix) or.push({ taskId: uuidPrefixRange(prefix) });
         where.OR = or;

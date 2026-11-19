@@ -38,6 +38,7 @@ export function paymentColumns({ onOpen }: { onOpen: (row: PaymentRow) => void }
         <UserCell
           name={row.original.payerName}
           avatarUrl={row.original.avatarUrl}
+          publicCode={row.original.payerPublicCode}
           size="sm"
           subtitle="Cliente"
           className="min-w-[150px]"

@@ -120,7 +120,7 @@ export function UsersList() {
           <SearchInput
             value={s.q}
             onChange={(v) => set({ q: v })}
-            placeholder="Buscar por nome, e-mail ou telefone…"
+            placeholder="Buscar por ID (TR-…), nome, e-mail ou telefone…"
           />
           <FilterSelect label="Status" value={status} onChange={(v) => set({ status: v })} options={STATUS_OPTIONS} />
           <FilterSelect label="Tipo" value={role} onChange={(v) => set({ role: v })} options={ROLE_FILTER_OPTIONS} />

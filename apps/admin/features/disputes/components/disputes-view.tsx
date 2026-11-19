@@ -66,7 +66,7 @@ export function DisputesView() {
       <SectionCard>
         <div className="space-y-4">
           <FilterBar>
-            <SearchInput value={s.q} onChange={(v) => set({ q: v })} placeholder="Buscar por código, cliente, profissional ou motivo" />
+            <SearchInput value={s.q} onChange={(v) => set({ q: v })} placeholder="Buscar por código, ID (TR-…), cliente, profissional ou motivo" />
             <FilterSelect label="Status" value={input.status ?? "all"} onChange={(v) => set({ status: v })} options={STATUS_OPTIONS} />
             <PeriodSelect value={period} onChange={(p) => set({ period: p })} />
           </FilterBar>

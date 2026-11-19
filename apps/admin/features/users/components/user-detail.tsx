@@ -1,5 +1,7 @@
 "use client";
 
+import { PublicId } from "@/components/ds/people";
+
 import { useState } from "react";
 import Link from "next/link";
 import { Ban, BadgeCheck, Banknote, CalendarClock, Pencil, ShieldCheck, Star, UserX, Wallet } from "lucide-react";
@@ -104,6 +106,7 @@ export function UserDetailView({ id }: { id: string }) {
           <span className="flex items-center gap-3">
             <UserAvatar name={user.name} src={user.avatarUrl} size="lg" />
             <span className="truncate">{user.name || "Sem nome"}</span>
+            <PublicId code={user.publicCode} className="text-sm" />
           </span>
         }
         description={

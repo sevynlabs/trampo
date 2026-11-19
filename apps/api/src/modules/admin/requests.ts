@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, adminAuthProcedure, requireAdminRole } from '../../trpc';
 import { prisma, Prisma } from '@trampo/db';
+import { parsePublicCode } from '../../lib/public-code';
 import { logAudit } from '../../lib/audit';
 import {
   periodSchema,
@@ -46,7 +47,8 @@ export function shortAddress(address: string): string {
   return first.length > 60 ? `${first.slice(0, 57)}...` : first;
 }
 
-const person = { select: { id: true, name: true, avatarUrl: true } } as const;
+/** Person shape for admin views; publicCode = in-app ID (raw "TR4F9A2C"; the panel formats it). */
+const person = { select: { id: true, name: true, avatarUrl: true, publicCode: true } } as const;
 
 const listSelect = {
   id: true,
@@ -93,6 +95,9 @@ export function taskSearchWhere(search: string): Prisma.TaskWhereInput {
     { client: { phone: { contains: search } } },
     { assignment: { tasker: { name: { contains: search, mode: 'insensitive' } } } },
   ];
+  // In-app ID of the client or the professional ("TR-4F9A2C")
+  const userCode = parsePublicCode(search);
+  if (userCode) or.push({ client: { publicCode: userCode } }, { assignment: { tasker: { publicCode: userCode } } });
   const prefix = codePrefix(search);
   if (prefix) or.push({ id: uuidPrefixRange(prefix) });
   return { OR: or };
@@ -166,8 +171,8 @@ export const requestsAdminRouter = router({
           cancelledAt: true,
           disputedAt: true,
           updatedAt: true,
-          client: { select: { id: true, name: true, avatarUrl: true, phone: true } },
-          assignment: { select: { createdAt: true, tasker: { select: { id: true, name: true, avatarUrl: true, phone: true } } } },
+          client: { select: { id: true, name: true, avatarUrl: true, phone: true, publicCode: true } },
+          assignment: { select: { createdAt: true, tasker: { select: { id: true, name: true, avatarUrl: true, phone: true, publicCode: true } } } },
           payment: true,
           dispute: true,
           reviews: {

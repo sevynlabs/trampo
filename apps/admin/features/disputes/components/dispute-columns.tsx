@@ -24,14 +24,14 @@ export function buildDisputeColumns({ onView }: { onView: (d: DisputeRow) => voi
     {
       id: "client",
       header: "Cliente",
-      cell: ({ row: { original: d } }) => <UserCell name={d.client.name} avatarUrl={d.client.avatarUrl} size="sm" />,
+      cell: ({ row: { original: d } }) => <UserCell name={d.client.name} avatarUrl={d.client.avatarUrl} publicCode={d.client.publicCode} size="sm" />,
     },
     {
       id: "tasker",
       header: "Profissional",
       cell: ({ row: { original: d } }) =>
         d.tasker ? (
-          <UserCell name={d.tasker.name} avatarUrl={d.tasker.avatarUrl} size="sm" />
+          <UserCell name={d.tasker.name} avatarUrl={d.tasker.avatarUrl} publicCode={d.tasker.publicCode} size="sm" />
         ) : (
           <span className="text-sm text-muted-foreground">—</span>
         ),

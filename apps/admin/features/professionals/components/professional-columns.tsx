@@ -68,7 +68,7 @@ export function professionalColumns(h: ProfessionalRowHandlers): ColumnDef<Profe
       id: "name",
       header: "Profissional",
       enableSorting: true,
-      cell: ({ row }) => <UserCell name={row.original.name} avatarUrl={row.original.avatarUrl} subtitle={row.original.location ? `${row.original.location} · ${row.original.phone}` : row.original.phone} />,
+      cell: ({ row }) => <UserCell name={row.original.name} avatarUrl={row.original.avatarUrl} publicCode={row.original.publicCode} subtitle={row.original.location ? `${row.original.location} · ${row.original.phone}` : row.original.phone} />,
       meta: { className: "min-w-[220px]" },
     },
     {

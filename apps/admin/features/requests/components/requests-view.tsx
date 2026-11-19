@@ -90,7 +90,7 @@ export function RequestsView() {
             <SearchInput
               value={url.q}
               onChange={(v) => setUrl({ q: v })}
-              placeholder="Buscar por código, usuário ou serviço"
+              placeholder="Buscar por código, ID do usuário (TR-…), nome ou serviço"
             />
             <FilterSelect
               label="Categoria"

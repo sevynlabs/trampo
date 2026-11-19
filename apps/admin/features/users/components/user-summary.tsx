@@ -1,5 +1,7 @@
 "use client";
 
+import { PublicId } from "@/components/ds/people";
+
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,6 +51,7 @@ function SummaryBody({ data, extra }: { data: UserDetail; extra?: React.ReactNod
         <UserAvatar name={user.name} src={user.avatarUrl} size="xl" />
         <div className="min-w-0 space-y-1.5">
           <div className="truncate text-lg font-bold text-navy">{user.name || "Sem nome"}</div>
+          <PublicId code={user.publicCode} />
           <div className="flex flex-wrap items-center gap-1.5">
             <RoleTag role={user.role} />
             <ActiveBadge active={user.isActive} />

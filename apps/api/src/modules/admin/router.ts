@@ -9,6 +9,7 @@ import {
   withRateLimit,
 } from '../../trpc';
 import { prisma, Prisma } from '@trampo/db';
+import { formatPublicCode, parsePublicCode } from '../../lib/public-code';
 import { reconcileOnce } from '../../jobs/reconciler';
 import {
   getPendingJobCount,
@@ -178,10 +179,12 @@ export const adminRouter = router({
       const where: Prisma.UserWhereInput = {};
 
       if (search) {
+        const code = parsePublicCode(search);
         where.OR = [
           { name: { contains: search, mode: 'insensitive' } },
           { email: { contains: search, mode: 'insensitive' } },
           { phone: { contains: search } },
+          ...(code ? [{ publicCode: code }] : []),
         ];
       }
       if (role !== 'ALL') where.role = role;
@@ -207,6 +210,7 @@ export const adminRouter = router({
             role: true,
             isActive: true,
             createdAt: true,
+            publicCode: true,
             taskerProfile: { select: { kycStatus: true } },
           },
         }),
@@ -223,6 +227,8 @@ export const adminRouter = router({
           isActive: u.isActive,
           kycStatus: u.taskerProfile?.kycStatus ?? null,
           createdAt: u.createdAt.toISOString(),
+          /** In-app ID shown to users ("TR-4F9A2C") */
+          publicCode: formatPublicCode(u.publicCode),
         })),
         total,
         page,
@@ -255,6 +261,7 @@ export const adminRouter = router({
         where.OR = [
           { user: { name: { contains: search, mode: 'insensitive' } } },
           { user: { phone: { contains: search } } },
+          ...(parsePublicCode(search) ? [{ user: { publicCode: parsePublicCode(search)! } }] : []),
           { categories: { some: { category: { name: { contains: search, mode: 'insensitive' } } } } },
           { city: { contains: search, mode: 'insensitive' } },
           { state: { equals: search.toUpperCase() } },
@@ -293,6 +300,7 @@ export const adminRouter = router({
                 avatarUrl: true,
                 phone: true,
                 isActive: true,
+                publicCode: true,
                 _count: { select: { reviewsReceived: true } },
               },
             },
@@ -317,6 +325,7 @@ export const adminRouter = router({
           createdAt: p.createdAt.toISOString(),
           city: p.city,
           state: p.state,
+          publicCode: formatPublicCode(p.user.publicCode),
           /** "Uberlândia, MG" or null when the professional hasn't set a base location. */
           location: p.city ? `${p.city}${p.state ? `, ${p.state}` : ''}` : null,
         })),
@@ -399,6 +408,8 @@ export const adminRouter = router({
       return {
         user: {
           id: user.id,
+          /** In-app ID ("TR-4F9A2C"), same as the user sees in the app */
+          publicCode: formatPublicCode(user.publicCode),
           name: user.name,
           phone: user.phone,
           email: user.email,

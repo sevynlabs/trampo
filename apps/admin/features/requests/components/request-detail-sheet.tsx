@@ -1,5 +1,7 @@
 "use client";
 
+import { PublicId } from "@/components/ds/people";
+
 import { useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -52,7 +54,7 @@ function PersonCard({
   person,
 }: {
   role: string;
-  person: { id: string; name: string | null; avatarUrl: string | null; phone?: string | null } | null;
+  person: { id: string; name: string | null; avatarUrl: string | null; phone?: string | null; publicCode?: string | null } | null;
 }) {
   return (
     <div className="rounded-xl border border-border/70 bg-card p-3">
@@ -65,6 +67,7 @@ function PersonCard({
           <UserAvatar name={person.name} src={person.avatarUrl} size="md" />
           <div className="min-w-0">
             <div className="truncate font-semibold text-navy hover:underline">{person.name || "Sem nome"}</div>
+            <PublicId code={person.publicCode} size="xs" />
             {person.phone && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Phone className="h-3 w-3" aria-hidden /> {person.phone}
