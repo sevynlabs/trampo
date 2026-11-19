@@ -78,6 +78,9 @@ importers:
       '@trampo/api':
         specifier: workspace:*
         version: link:../api
+      '@trampo/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@trpc/client':
         specifier: ^11.0.0-rc.446
         version: 11.18.0(@trpc/server@11.18.0(typescript@5.9.3))(typescript@5.9.3)

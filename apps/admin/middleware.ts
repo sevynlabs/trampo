@@ -9,8 +9,12 @@ import { ADMIN_COOKIE } from "@/lib/constants";
  * call via adminAuthProcedure. This just keeps unauthenticated browsers off
  * the dashboard and bounces logged-in admins away from /login.
  */
+/** Public pages linked from the app stores (no login). */
+const PUBLIC_PATHS = ["/privacidade", "/termos", "/suporte", "/excluir-conta"];
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next();
   const hasToken = Boolean(req.cookies.get(ADMIN_COOKIE)?.value);
   const isLoginRoute = pathname === "/login";
 
@@ -31,5 +35,5 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   // Run on everything except API routes, Next internals, and static files.
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icon.png).*)"],
 };

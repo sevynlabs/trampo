@@ -1,31 +1,9 @@
 import { View, Text, ScrollView, Pressable, Linking } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { HELP_FAQ, SUPPORT_EMAIL } from '@trampo/contracts';
 
-const SUPPORT_EMAIL = 'suporte@trampo.app';
-
-const FAQ: { q: string; a: string }[] = [
-  {
-    q: 'Como funciona o pagamento?',
-    a: 'O pagamento é feito via Pix quando um profissional aceita seu trampo. O valor fica protegido (em garantia) e só é liberado ao profissional 1 hora após a conclusão do serviço.',
-  },
-  {
-    q: 'Quais são as taxas?',
-    a: 'O cliente paga uma taxa de serviço de 5%. O profissional recebe o valor do trampo com desconto de 15% de comissão. Trampos urgentes (menos de 1h) têm acréscimo de 30%.',
-  },
-  {
-    q: 'Posso cancelar um trampo?',
-    a: 'Sim. O cancelamento é gratuito até 30 minutos antes do horário agendado. Após isso, pode haver uma taxa de cancelamento de 20%.',
-  },
-  {
-    q: 'E se algo der errado com o serviço?',
-    a: 'Você pode abrir uma disputa pela tela do trampo enquanto ele estiver em andamento ou concluído. O pagamento fica retido até nossa equipe analisar e resolver o caso.',
-  },
-  {
-    q: 'Como recebo como profissional?',
-    a: 'Após concluir um trampo, o valor entra em garantia e é liberado automaticamente para sua carteira 1 hora depois. Você acompanha tudo na aba Ganhos.',
-  },
-];
+const FAQ = HELP_FAQ;
 
 export default function HelpScreen() {
   const router = useRouter();
