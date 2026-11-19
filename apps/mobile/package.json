@@ -20,6 +20,7 @@
     "@expo-google-fonts/nunito": "^0.4.2",
     "@expo/metro-runtime": "^58.0.17",
     "@expo/vector-icons": "^15.1.1",
+    "@sentry/react-native": "~8.28.0",
     "@supabase/supabase-js": "^2.108.2",
     "@tanstack/react-query": "^5.40.0",
     "@trampo/contracts": "workspace:*",

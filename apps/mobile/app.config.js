@@ -77,7 +77,11 @@ export default {
       "expo-font",
       "expo-image",
       "expo-splash-screen",
-      "expo-status-bar"
+      "expo-status-bar",
+      // Uploads source maps to Sentry in EAS builds (needs SENTRY_AUTH_TOKEN there)
+      ...(process.env.SENTRY_ORG
+        ? [["@sentry/react-native/expo", { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT ?? "trampo-app" }]]
+        : [])
     ],
     experiments: {
       typedRoutes: true
