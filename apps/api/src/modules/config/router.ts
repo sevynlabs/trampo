@@ -18,6 +18,7 @@ export const configRouter = router({
       maxTaskValue: TASK_CONSTANTS.MAX_VALUE,
       withdrawalMinAmount: s.withdrawalMinAmount,
       maintenanceMode: s.maintenanceMode,
+      minAppVersion: s.minAppVersion,
       supportEmail: s.supportEmail || null,
       supportPhone: s.supportPhone || null,
     };

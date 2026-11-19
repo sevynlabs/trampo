@@ -8,6 +8,7 @@ import { isAdminUser } from '../../lib/admin';
 import crypto from 'crypto';
 import { AVATAR_BUCKET, ensureAvatarBucket, avatarPublicUrl, removeOldAvatars } from '../../lib/avatars';
 import { supabase } from '../../lib/supabase';
+import { deleteAccount, getDeletionBlockers } from '../../lib/account-deletion';
 
 const isTaskerRole = (role: string) => role === 'TASKER' || role === 'BOTH';
 
@@ -311,6 +312,25 @@ export const profilesRouter = router({
    * Become a tasker: upgrade the role to also offer services and create the
    * tasker profile if missing. Idempotent. The user keeps their client role.
    */
+  /**
+   * What would block deleting the account right now (shown before confirming).
+   */
+  deletionCheck: protectedProcedure.query(async ({ ctx }) => {
+    const blockers = await getDeletionBlockers(ctx.user.id);
+    return { canDelete: blockers.length === 0, blockers };
+  }),
+
+  /**
+   * Permanently delete the account (store requirement). Personal data and
+   * documents are erased; financial records stay, anonymized.
+   */
+  deleteAccount: protectedProcedure
+    .input(z.object({ confirm: z.literal('EXCLUIR') }))
+    .mutation(async ({ ctx }) => {
+      await deleteAccount(ctx.user.id);
+      return { success: true };
+    }),
+
   becomeTasker: protectedProcedure.mutation(async ({ ctx }) => {
     const profile = await prisma.taskerProfile.findUnique({
       where: { userId: ctx.user.id },

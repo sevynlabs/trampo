@@ -177,6 +177,7 @@ export default function ProfileScreen() {
 
         <Card style={{ marginTop: 14, paddingVertical: 4 }}>
           <ListRow icon="log-out-outline" label="Sair da conta" danger onPress={handleLogout} />
+          <ListRow icon="trash-outline" label="Excluir conta" danger onPress={() => router.push("/profile/delete-account")} />
         </Card>
       </ScrollView>
     </View>

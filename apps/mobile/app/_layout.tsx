@@ -8,6 +8,7 @@ import { useFonts } from 'expo-font';
 import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito/800ExtraBold';
 import { Nunito_900Black } from '@expo-google-fonts/nunito/900Black';
 import { trpc, createTRPCClient, setOnSessionExpired } from '../src/lib/trpc';
+import { UpdateGate } from '../src/components/UpdateGate';
 
 // API URL - use environment variable in production
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
@@ -31,12 +32,14 @@ export default function RootLayout() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: '#F5F8FC' },
-          }}
-        />
+        <UpdateGate>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: '#F5F8FC' },
+            }}
+          />
+        </UpdateGate>
       </QueryClientProvider>
     </trpc.Provider>
     </SafeAreaProvider>

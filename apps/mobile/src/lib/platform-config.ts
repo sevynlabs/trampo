@@ -10,6 +10,7 @@ export type PlatformConfig = {
   maxTaskValue: number;
   withdrawalMinAmount: number;
   maintenanceMode: boolean;
+  minAppVersion: string;
   supportEmail: string | null;
   supportPhone: string | null;
 };
@@ -22,6 +23,7 @@ export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
   maxTaskValue: TASK_CONSTANTS.MAX_VALUE,
   withdrawalMinAmount: 1000,
   maintenanceMode: false,
+  minAppVersion: '0.0.0',
   supportEmail: null,
   supportPhone: null,
 };

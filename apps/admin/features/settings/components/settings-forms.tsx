@@ -72,6 +72,7 @@ const platformSchema = z.object({
   supportEmail: z.string().trim().email("E-mail inválido").or(z.literal("")),
   supportPhone: z.string().trim().max(30, "Máximo de 30 caracteres"),
   maintenanceMode: z.boolean(),
+  minAppVersion: z.string().trim().regex(/^\d+\.\d+\.\d+$/, "Use o formato 1.2.0"),
 });
 type PlatformValues = z.infer<typeof platformSchema>;
 
@@ -79,7 +80,7 @@ export function PlatformForm({ data, readOnly }: { data: SettingsData; readOnly:
   const { form, update, onSubmit } = useSettingsForm<PlatformValues>(
     platformSchema,
     data,
-    (s) => ({ platformName: s.platformName, supportEmail: s.supportEmail, supportPhone: s.supportPhone, maintenanceMode: s.maintenanceMode }),
+    (s) => ({ platformName: s.platformName, supportEmail: s.supportEmail, supportPhone: s.supportPhone, maintenanceMode: s.maintenanceMode, minAppVersion: s.minAppVersion }),
     (v) => v,
     "Dados da plataforma salvos"
   );
@@ -113,6 +114,16 @@ export function PlatformForm({ data, readOnly }: { data: SettingsData; readOnly:
                 />
               )}
             />
+            <Field
+              label="Versão mínima do app"
+              htmlFor="s-minver"
+              error={errors.minAppVersion?.message}
+            >
+              <Input id="s-minver" placeholder="0.0.0" inputMode="decimal" aria-invalid={!!errors.minAppVersion} {...form.register("minAppVersion")} />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Quem estiver com uma versão mais antiga vê a tela “Atualize o app” e é levado à loja. Use só quando uma versão antiga não puder mais funcionar. 0.0.0 desliga.
+              </p>
+            </Field>
           </FormSection>
         </fieldset>
       </SectionCard>

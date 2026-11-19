@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Alert,
 } from 'react-native';
 import type { TextInputInstance } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -15,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { trpc } from '../../src/lib/trpc';
-import { Logo, Button, colors, shadow, Touchable } from '../../src/components/ds';
+import { Logo, Button, colors } from '../../src/components/ds';
 
 /** "Entrar na sua conta" — phone + SMS code (OTP). The same flow creates new accounts. */
 export default function PhoneScreen() {
@@ -39,9 +38,6 @@ export default function PhoneScreen() {
     setError('');
     requestOtp.mutate({ phone: `+55${ddd}${number}` });
   };
-
-  const socialSoon = (provider: string) =>
-    Alert.alert(`Entrar com ${provider}`, 'Em breve! Por enquanto, entre com o seu celular.');
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -111,14 +107,12 @@ export default function PhoneScreen() {
 
         <Button label="Continuar" onPress={handleSubmit} disabled={!isValid} loading={requestOtp.isPending} style={{ marginTop: 12 }} />
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 22 }}>
-          <View style={{ flex: 1, height: 1, backgroundColor: colors.hairline }} />
-          <Text style={{ marginHorizontal: 12, color: colors.inkMuted, fontSize: 13 }}>ou</Text>
-          <View style={{ flex: 1, height: 1, backgroundColor: colors.hairline }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 18 }}>
+          <Ionicons name="shield-checkmark-outline" size={16} color={colors.inkMuted} />
+          <Text style={{ flex: 1, marginLeft: 8, fontSize: 12.5, lineHeight: 18, color: colors.inkMuted }}>
+            Usamos o seu número só para entrar na conta e avisar sobre seus serviços.
+          </Text>
         </View>
-
-        <SocialButton icon="logo-google" iconColor="#EA4335" label="Continuar com Google" onPress={() => socialSoon('Google')} />
-        <SocialButton icon="logo-apple" iconColor="#000" label="Continuar com Apple" onPress={() => socialSoon('Apple')} />
 
         <View style={{ flex: 1 }} />
         <Text style={{ textAlign: 'center', fontSize: 13.5, color: colors.inkMuted, marginTop: 24 }}>
@@ -129,32 +123,5 @@ export default function PhoneScreen() {
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
-  );
-}
-
-function SocialButton({ icon, iconColor, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; iconColor: string; label: string; onPress: () => void }) {
-  return (
-    <Touchable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={({ pressed }: { pressed: boolean }) => [
-        {
-          height: 52,
-          borderRadius: 16,
-          backgroundColor: '#fff',
-          borderWidth: 1,
-          borderColor: colors.hairline,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 12,
-          ...shadow.card,
-        },
-        pressed && { opacity: 0.85 },
-      ]}
-    >
-      <Ionicons name={icon} size={20} color={iconColor} />
-      <Text style={{ marginLeft: 10, fontSize: 15, fontWeight: '600', color: colors.ink }}>{label}</Text>
-    </Touchable>
   );
 }

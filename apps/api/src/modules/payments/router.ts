@@ -20,7 +20,7 @@ const isDev = env.NODE_ENV === 'development';
  * Money a tasker can withdraw: released earnings minus withdrawals that are
  * paid OR still pending (a pending transfer may already have gone through).
  */
-async function getAvailableBalance(userId: string, taskerProfileId: string): Promise<number> {
+export async function getAvailableBalance(userId: string, taskerProfileId: string): Promise<number> {
   const [released, withdrawals] = await Promise.all([
     prisma.payment.aggregate({
       where: { task: { assignment: { taskerId: userId } }, status: 'RELEASED' },

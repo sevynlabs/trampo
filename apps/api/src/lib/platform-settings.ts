@@ -35,6 +35,12 @@ export const platformSettingsSchema = z.object({
     })
     .default({}),
   maintenanceMode: z.boolean().default(false),
+  /** Oldest app version still allowed to run (X.Y.Z). Older apps show "update the app". */
+  minAppVersion: z
+    .string()
+    .trim()
+    .regex(/^\d+\.\d+\.\d+$/)
+    .default('0.0.0'),
 });
 
 export type PlatformSettings = z.infer<typeof platformSettingsSchema>;
