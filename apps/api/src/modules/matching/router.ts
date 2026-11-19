@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
+import { assertNotInMaintenance } from '../../lib/platform-settings';
 import { router, taskerProcedure, protectedProcedure } from '../../trpc';
 import { prisma, Prisma } from '@trampo/db';
 import { assertTransition, canCancel } from '../../domain/state-machine';
@@ -16,6 +17,8 @@ export const matchingRouter = router({
   accept: taskerProcedure
     .input(z.object({ taskId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
+      await assertNotInMaintenance();
+
       const { taskId } = input;
 
       const target = await prisma.task.findUnique({

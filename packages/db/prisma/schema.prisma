@@ -163,6 +163,9 @@ model TaskerProfile {
   // Location for feed
   currentLocation Unsupported("geography(Point, 4326)")? @map("current_location")
   serviceRadius   Int       @default(10000) @map("service_radius") // In meters
+  // Base city (reverse-geocoded from currentLocation in the app's "Área de atuação")
+  city            String?
+  state           String?   // UF, e.g. "MG"
 
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")

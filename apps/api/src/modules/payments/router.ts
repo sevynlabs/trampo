@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure, taskerProcedure, verifiedClientProcedure } from '../../trpc';
+import { getPlatformConfig } from '../../lib/platform-settings';
 import { prisma } from '@trampo/db';
 import { env } from '../../lib/env';
 import {
@@ -399,11 +400,19 @@ export const paymentsRouter = router({
   requestWithdrawal: taskerProcedure
     .input(
       z.object({
-        amount: z.number().int().min(1000), // min R$ 10,00
+        amount: z.number().int().min(100), // live minimum checked below (admin settings)
         pixKey: z.string().min(3).max(140),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const { withdrawalMinAmount } = await getPlatformConfig();
+      if (input.amount < withdrawalMinAmount) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Saque mínimo é R$ ${(withdrawalMinAmount / 100).toFixed(2).replace('.', ',')}`,
+        });
+      }
+
       const profile = await prisma.taskerProfile.findUnique({
         where: { userId: ctx.user.id },
       });

@@ -256,6 +256,8 @@ export const adminRouter = router({
           { user: { name: { contains: search, mode: 'insensitive' } } },
           { user: { phone: { contains: search } } },
           { categories: { some: { category: { name: { contains: search, mode: 'insensitive' } } } } },
+          { city: { contains: search, mode: 'insensitive' } },
+          { state: { equals: search.toUpperCase() } },
         ];
       }
       if (status === 'active') Object.assign(where, { kycStatus: 'APPROVED', user: { isActive: true } });
@@ -282,6 +284,8 @@ export const adminRouter = router({
             totalEarnings: true,
             kycStatus: true,
             createdAt: true,
+            city: true,
+            state: true,
             user: {
               select: {
                 id: true,
@@ -311,6 +315,10 @@ export const adminRouter = router({
           totalEarnings: p.totalEarnings,
           kycStatus: p.kycStatus,
           createdAt: p.createdAt.toISOString(),
+          city: p.city,
+          state: p.state,
+          /** "Uberlândia, MG" or null when the professional hasn't set a base location. */
+          location: p.city ? `${p.city}${p.state ? `, ${p.state}` : ''}` : null,
         })),
         total,
         page,

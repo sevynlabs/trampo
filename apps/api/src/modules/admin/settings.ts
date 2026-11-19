@@ -4,42 +4,14 @@ import { router, adminAuthProcedure, requireAdminRole } from '../../trpc';
 import { prisma, Prisma } from '@trampo/db';
 import { TASK_CONSTANTS } from '@trampo/contracts';
 import { logAudit } from '../../lib/audit';
+import {
+  SETTINGS_KEY,
+  platformSettingsSchema,
+  getPlatformSettings,
+  invalidatePlatformConfig,
+  type PlatformSettings,
+} from '../../lib/platform-settings';
 import { hashPassword } from './auth';
-
-const SETTINGS_KEY = 'platform';
-
-/** Minimum withdrawal enforced by payments.requestWithdrawal (centavos). */
-const WITHDRAWAL_MIN_AMOUNT = 1000;
-
-/**
- * Platform settings stored as JSON in IntegrationSetting(key='platform').
- *
- * NOTE: these are INFORMATIONAL for now. Pricing still uses TASK_CONSTANTS
- * (packages/contracts) and the withdrawal minimum is hard-coded in the
- * payments router; changing these values does NOT change fees, minimums or
- * maintenance behaviour yet. Defaults mirror the real constants.
- */
-const percent = z.number().min(0).max(100);
-const platformSettingsSchema = z.object({
-  platformName: z.string().trim().min(1).max(60).default('Trampo'),
-  supportEmail: z.string().trim().email().or(z.literal('')).default(''),
-  supportPhone: z.string().trim().max(30).default(''),
-  clientFeePercent: percent.default(TASK_CONSTANTS.CLIENT_FEE * 100),
-  taskerFeePercent: percent.default(TASK_CONSTANTS.TASKER_FEE * 100),
-  urgencyFeePercent: percent.default(TASK_CONSTANTS.URGENCY_FEE * 100),
-  minTaskValue: z.number().int().min(0).default(TASK_CONSTANTS.MIN_VALUE),
-  withdrawalMinAmount: z.number().int().min(0).default(WITHDRAWAL_MIN_AMOUNT),
-  notifications: z
-    .object({
-      emailOnNewDispute: z.boolean().default(true),
-      emailOnKycSubmitted: z.boolean().default(true),
-      dailySummary: z.boolean().default(false),
-    })
-    .default({}),
-  maintenanceMode: z.boolean().default(false),
-});
-
-export type PlatformSettings = z.infer<typeof platformSettingsSchema>;
 
 const settingsUpdateSchema = platformSettingsSchema
   .omit({ notifications: true })
@@ -54,34 +26,6 @@ const settingsUpdateSchema = platformSettingsSchema
       .partial()
       .optional(),
   });
-
-/** Stored JSON merged over defaults; invalid stored fields fall back to defaults. */
-export async function getPlatformSettings(): Promise<{
-  settings: PlatformSettings;
-  updatedAt: string | null;
-  updatedById: string | null;
-}> {
-  const row = await prisma.integrationSetting.findUnique({ where: { key: SETTINGS_KEY } });
-  const stored = (row?.value && typeof row.value === 'object' && !Array.isArray(row.value) ? row.value : {}) as Record<
-    string,
-    unknown
-  >;
-  const parsed = platformSettingsSchema.safeParse(stored);
-  let settings: PlatformSettings;
-  if (parsed.success) {
-    settings = parsed.data;
-  } else {
-    // Drop the offending top-level keys and keep the rest.
-    const bad = new Set(parsed.error.issues.map((i) => String(i.path[0])));
-    const cleaned = Object.fromEntries(Object.entries(stored).filter(([k]) => !bad.has(k)));
-    settings = platformSettingsSchema.parse(cleaned);
-  }
-  return {
-    settings,
-    updatedAt: row?.updatedAt.toISOString() ?? null,
-    updatedById: row?.updatedById ?? null,
-  };
-}
 
 const ROLE_INFO = [
   {
@@ -175,6 +119,8 @@ export const settingsAdminRouter = router({
         create: { key: SETTINGS_KEY, value: next as unknown as Prisma.InputJsonValue, updatedById: ctx.admin.id },
         update: { value: next as unknown as Prisma.InputJsonValue, updatedById: ctx.admin.id },
       });
+      // Fees / minimums / maintenance take effect right away
+      invalidatePlatformConfig();
 
       const changed = Object.fromEntries(
         Object.entries(next).filter(

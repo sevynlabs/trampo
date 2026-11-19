@@ -376,15 +376,44 @@ export const profilesRouter = router({
     }),
 
   /**
-   * Update tasker service radius
+   * Update tasker service area: radius and, optionally, the base location
+   * (GPS) with its reverse-geocoded city/UF (shown and searchable in the admin).
    */
   updateRadius: protectedProcedure
-    .input(z.object({ radiusMeters: z.number().int().min(1000).max(50000) }))
+    .input(
+      z.object({
+        radiusMeters: z.number().int().min(1000).max(50000),
+        location: z
+          .object({ latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180) })
+          .optional(),
+        city: z.string().trim().min(1).max(80).optional(),
+        state: z
+          .string()
+          .trim()
+          .regex(/^[A-Za-z]{2}$/, 'UF inválida')
+          .transform((s) => s.toUpperCase())
+          .optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
-      await prisma.taskerProfile.update({
+      const profile = await prisma.taskerProfile.update({
         where: { userId: ctx.user.id },
-        data: { serviceRadius: input.radiusMeters },
+        data: {
+          serviceRadius: input.radiusMeters,
+          ...(input.city !== undefined ? { city: input.city } : {}),
+          ...(input.state !== undefined ? { state: input.state } : {}),
+        },
+        select: { id: true },
       });
+
+      if (input.location) {
+        const { latitude, longitude } = input.location;
+        await prisma.$executeRaw`
+          UPDATE tasker_profiles
+          SET current_location = ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
+          WHERE id = ${profile.id}::uuid
+        `;
+      }
 
       return { success: true };
     }),

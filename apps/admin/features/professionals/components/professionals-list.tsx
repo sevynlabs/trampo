@@ -107,7 +107,7 @@ export function ProfessionalsList() {
 
       <SectionCard contentClassName="space-y-4">
         <FilterBar>
-          <SearchInput value={s.q} onChange={(v) => set({ q: v })} placeholder="Buscar por nome, telefone ou serviço…" />
+          <SearchInput value={s.q} onChange={(v) => set({ q: v })} placeholder="Buscar por nome, telefone, serviço ou cidade…" />
           <FilterSelect
             label="Categoria"
             value={categoryId ?? "all"}
