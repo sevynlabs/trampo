@@ -6,6 +6,8 @@ import { serverTrpc, ADMIN_COOKIE, ADMIN_COOKIE_MAX_AGE } from "@/lib/auth";
 const bodySchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  /** "Lembrar de mim": persistent cookie (24h, the JWT lifetime) vs session cookie. */
+  remember: z.boolean().optional().default(true),
 });
 
 export async function POST(req: Request) {
@@ -15,7 +17,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await serverTrpc().admin.login.mutate(parsed.data);
+    const { remember, ...credentials } = parsed.data;
+    const result = await serverTrpc().admin.login.mutate(credentials);
 
     const cookieStore = await cookies();
     cookieStore.set(ADMIN_COOKIE, result.token, {
@@ -23,7 +26,7 @@ export async function POST(req: Request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: ADMIN_COOKIE_MAX_AGE,
+      ...(remember ? { maxAge: ADMIN_COOKIE_MAX_AGE } : {}),
     });
 
     return NextResponse.json({ ok: true, admin: result.admin });
