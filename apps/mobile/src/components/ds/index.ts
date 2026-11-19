@@ -1,5 +1,6 @@
 // TRAMPO 2.0 design system
 export { Logo, LogoMark } from './Logo';
+export { AnimatedIntro } from './AnimatedIntro';
 export { BrandHero } from './Hero';
 export { FloatingHero } from './FloatingHero';
 export { AdBannerCarousel } from './AdBannerCarousel';

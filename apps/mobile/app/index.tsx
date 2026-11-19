@@ -18,7 +18,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { getRefreshToken } from '../src/lib/trpc';
-import { Logo, LogoMark, FloatingHero, Button, colors } from '../src/components/ds';
+import { Logo, LogoMark, FloatingHero, Button, AnimatedIntro, colors } from '../src/components/ds';
 import type { FloatingItem } from '../src/components/ds';
 import { photos } from '../src/theme/photos';
 
@@ -72,6 +72,7 @@ const SLIDES: { image: number; title: string; highlight: string; text: string; i
 export default function Index() {
   const [session, setSession] = useState<'checking' | 'signed-in' | 'signed-out'>('checking');
   const [splashDone, setSplashDone] = useState(false);
+  const [introDone, setIntroDone] = useState(false);
 
   useEffect(() => {
     getRefreshToken()
@@ -83,7 +84,9 @@ export default function Index() {
   }, []);
 
   if (session === 'signed-in' && splashDone) return <Redirect href="/(tabs)/home" />;
-  if (session === 'checking' || !splashDone) return <Splash />;
+  if (session === 'signed-in' || session === 'checking') return <Splash />;
+  // Signed out: full opening animation (3D pin → smoke → logo), then the onboarding
+  if (!introDone) return <AnimatedIntro onFinish={() => setIntroDone(true)} />;
   return <Onboarding />;
 }
 
