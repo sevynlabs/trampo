@@ -1,6 +1,8 @@
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { colors } from '../../theme/tokens';
+import { categoryPhoto } from '../../theme/photos';
 import { Avatar, Card, Rating, Badge } from './primitives';
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -38,7 +40,7 @@ export interface ProfessionalSummary {
   rating: number;
   totalTasks: number;
   reviewCount: number;
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; slug?: string }[];
 }
 
 /**
@@ -50,7 +52,23 @@ export function ProfessionalCard({ pro, onPress, onHire }: { pro: ProfessionalSu
   return (
     <Card onPress={onPress} style={{ marginBottom: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Avatar name={pro.name} uri={pro.avatarUrl} size={64} verified />
+        {pro.avatarUrl ? (
+          <Avatar name={pro.name} uri={pro.avatarUrl} size={64} verified />
+        ) : (
+          // No profile photo yet: show the category's brand photo (as in the reference cards)
+          <View style={{ width: 84, height: 84 }}>
+            <Image
+              source={categoryPhoto(pro.categories[0] ?? {})}
+              contentFit="cover"
+              contentPosition="top"
+              style={{ width: 84, height: 84, borderRadius: 14 }}
+              accessibilityIgnoresInvertColors
+            />
+            <View style={{ position: 'absolute', right: -4, bottom: -4, width: 22, height: 22, borderRadius: 11, backgroundColor: colors.success, borderWidth: 2, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="checkmark" size={12} color="#fff" />
+            </View>
+          </View>
+        )}
         <View style={{ flex: 1, marginLeft: 14 }}>
           <Text numberOfLines={1} style={{ fontSize: 16, fontWeight: '800', color: colors.ink }}>
             {pro.name ?? 'Profissional'}

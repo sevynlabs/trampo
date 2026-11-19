@@ -251,7 +251,7 @@ export default function TaskDetailScreen() {
       />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 4, paddingBottom: 230 }}>
-        {coverPhoto && (
+        {!!coverPhoto && (
           <View style={{ height: 170, borderRadius: 20, overflow: 'hidden', marginBottom: 14 }}>
             <Image source={coverPhoto} contentFit="cover" style={{ flex: 1 }} accessibilityIgnoresInvertColors />
             {isClient && task.assignment && (

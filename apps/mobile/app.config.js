@@ -25,7 +25,7 @@ export default {
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
-        backgroundColor: "#041E42"
+        backgroundColor: "#FFFFFF"
       },
       package: "com.sevynlabs.trampo",
       permissions: [

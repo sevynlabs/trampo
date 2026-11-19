@@ -18,9 +18,9 @@ const BY_CATEGORY: Array<[RegExp, ImageSourcePropType]> = [
   [/repar|instal|montag|manut|ar.?cond/i, photos.drill],
 ];
 
-/** Cover photo for a service category, or null when none fits. */
-export function categoryPhoto(cat: { name?: string | null; slug?: string | null }): ImageSourcePropType | null {
+/** Cover photo for a service category; falls back to the brand hero photo. */
+export function categoryPhoto(cat: { name?: string | null; slug?: string | null }): ImageSourcePropType {
   const key = `${cat.slug ?? ''} ${cat.name ?? ''}`;
   for (const [re, img] of BY_CATEGORY) if (re.test(key)) return img;
-  return null;
+  return photos.heroCrossedArms;
 }

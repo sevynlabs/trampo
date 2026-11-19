@@ -4,12 +4,17 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useFonts } from 'expo-font';
+import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito/800ExtraBold';
+import { Nunito_900Black } from '@expo-google-fonts/nunito/900Black';
 import { trpc, createTRPCClient, setOnSessionExpired } from '../src/lib/trpc';
 
 // API URL - use environment variable in production
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function RootLayout() {
+  // Rounded heavy face used by the TRAMPO wordmark (falls back to system until loaded)
+  useFonts({ Nunito_800ExtraBold, Nunito_900Black });
   const [queryClient] = useState(() => new QueryClient());
   const [trpcClient] = useState(() => createTRPCClient(API_URL));
 
