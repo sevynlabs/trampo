@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/logo";
 
 const LINKS = [
+  { href: "/", label: "Início" },
   { href: "/privacidade", label: "Privacidade" },
   { href: "/termos", label: "Termos de uso" },
   { href: "/suporte", label: "Suporte" },
@@ -14,7 +15,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-4">
-          <Link href="/privacidade" aria-label="Trampo">
+          <Link href="/" aria-label="Trampo — início">
             <Logo size={30} />
           </Link>
           <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-muted-foreground">

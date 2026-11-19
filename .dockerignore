@@ -10,8 +10,7 @@
 .git
 docs
 
-# Other apps: only their package.json is needed (pnpm frozen lockfile)
+# Mobile app: only its package.json is needed (pnpm frozen lockfile).
+# The API and the panel images copy only the folders they use.
 apps/mobile/*
 !apps/mobile/package.json
-apps/admin/*
-!apps/admin/package.json
