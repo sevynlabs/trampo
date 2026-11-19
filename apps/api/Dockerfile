@@ -42,7 +42,8 @@ WORKDIR /app/apps/api
 USER node
 EXPOSE 3000
 
-# Railway also probes /health before switching traffic (zero-downtime deploys)
+# Railway also probes /health before switching traffic (zero-downtime deploys;
+# configured in .railway/railway.ts)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- "http://127.0.0.1:${PORT:-${API_PORT:-3000}}/health" > /dev/null || exit 1
 
