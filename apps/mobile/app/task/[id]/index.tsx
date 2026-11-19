@@ -19,6 +19,8 @@ import {
   colors,
 } from '../../../src/components/ds';
 import type { TimelineStep } from '../../../src/components/ds';
+import { Image } from 'expo-image';
+import { categoryPhoto } from '../../../src/theme/photos';
 
 const PAYMENT_STATUS_CONFIG: Record<
   string,
@@ -214,6 +216,7 @@ export default function TaskDetailScreen() {
   const orderCode = `#TR-${task.id.replace(/-/g, '').slice(0, 4).toUpperCase()}`;
   const other = isClient ? task.assignment?.tasker ?? null : task.client;
   const scheduled = task.scheduledAt ? new Date(task.scheduledAt) : null;
+  const coverPhoto = categoryPhoto(task.category);
   const headerTitle = isClient ? 'Meu pedido' : task.status === 'OPEN' ? 'Solicitação de serviço' : 'Detalhes do serviço';
 
   type Primary = { label: string; icon: keyof typeof Ionicons.glyphMap; onPress: () => void; loading: boolean };
@@ -248,6 +251,17 @@ export default function TaskDetailScreen() {
       />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 4, paddingBottom: 230 }}>
+        {coverPhoto && (
+          <View style={{ height: 170, borderRadius: 20, overflow: 'hidden', marginBottom: 14 }}>
+            <Image source={coverPhoto} contentFit="cover" style={{ flex: 1 }} accessibilityIgnoresInvertColors />
+            {isClient && task.assignment && (
+              <View style={{ position: 'absolute', left: 12, bottom: 12 }}>
+                <Badge label="Profissional verificado" tone="success" icon="checkmark-circle" />
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Order + timeline */}
         <Card>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>

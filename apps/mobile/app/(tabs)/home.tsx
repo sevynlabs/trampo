@@ -9,6 +9,8 @@ import { trpc } from '../../src/lib/trpc';
 import { formatCurrency } from '../../src/lib/format';
 import { SkeletonCard } from '../../src/components/Skeleton';
 import { TaskerHome } from '../../src/screens/TaskerHome';
+import { Image } from 'expo-image';
+import { photos } from '../../src/theme/photos';
 import {
   Logo,
   Avatar,
@@ -103,8 +105,13 @@ function ClientHome() {
             accessibilityRole="button"
             style={{ marginTop: 22, backgroundColor: colors.navy, borderRadius: 20, padding: 18, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' }}
           >
-            <View style={{ position: 'absolute', right: -30, top: -30, width: 140, height: 140, borderRadius: 70, backgroundColor: colors.orange, opacity: 0.18 }} />
-            <View style={{ flex: 1 }}>
+            <Image
+              source={photos.drill}
+              contentFit="cover"
+              style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '45%', opacity: 0.55 }}
+              accessibilityIgnoresInvertColors
+            />
+            <View style={{ flex: 1, paddingRight: 40 }}>
               <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800', lineHeight: 22 }}>Encontre o profissional ideal perto de você</Text>
               <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 4 }}>Publique seu pedido e receba a confirmação.</Text>
             </View>

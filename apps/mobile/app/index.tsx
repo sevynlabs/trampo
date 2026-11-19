@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, useWindowDimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  ImageSourcePropType,
+} from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,24 +16,28 @@ import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { getRefreshToken } from '../src/lib/trpc';
 import { Logo, BrandHero, Button, colors } from '../src/components/ds';
+import { photos } from '../src/theme/photos';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const SLIDES: { icon: IconName; title: string; highlight: string; text: string }[] = [
+const SLIDES: { icon: IconName; image: ImageSourcePropType; title: string; highlight: string; text: string }[] = [
   {
     icon: 'people',
+    image: photos.heroCrossedArms,
     title: 'Contrate\nprofissionais',
     highlight: 'com confiança',
     text: 'Encontre prestadores avaliados perto de você, de forma rápida e segura.',
   },
   {
     icon: 'hammer',
+    image: photos.cleaning,
     title: 'Ofereça\nseus serviços',
     highlight: 'e ganhe mais',
     text: 'Divulgue o seu trabalho, receba solicitações e aumente sua renda.',
   },
   {
     icon: 'apps',
+    image: photos.construction,
     title: 'Tudo no\nmesmo lugar',
     highlight: '',
     text: 'Serviços, pagamentos via Pix, chat, avaliações e suporte completo.',
@@ -92,7 +105,7 @@ function Onboarding() {
       >
         {SLIDES.map((s) => (
           <View key={s.title} style={{ width, paddingTop: 12 }}>
-            <BrandHero icon={s.icon} height={290} />
+            <BrandHero icon={s.icon} image={s.image} height={300} />
             <View style={{ paddingHorizontal: 28, marginTop: 18 }}>
               <Text style={{ fontSize: 30, lineHeight: 34, fontWeight: '900', color: colors.ink, letterSpacing: -0.8 }}>
                 {s.title}
