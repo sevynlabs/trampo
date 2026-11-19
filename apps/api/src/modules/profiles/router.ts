@@ -131,8 +131,15 @@ export const profilesRouter = router({
           createdAt: true,
           role: true,
           taskerProfile: {
-            select: { rating: true, totalTasks: true, kycStatus: true, bio: true },
+            select: {
+              rating: true,
+              totalTasks: true,
+              kycStatus: true,
+              bio: true,
+              categories: { select: { category: { select: { id: true, name: true, slug: true } } } },
+            },
           },
+          _count: { select: { reviewsReceived: true } },
         },
       });
 
@@ -150,7 +157,68 @@ export const profilesRouter = router({
         totalTasks: user.taskerProfile?.totalTasks ?? 0,
         kycVerified: user.taskerProfile?.kycStatus === 'APPROVED',
         bio: user.taskerProfile?.bio ?? null,
+        reviewCount: user._count.reviewsReceived,
+        categories: user.taskerProfile?.categories.map((c) => c.category) ?? [],
       };
+    }),
+
+  /**
+   * Directory of verified professionals (KYC approved) for the client's home
+   * and search screens. Optional category and free-text filters.
+   */
+  listTaskers: protectedProcedure
+    .input(
+      z.object({
+        categoryId: z.string().uuid().optional(),
+        query: z.string().trim().max(80).optional(),
+        sort: z.enum(['rating', 'experience', 'recent']).default('rating'),
+        limit: z.number().int().min(1).max(50).default(20),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const q = input.query || undefined;
+      const profiles = await prisma.taskerProfile.findMany({
+        where: {
+          kycStatus: 'APPROVED',
+          userId: { not: ctx.user.id },
+          user: { isActive: true },
+          ...(input.categoryId ? { categories: { some: { categoryId: input.categoryId } } } : {}),
+          ...(q
+            ? {
+                OR: [
+                  { user: { name: { contains: q, mode: 'insensitive' as const } } },
+                  { bio: { contains: q, mode: 'insensitive' as const } },
+                  { categories: { some: { category: { name: { contains: q, mode: 'insensitive' as const } } } } },
+                ],
+              }
+            : {}),
+        },
+        orderBy:
+          input.sort === 'experience'
+            ? { totalTasks: 'desc' }
+            : input.sort === 'recent'
+              ? { createdAt: 'desc' }
+              : [{ rating: 'desc' }, { totalTasks: 'desc' }],
+        take: input.limit,
+        select: {
+          rating: true,
+          totalTasks: true,
+          bio: true,
+          user: { select: { id: true, name: true, avatarUrl: true, _count: { select: { reviewsReceived: true } } } },
+          categories: { select: { category: { select: { id: true, name: true, slug: true } } } },
+        },
+      });
+
+      return profiles.map((p) => ({
+        id: p.user.id,
+        name: p.user.name,
+        avatarUrl: p.user.avatarUrl,
+        rating: p.rating,
+        totalTasks: p.totalTasks,
+        reviewCount: p.user._count.reviewsReceived,
+        bio: p.bio,
+        categories: p.categories.map((c) => c.category),
+      }));
     }),
 
   /**

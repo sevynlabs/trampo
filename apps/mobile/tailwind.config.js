@@ -1,53 +1,60 @@
 /** @type {import('tailwindcss').Config} */
+// TRAMPO 2.0 design system — tokens mirror src/theme/tokens.ts
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}', './app/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
       colors: {
-        // Brand — TRAMPO blue scale (#001B48 / #02457A / #018ABE / #97CADB / #D6E8EE)
-        primary: '#018ABE', // vibrant accent
-        'primary-deep': '#02457A', // gradient start / dark blue
-        'primary-press': '#001B48', // deep navy / pressed
-        'primary-soft': '#97CADB', // light blue
-        'primary-subdued': '#D6E8EE', // ice tint
+        // Brand
+        navy: '#041E42', // principal
+        'navy-soft': '#0B2E5C',
+        orange: '#FF6A00', // ação / conversão
+        'orange-press': '#E85F00',
+        'orange-soft': '#FFE7D6',
+        'orange-tint': '#FFF4EB',
+        sky: '#0096D6', // secundária / destaque
+        'sky-soft': '#E1F3FB',
 
-        // Ink (text) colors — navy-based
-        ink: '#001B48',
-        'ink-secondary': '#02457A',
-        'ink-soft': '#2D5273',
-        'ink-muted': '#5B7A91',
-        'ink-faint': '#94B2C4',
+        // Semantic aliases (used across screens)
+        primary: '#FF6A00',
+        'primary-deep': '#E85F00',
+        'primary-press': '#041E42',
+        'primary-soft': '#FFC59E',
+        'primary-subdued': '#FFF1E6',
+        accent: '#FF6A00',
 
-        // Surface colors
+        // Ink (text)
+        ink: '#041E42',
+        'ink-secondary': '#0B2E5C',
+        'ink-soft': '#35435A',
+        'ink-muted': '#5F6B7E',
+        'ink-faint': '#9AA5B8',
+
+        // Surfaces
         canvas: '#ffffff',
-        'canvas-soft': '#EEF6FA',
-        'canvas-cream': '#D6E8EE',
-        background: '#F3F8FB',
+        'canvas-soft': '#EEF3F9',
+        'canvas-cream': '#FFF4EB',
+        background: '#F5F8FC',
         surface: '#ffffff',
 
-        // Border colors
-        hairline: '#DCEAF1',
-        'hairline-input': '#97CADB',
-        border: '#DCEAF1',
+        // Borders
+        hairline: '#E6EBF2',
+        'hairline-input': '#D5DDE8',
+        border: '#E6EBF2',
 
-        // Semantic colors (kept functional, tuned to sit beside the blues)
-        success: '#0E9F6E',
+        // Semantic
+        success: '#16A34A',
         warning: '#F59E0B',
         danger: '#E11D48',
 
-        // Legacy alias for compatibility
-        accent: '#018ABE',
+        'mesh-1': 'rgba(255, 106, 0, 0.25)',
+        'mesh-2': 'rgba(0, 150, 214, 0.2)',
+        'mesh-3': 'rgba(4, 30, 66, 0.15)',
+        'mesh-4': 'rgba(245, 248, 252, 0.25)',
 
-        // Gradient mesh colors (for animated backgrounds)
-        'mesh-1': 'rgba(2, 69, 122, 0.4)',
-        'mesh-2': 'rgba(1, 138, 190, 0.3)',
-        'mesh-3': 'rgba(151, 202, 219, 0.35)',
-        'mesh-4': 'rgba(214, 232, 238, 0.25)',
-
-        // Skeleton loader colors
-        'skeleton-base': '#DCEAF1',
-        'skeleton-highlight': '#EEF6FA',
+        'skeleton-base': '#E6EBF2',
+        'skeleton-highlight': '#F5F8FC',
       },
       fontFamily: {
         display: ['Inter', 'SF Pro Display', 'system-ui', 'sans-serif'],
@@ -55,11 +62,11 @@ module.exports = {
       },
       borderRadius: {
         xs: '4px',
-        sm: '6px',
-        md: '8px',
-        lg: '12px',
-        xl: '16px',
-        card: '12px',
+        sm: '8px',
+        md: '12px',
+        lg: '16px',
+        xl: '20px',
+        card: '18px',
         button: '9999px',
         pill: '9999px',
         chip: '9999px',

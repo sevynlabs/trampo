@@ -85,7 +85,7 @@ export default function EditTaskScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="close" size={24} color="#001B48" />
+              <Ionicons name="close" size={24} color="#041E42" />
             </Pressable>
           ),
         }}
@@ -97,11 +97,11 @@ export default function EditTaskScreen() {
       >
         {isLoading || !task ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#018ABE" />
+            <ActivityIndicator size="large" color="#FF6A00" />
           </View>
         ) : !isOpen ? (
           <View className="flex-1 items-center justify-center px-8">
-            <Ionicons name="lock-closed-outline" size={48} color="#94B2C4" />
+            <Ionicons name="lock-closed-outline" size={48} color="#9AA5B8" />
             <Text className="text-ink font-bold text-lg mt-4 text-center">
               Não dá mais para editar
             </Text>
@@ -116,7 +116,7 @@ export default function EditTaskScreen() {
               value={title}
               onChangeText={setTitle}
               placeholder="Ex: Limpeza de apartamento 2 quartos"
-              placeholderTextColor="#94B2C4"
+              placeholderTextColor="#9AA5B8"
               className="bg-surface border border-border rounded-button px-4 py-4 text-ink mb-6"
             />
 
@@ -127,7 +127,7 @@ export default function EditTaskScreen() {
               value={description}
               onChangeText={setDescription}
               placeholder="Descreva o serviço com mais detalhes..."
-              placeholderTextColor="#94B2C4"
+              placeholderTextColor="#9AA5B8"
               multiline
               maxLength={1000}
               className="bg-surface border border-border rounded-card px-4 py-4 text-ink min-h-[120px] mb-6"
@@ -142,7 +142,7 @@ export default function EditTaskScreen() {
                 onChangeText={setValue}
                 keyboardType="decimal-pad"
                 placeholder="50,00"
-                placeholderTextColor="#94B2C4"
+                placeholderTextColor="#9AA5B8"
                 className="flex-1 py-4 ml-2 text-ink text-lg"
               />
             </View>
@@ -158,7 +158,7 @@ export default function EditTaskScreen() {
               <Switch
                 value={isUrgent}
                 onValueChange={setIsUrgent}
-                trackColor={{ true: '#018ABE', false: '#DCEAF1' }}
+                trackColor={{ true: '#FF6A00', false: '#E6EBF2' }}
               />
             </View>
 

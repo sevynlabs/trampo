@@ -87,7 +87,7 @@ function BackButton({ onPress }: { onPress: () => void }) {
       accessibilityRole="button"
       accessibilityLabel="Voltar"
     >
-      <Ionicons name="arrow-back" size={24} color="#001B48" />
+      <Ionicons name="arrow-back" size={24} color="#041E42" />
     </Pressable>
   );
 }
@@ -171,7 +171,7 @@ export default function TaskDetailScreen() {
           }}
         />
         <View className="flex-1 bg-background items-center justify-center px-8">
-          <Ionicons name="alert-circle-outline" size={48} color="#5B7A91" />
+          <Ionicons name="alert-circle-outline" size={48} color="#5F6B7E" />
           <Text className="text-ink font-semibold text-lg mt-3 text-center">
             Não foi possível abrir este trampo
           </Text>
@@ -204,7 +204,7 @@ export default function TaskDetailScreen() {
           }}
         />
         <View className="flex-1 bg-background items-center justify-center">
-          <ActivityIndicator size="large" color="#018ABE" />
+          <ActivityIndicator size="large" color="#FF6A00" />
         </View>
       </>
     );
@@ -316,7 +316,7 @@ export default function TaskDetailScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Editar trampo"
               >
-                <Ionicons name="create-outline" size={22} color="#018ABE" />
+                <Ionicons name="create-outline" size={22} color="#FF6A00" />
               </Pressable>
             ) : null,
         }}
@@ -354,7 +354,7 @@ export default function TaskDetailScreen() {
 
           {/* Address */}
           <View className="flex-row items-start mb-6">
-            <Ionicons name="location-outline" size={20} color="#5B7A91" />
+            <Ionicons name="location-outline" size={20} color="#5F6B7E" />
             <Text className="text-ink-soft flex-1 ml-2">{task.address}</Text>
           </View>
 
@@ -374,7 +374,7 @@ export default function TaskDetailScreen() {
                   </Text>
                 </View>
                 <Text className="text-ink font-medium flex-1 ml-3">{task.client.name}</Text>
-                <Ionicons name="chevron-forward" size={18} color="#94B2C4" />
+                <Ionicons name="chevron-forward" size={18} color="#9AA5B8" />
               </Pressable>
             )}
             {isClient && task.assignment?.tasker && (
@@ -391,7 +391,7 @@ export default function TaskDetailScreen() {
                   <Text className="text-ink-muted text-xs">Profissional</Text>
                   <Text className="text-ink font-medium">{task.assignment.tasker.name}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#94B2C4" />
+                <Ionicons name="chevron-forward" size={18} color="#9AA5B8" />
               </Pressable>
             )}
           </View>
@@ -405,7 +405,7 @@ export default function TaskDetailScreen() {
                 <Ionicons
                   name={PAYMENT_STATUS_CONFIG[payment.status].icon}
                   size={22}
-                  color="#5B7A91"
+                  color="#5F6B7E"
                 />
                 <View className="flex-1 ml-3">
                   <Text className={`font-bold ${PAYMENT_STATUS_CONFIG[payment.status].color}`}>
@@ -467,7 +467,7 @@ export default function TaskDetailScreen() {
           {canChat && (
             <Link href={`/task/${task.id}/chat`} asChild>
               <Pressable className="flex-1 bg-border py-4 rounded-button items-center flex-row justify-center">
-                <Ionicons name="chatbubble-outline" size={20} color="#5B7A91" />
+                <Ionicons name="chatbubble-outline" size={20} color="#5F6B7E" />
                 <Text className="text-ink-soft font-bold ml-2">Chat</Text>
               </Pressable>
             </Link>

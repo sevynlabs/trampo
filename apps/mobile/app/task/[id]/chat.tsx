@@ -133,7 +133,7 @@ export default function ChatScreen() {
               accessibilityRole="button"
               accessibilityLabel="Voltar"
             >
-              <Ionicons name="arrow-back" size={24} color="#001B48" />
+              <Ionicons name="arrow-back" size={24} color="#041E42" />
             </Pressable>
           ),
         }}
@@ -151,11 +151,11 @@ export default function ChatScreen() {
         >
           {isLoading ? (
             <View className="items-center py-8">
-              <ActivityIndicator color="#018ABE" />
+              <ActivityIndicator color="#FF6A00" />
             </View>
           ) : localMessages.length === 0 ? (
             <View className="items-center py-8">
-              <Ionicons name="chatbubbles-outline" size={48} color="#94B2C4" />
+              <Ionicons name="chatbubbles-outline" size={48} color="#9AA5B8" />
               <Text className="text-ink-muted mt-4 text-center">
                 Nenhuma mensagem ainda.{'\n'}Comece a conversa!
               </Text>
@@ -207,7 +207,7 @@ export default function ChatScreen() {
               value={message}
               onChangeText={setMessage}
               placeholder="Digite sua mensagem..."
-              placeholderTextColor="#5B7A91"
+              placeholderTextColor="#5F6B7E"
               multiline
               maxLength={500}
               className="flex-1 bg-background border border-border rounded-button px-4 py-3 text-ink max-h-[100px]"
@@ -227,7 +227,7 @@ export default function ChatScreen() {
                 <Ionicons
                   name="send"
                   size={20}
-                  color={message.trim() ? '#fff' : '#94B2C4'}
+                  color={message.trim() ? '#fff' : '#9AA5B8'}
                 />
               )}
             </Pressable>

@@ -15,15 +15,15 @@ import { getNotificationRoute } from '../src/lib/notificationRoutes';
 
 const ICON_BY_TYPE: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   task_accepted: { icon: 'checkmark-circle', color: '#0E9F6E' },
-  payment_confirmed: { icon: 'shield-checkmark', color: '#018ABE' },
+  payment_confirmed: { icon: 'shield-checkmark', color: '#FF6A00' },
   task_completed: { icon: 'checkmark-done-circle', color: '#0E9F6E' },
   payment_released: { icon: 'cash', color: '#0E9F6E' },
-  new_message: { icon: 'chatbubble-ellipses', color: '#018ABE' },
+  new_message: { icon: 'chatbubble-ellipses', color: '#FF6A00' },
   task_cancelled: { icon: 'close-circle', color: '#E11D48' },
   new_review: { icon: 'star', color: '#F59E0B' },
   dispute_opened: { icon: 'alert-circle', color: '#E11D48' },
   dispute_resolved: { icon: 'checkmark-circle', color: '#0E9F6E' },
-  generic: { icon: 'notifications', color: '#5B7A91' },
+  generic: { icon: 'notifications', color: '#5F6B7E' },
 };
 
 function timeAgo(iso: string): string {
@@ -69,7 +69,7 @@ export default function NotificationsScreen() {
               accessibilityRole="button"
               accessibilityLabel="Voltar"
             >
-              <Ionicons name="arrow-back" size={24} color="#001B48" />
+              <Ionicons name="arrow-back" size={24} color="#041E42" />
             </Pressable>
           ),
         }}
@@ -77,7 +77,7 @@ export default function NotificationsScreen() {
 
       {isLoading ? (
         <View className="flex-1 bg-background items-center justify-center">
-          <ActivityIndicator size="large" color="#018ABE" />
+          <ActivityIndicator size="large" color="#FF6A00" />
         </View>
       ) : items.length === 0 ? (
         <View className="flex-1 bg-background">

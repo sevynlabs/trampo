@@ -62,7 +62,7 @@ export default function DisputeScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="close" size={24} color="#001B48" />
+              <Ionicons name="close" size={24} color="#041E42" />
             </Pressable>
           ),
         }}

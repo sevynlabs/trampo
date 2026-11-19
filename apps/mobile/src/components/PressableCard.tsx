@@ -27,11 +27,11 @@ interface PressableCardProps {
 const VARIANT_CONFIG: Record<CardVariant, { accent: [string, string]; borderColor: string }> = {
   default: {
     accent: ['transparent', 'transparent'],
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
   },
   highlighted: {
-    accent: ['#02457A', '#018ABE'],
-    borderColor: '#018ABE',
+    accent: ['#FF8A2B', '#FF6A00'],
+    borderColor: '#FF6A00',
   },
   urgent: {
     accent: ['#DC2626', '#F59E0B'],
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     padding: 16,
-    shadowColor: '#02457A',
+    shadowColor: '#0B2E5C',
     shadowOpacity: 0.07,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },

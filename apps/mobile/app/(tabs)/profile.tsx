@@ -65,7 +65,7 @@ export default function ProfileScreen() {
       {/* Header */}
       <View className="bg-surface px-6 pt-16 pb-6 border-b border-border items-center">
         <LinearGradient
-          colors={['#001B48', '#018ABE']}
+          colors={['#041E42', '#FF6A00']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
@@ -75,7 +75,7 @@ export default function ProfileScreen() {
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: 12,
-            shadowColor: '#018ABE',
+            shadowColor: '#FF6A00',
             shadowOpacity: 0.4,
             shadowRadius: 12,
             shadowOffset: { width: 0, height: 6 },
@@ -105,7 +105,7 @@ export default function ProfileScreen() {
 
         {isTasker && (user?.taskerProfile?.rating ?? 0) > 0 && (
           <View className="flex-row items-center mt-2">
-            <Ionicons name="star" size={16} color="#018ABE" />
+            <Ionicons name="star" size={16} color="#FF6A00" />
             <Text className="text-ink-soft font-medium ml-1">
               {user?.taskerProfile?.rating?.toFixed(1)}
             </Text>
@@ -125,7 +125,7 @@ export default function ProfileScreen() {
             className="mb-6 rounded-card overflow-hidden"
           >
             <LinearGradient
-              colors={['#02457A', '#018ABE']}
+              colors={['#FF8A2B', '#FF6A00']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{ padding: 20, flexDirection: 'row', alignItems: 'center' }}
@@ -231,9 +231,9 @@ function MenuItem({
       onPress={onPress}
       className="flex-row items-center p-4 border-b border-border last:border-b-0"
     >
-      <Ionicons name={icon} size={22} color="#5B7A91" />
+      <Ionicons name={icon} size={22} color="#5F6B7E" />
       <Text className="flex-1 text-ink ml-3">{label}</Text>
-      <Ionicons name="chevron-forward" size={20} color="#94B2C4" />
+      <Ionicons name="chevron-forward" size={20} color="#9AA5B8" />
     </Pressable>
   );
 }

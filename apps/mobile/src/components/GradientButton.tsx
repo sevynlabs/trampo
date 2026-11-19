@@ -13,13 +13,13 @@ type Variant = 'primary' | 'dark' | 'danger';
 
 const GRADIENTS: Record<Variant, [string, string]> = {
   // deep blue -> vibrant blue (the palette's signature gradient)
-  primary: ['#02457A', '#018ABE'],
+  primary: ['#FF8A2B', '#FF6A00'],
   // deep navy -> dark blue (for hero / secondary emphasis)
-  dark: ['#001B48', '#02457A'],
+  dark: ['#041E42', '#0B2E5C'],
   danger: ['#9F1239', '#E11D48'],
 };
 
-const DISABLED: [string, string] = ['#B7D2DF', '#B7D2DF'];
+const DISABLED: [string, string] = ['#C9D2DE', '#C9D2DE'];
 
 interface GradientButtonProps {
   label: string;
@@ -65,7 +65,7 @@ export function GradientButton({
       onPressOut={() => {
         scale.value = withTiming(1, { duration: 140 });
       }}
-      style={[animatedStyle, styles.shadow, { borderRadius: 9999 }]}
+      style={[animatedStyle, styles.shadow, { borderRadius: 16 }]}
     >
       <LinearGradient
         colors={colors}
@@ -91,12 +91,12 @@ export function GradientButton({
 
 const styles = StyleSheet.create({
   gradient: {
-    minHeight: 48,
+    minHeight: 54,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    borderRadius: 9999,
+    borderRadius: 16,
   },
   label: {
     color: '#ffffff',
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   shadow: {
-    shadowColor: '#018ABE',
+    shadowColor: '#FF6A00',
     shadowOpacity: 0.35,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },

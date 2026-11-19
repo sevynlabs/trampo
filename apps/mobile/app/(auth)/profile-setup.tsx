@@ -199,7 +199,7 @@ export default function ProfileSetupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F8FB',
+    backgroundColor: '#F5F8FC',
   },
   scroll: {
     flex: 1,
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   roleLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#001B48',
+    color: '#041E42',
     marginBottom: 16,
   },
   errorText: {

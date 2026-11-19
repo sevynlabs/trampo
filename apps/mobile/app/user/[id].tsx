@@ -40,7 +40,7 @@ export default function PublicProfileScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="arrow-back" size={24} color="#001B48" />
+              <Ionicons name="arrow-back" size={24} color="#041E42" />
             </Pressable>
           ),
         }}
@@ -48,14 +48,14 @@ export default function PublicProfileScreen() {
 
       {isLoading || !profile ? (
         <View className="flex-1 bg-background items-center justify-center">
-          <ActivityIndicator size="large" color="#018ABE" />
+          <ActivityIndicator size="large" color="#FF6A00" />
         </View>
       ) : (
         <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingBottom: 40 }}>
           {/* Header */}
           <View className="bg-surface items-center pt-8 pb-6 px-6 border-b border-border">
             <LinearGradient
-              colors={['#001B48', '#018ABE']}
+              colors={['#041E42', '#FF6A00']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
@@ -80,7 +80,7 @@ export default function PublicProfileScreen() {
                 <Ionicons
                   name="checkmark-circle"
                   size={18}
-                  color="#018ABE"
+                  color="#FF6A00"
                   style={{ marginLeft: 6 }}
                 />
               )}

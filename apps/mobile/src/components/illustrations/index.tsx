@@ -21,12 +21,12 @@ function Gradients() {
   return (
     <Defs>
       <LinearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
-        <Stop offset="0" stopColor="#02457A" />
-        <Stop offset="1" stopColor="#018ABE" />
+        <Stop offset="0" stopColor="#0B2E5C" />
+        <Stop offset="1" stopColor="#FF6A00" />
       </LinearGradient>
       <LinearGradient id="soft" x1="0" y1="0" x2="1" y2="1">
-        <Stop offset="0" stopColor="#97CADB" />
-        <Stop offset="1" stopColor="#D6E8EE" />
+        <Stop offset="0" stopColor="#FFC59E" />
+        <Stop offset="1" stopColor="#FFF1E6" />
       </LinearGradient>
     </Defs>
   );
@@ -43,7 +43,7 @@ export function EmptyTasksIllustration({ size = 160 }: IllustrationProps) {
         cy="84"
         r="46"
         fill="none"
-        stroke="#018ABE"
+        stroke="#FF6A00"
         strokeOpacity={0.35}
         strokeWidth={2}
         strokeDasharray="4 8"
@@ -54,7 +54,7 @@ export function EmptyTasksIllustration({ size = 160 }: IllustrationProps) {
         fill="url(#brand)"
       />
       <Circle cx="80" cy="65" r="11" fill="#ffffff" />
-      <Circle cx="80" cy="65" r="5" fill="#018ABE" />
+      <Circle cx="80" cy="65" r="5" fill="#FF6A00" />
     </Svg>
   );
 }
@@ -67,13 +67,13 @@ export function EmptyEarningsIllustration({ size = 160 }: IllustrationProps) {
       <Circle cx="80" cy="80" r="64" fill="url(#soft)" opacity={0.4} />
       {/* wallet body */}
       <Rect x="40" y="58" width="80" height="54" rx="12" fill="url(#brand)" />
-      <Rect x="40" y="58" width="80" height="20" rx="12" fill="#001B48" opacity={0.25} />
+      <Rect x="40" y="58" width="80" height="20" rx="12" fill="#041E42" opacity={0.25} />
       {/* coin */}
       <Circle cx="104" cy="86" r="13" fill="#ffffff" />
       <Circle cx="104" cy="86" r="13" fill="url(#soft)" opacity={0.6} />
       <Path
         d="M104 79v14M100 83h6a2.5 2.5 0 010 5h-4a2.5 2.5 0 000 5h6"
-        stroke="#02457A"
+        stroke="#0B2E5C"
         strokeWidth={2}
         strokeLinecap="round"
         fill="none"
@@ -98,9 +98,9 @@ export function AllClearIllustration({ size = 160 }: IllustrationProps) {
         fill="none"
       />
       <G opacity={0.5}>
-        <Circle cx="124" cy="50" r="4" fill="#018ABE" />
-        <Circle cx="36" cy="60" r="3" fill="#02457A" />
-        <Circle cx="44" cy="116" r="3" fill="#018ABE" />
+        <Circle cx="124" cy="50" r="4" fill="#FF6A00" />
+        <Circle cx="36" cy="60" r="3" fill="#0B2E5C" />
+        <Circle cx="44" cy="116" r="3" fill="#FF6A00" />
       </G>
     </Svg>
   );
@@ -113,12 +113,12 @@ export function EmptyInboxIllustration({ size = 160 }: IllustrationProps) {
       <Gradients />
       <Circle cx="80" cy="80" r="64" fill="url(#soft)" opacity={0.4} />
       <Rect x="38" y="50" width="68" height="46" rx="14" fill="url(#brand)" />
-      <Path d="M58 96l0 16 18-16z" fill="#018ABE" />
+      <Path d="M58 96l0 16 18-16z" fill="#FF6A00" />
       <Rect x="74" y="76" width="48" height="34" rx="12" fill="#ffffff" />
       <Rect x="74" y="76" width="48" height="34" rx="12" fill="url(#soft)" opacity={0.5} />
-      <Circle cx="86" cy="93" r="3" fill="#02457A" />
-      <Circle cx="98" cy="93" r="3" fill="#02457A" />
-      <Circle cx="110" cy="93" r="3" fill="#02457A" />
+      <Circle cx="86" cy="93" r="3" fill="#0B2E5C" />
+      <Circle cx="98" cy="93" r="3" fill="#0B2E5C" />
+      <Circle cx="110" cy="93" r="3" fill="#0B2E5C" />
     </Svg>
   );
 }

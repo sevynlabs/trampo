@@ -25,7 +25,7 @@ export default function Index() {
   if (session === 'checking') {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator color="#018ABE" />
+        <ActivityIndicator color="#FF6A00" />
       </View>
     );
   }
@@ -33,13 +33,13 @@ export default function Index() {
   return (
     <View className="flex-1">
       <StatusBar style="dark" />
-      <LinearGradient colors={['#FFFFFF', '#EAF3F8']} style={{ flex: 1 }}>
+      <LinearGradient colors={['#FFFFFF', '#F5F8FC']} style={{ flex: 1 }}>
         <View className="flex-1 px-8 pt-24 pb-10">
           {/* Logo lockup, centered */}
           <View className="flex-1 items-center justify-center">
             <Animated.View entering={FadeIn.duration(700)}>
               <LinearGradient
-                colors={['#018ABE', '#02457A']}
+                colors={['#FF8A2B', '#FF6A00']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
@@ -48,7 +48,7 @@ export default function Index() {
                   borderRadius: 30,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  shadowColor: '#018ABE',
+                  shadowColor: '#FF6A00',
                   shadowOpacity: 0.45,
                   shadowRadius: 22,
                   shadowOffset: { width: 0, height: 12 },
@@ -66,7 +66,7 @@ export default function Index() {
                 className="font-display font-extrabold text-ink mt-7"
                 style={{ fontSize: 52, letterSpacing: -1.5 }}
               >
-                TRAMPO<Text style={{ color: '#018ABE' }}>.</Text>
+                TRAMPO<Text style={{ color: '#FF6A00' }}>.</Text>
               </Text>
               <Text
                 className="text-ink-muted mt-3"

@@ -112,7 +112,7 @@ export default function FeedScreen() {
       <View style={styles.errorContainer}>
         <Animated.View entering={FadeIn.duration(300)} style={styles.errorContent}>
           <View style={styles.errorIcon}>
-            <Ionicons name="location-outline" size={48} color="#5B7A91" />
+            <Ionicons name="location-outline" size={48} color="#5F6B7E" />
           </View>
           <Text style={styles.errorTitle}>Localização necessária</Text>
           <Text style={styles.errorText}>{locationError}</Text>
@@ -140,7 +140,7 @@ export default function FeedScreen() {
       <View style={styles.loadingContainer}>
         <View style={styles.loadingContent}>
           <View style={styles.loadingPulse}>
-            <Ionicons name="navigate" size={32} color="#018ABE" />
+            <Ionicons name="navigate" size={32} color="#FF6A00" />
           </View>
           <Text style={styles.loadingText}>Obtendo localização...</Text>
         </View>
@@ -153,7 +153,7 @@ export default function FeedScreen() {
       {/* Header */}
       <View style={styles.headerContainer}>
         <LinearGradient
-          colors={['#EEF6FA', '#F3F8FB']}
+          colors={['#EEF3F9', '#F5F8FC']}
           style={StyleSheet.absoluteFill}
         />
 
@@ -175,7 +175,7 @@ export default function FeedScreen() {
           <Ionicons
             name="search-outline"
             size={18}
-            color={searchFocused ? '#018ABE' : '#5B7A91'}
+            color={searchFocused ? '#FF6A00' : '#5F6B7E'}
           />
           <TextInput
             value={search}
@@ -183,12 +183,12 @@ export default function FeedScreen() {
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             placeholder="Buscar por título, bairro ou categoria"
-            placeholderTextColor="#94B2C4"
+            placeholderTextColor="#9AA5B8"
             style={styles.searchInput}
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch('')} hitSlop={8}>
-              <Ionicons name="close-circle" size={18} color="#94B2C4" />
+              <Ionicons name="close-circle" size={18} color="#9AA5B8" />
             </Pressable>
           )}
         </Animated.View>
@@ -320,7 +320,7 @@ export default function FeedScreen() {
                 </View>
 
                 <View style={styles.taskLocation}>
-                  <Ionicons name="location-outline" size={14} color="#5B7A91" />
+                  <Ionicons name="location-outline" size={14} color="#5F6B7E" />
                   <Text style={styles.taskAddress} numberOfLines={1}>
                     {task.address}
                   </Text>
@@ -360,7 +360,7 @@ export default function FeedScreen() {
 const styles = StyleSheet.create({
   locationAction: {
     marginTop: 20,
-    backgroundColor: '#018ABE',
+    backgroundColor: '#FF6A00',
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,
@@ -371,25 +371,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   locationRetryText: {
-    color: '#018ABE',
+    color: '#FF6A00',
     fontWeight: '600',
     marginTop: 16,
     paddingVertical: 8,
   },
   container: {
     flex: 1,
-    backgroundColor: '#F3F8FB',
+    backgroundColor: '#F5F8FC',
   },
   headerContainer: {
     paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#DCEAF1',
+    borderBottomColor: '#E6EBF2',
   },
   headerTitle: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#001B48',
+    color: '#041E42',
     letterSpacing: -0.5,
     paddingHorizontal: 24,
     marginBottom: 16,
@@ -403,12 +403,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: 1.5,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
     marginBottom: 12,
   },
   searchContainerFocused: {
-    borderColor: '#018ABE',
-    shadowColor: '#018ABE',
+    borderColor: '#FF6A00',
+    shadowColor: '#FF6A00',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
     fontSize: 15,
-    color: '#001B48',
+    color: '#041E42',
   },
   sortRow: {
     flexDirection: 'row',
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   },
   sortLabel: {
     fontSize: 13,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     marginRight: 4,
   },
   sortChip: {
@@ -438,19 +438,19 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
   },
   sortChipActive: {
-    backgroundColor: 'rgba(1, 138, 190, 0.1)',
-    borderColor: '#018ABE',
+    backgroundColor: 'rgba(255, 106, 0, 0.1)',
+    borderColor: '#FF6A00',
   },
   sortChipText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   sortChipTextActive: {
-    color: '#018ABE',
+    color: '#FF6A00',
   },
   categoriesContainer: {
     paddingHorizontal: 24,
@@ -460,15 +460,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#EEF6FA',
+    backgroundColor: '#EEF3F9',
   },
   categoryChipActive: {
-    backgroundColor: '#018ABE',
+    backgroundColor: '#FF6A00',
   },
   categoryChipText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   categoryChipTextActive: {
     color: '#ffffff',
@@ -499,12 +499,12 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#001B48',
+    color: '#041E42',
     marginBottom: 2,
   },
   taskCategory: {
     fontSize: 13,
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   urgentBadge: {
     flexDirection: 'row',
@@ -528,11 +528,11 @@ const styles = StyleSheet.create({
   taskAddress: {
     flex: 1,
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     marginLeft: 4,
   },
   distanceBadge: {
-    backgroundColor: '#EEF6FA',
+    backgroundColor: '#EEF3F9',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   distanceText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#02457A',
+    color: '#0B2E5C',
   },
   taskFooter: {
     flexDirection: 'row',
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#EEF6FA',
+    borderTopColor: '#EEF3F9',
   },
   clientInfo: {
     flexDirection: 'row',
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#97CADB',
+    backgroundColor: '#FFC59E',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
   },
   clientName: {
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   taskValue: {
     fontSize: 20,
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   // Error and Loading states
   errorContainer: {
     flex: 1,
-    backgroundColor: '#F3F8FB',
+    backgroundColor: '#F5F8FC',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#EEF6FA',
+    backgroundColor: '#EEF3F9',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -601,17 +601,17 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#001B48',
+    color: '#041E42',
     marginBottom: 8,
   },
   errorText: {
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#F3F8FB',
+    backgroundColor: '#F5F8FC',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -622,13 +622,13 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(1, 138, 190, 0.1)',
+    backgroundColor: 'rgba(255, 106, 0, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
   loadingText: {
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
 });

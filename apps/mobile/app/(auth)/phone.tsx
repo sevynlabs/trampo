@@ -62,7 +62,7 @@ export default function PhoneScreen() {
             accessibilityRole="button"
             accessibilityLabel="Voltar"
           >
-            <Ionicons name="arrow-back" size={24} color="#001B48" />
+            <Ionicons name="arrow-back" size={24} color="#041E42" />
           </Pressable>
         )}
         <Animated.Text
@@ -95,7 +95,7 @@ export default function PhoneScreen() {
               if (digits.length >= 2) numberRef.current?.focus();
             }}
             placeholder="DDD"
-            placeholderTextColor="#94B2C4"
+            placeholderTextColor="#9AA5B8"
             keyboardType="number-pad"
             maxLength={2}
             style={styles.dddInput}
@@ -106,7 +106,7 @@ export default function PhoneScreen() {
             value={number}
             onChangeText={(text) => setNumber(text.replace(/\D/g, '').slice(0, 9))}
             placeholder="00000-0000"
-            placeholderTextColor="#94B2C4"
+            placeholderTextColor="#9AA5B8"
             keyboardType="number-pad"
             maxLength={9}
             style={styles.numberInput}
@@ -134,7 +134,7 @@ export default function PhoneScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F8FB',
+    backgroundColor: '#F5F8FC',
   },
   meshContainer: {
     position: 'absolute',
@@ -159,12 +159,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#001B48',
+    color: '#041E42',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     marginBottom: 32,
   },
   phoneRow: {
@@ -174,17 +174,17 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   prefix: {
-    backgroundColor: '#EEF6FA',
+    backgroundColor: '#EEF3F9',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderWidth: 1,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
   },
   prefixText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   dddInput: {
     width: 72,
@@ -193,9 +193,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderWidth: 1.5,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
     fontSize: 16,
-    color: '#001B48',
+    color: '#041E42',
     textAlign: 'center',
   },
   numberInput: {
@@ -205,9 +205,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderWidth: 1.5,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
     fontSize: 16,
-    color: '#001B48',
+    color: '#041E42',
   },
   error: {
     color: '#E11D48',

@@ -95,23 +95,23 @@ export function Input({
       : success
       ? '#0E9F6E'
       : isFocused
-      ? '#018ABE'
-      : '#DCEAF1',
+      ? '#FF6A00'
+      : '#E6EBF2',
     shadowOpacity: interpolate(focusAnimation.value, [0, 1], [0, 0.15]),
   }));
 
   const getBorderColor = () => {
     if (error) return '#E11D48';
     if (success) return '#0E9F6E';
-    if (isFocused) return '#018ABE';
-    return '#DCEAF1';
+    if (isFocused) return '#FF6A00';
+    return '#E6EBF2';
   };
 
   const getLabelColor = () => {
     if (error) return '#E11D48';
     if (success) return '#0E9F6E';
-    if (isFocused) return '#018ABE';
-    return '#5B7A91';
+    if (isFocused) return '#FF6A00';
+    return '#5F6B7E';
   };
 
   return (
@@ -123,7 +123,7 @@ export function Input({
             containerAnimatedStyle,
             {
               borderColor: getBorderColor(),
-              shadowColor: '#018ABE',
+              shadowColor: '#FF6A00',
             },
           ]}
         >
@@ -132,7 +132,7 @@ export function Input({
               <Ionicons
                 name={icon}
                 size={20}
-                color={isFocused ? '#018ABE' : '#5B7A91'}
+                color={isFocused ? '#FF6A00' : '#5F6B7E'}
               />
             </View>
           )}
@@ -155,7 +155,7 @@ export function Input({
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               style={[styles.input, icon && styles.inputWithIcon]}
-              placeholderTextColor="#94B2C4"
+              placeholderTextColor="#9AA5B8"
               {...textInputProps}
             />
           </View>
@@ -170,7 +170,7 @@ export function Input({
               <Ionicons
                 name={success ? 'checkmark-circle' : iconRight!}
                 size={20}
-                color={success ? '#0E9F6E' : '#5B7A91'}
+                color={success ? '#0E9F6E' : '#5F6B7E'}
               />
             </Pressable>
           )}
@@ -241,7 +241,7 @@ export function PhoneInput({
           onFocus={() => setFocusedField('ddd')}
           onBlur={() => setFocusedField(null)}
           placeholder="DDD"
-          placeholderTextColor="#94B2C4"
+          placeholderTextColor="#9AA5B8"
           keyboardType="number-pad"
           maxLength={2}
           style={[
@@ -259,7 +259,7 @@ export function PhoneInput({
           onFocus={() => setFocusedField('number')}
           onBlur={() => setFocusedField(null)}
           placeholder="00000-0000"
-          placeholderTextColor="#94B2C4"
+          placeholderTextColor="#9AA5B8"
           keyboardType="number-pad"
           maxLength={9}
           style={[
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   },
   input: {
     fontSize: 16,
-    color: '#001B48',
+    color: '#041E42',
     padding: 0,
     margin: 0,
   },
@@ -333,18 +333,18 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   phonePrefix: {
-    backgroundColor: '#EEF6FA',
+    backgroundColor: '#EEF3F9',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderWidth: 1,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
   },
   phonePrefixFaded: {
     opacity: 0.7,
   },
   phonePrefixText: {
-    color: '#5B7A91',
+    color: '#5F6B7E',
     fontSize: 16,
     fontWeight: '500',
   },
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderWidth: 1.5,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
     width: 72,
   },
   phoneNumber: {
@@ -364,11 +364,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderWidth: 1.5,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
   },
   phoneInputFocused: {
-    borderColor: '#018ABE',
-    shadowColor: '#018ABE',
+    borderColor: '#FF6A00',
+    shadowColor: '#FF6A00',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   },
   phoneInputText: {
     fontSize: 16,
-    color: '#001B48',
+    color: '#041E42',
     textAlign: 'center',
   },
 });

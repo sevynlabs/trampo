@@ -66,7 +66,7 @@ export default function EarningsScreen() {
         <View className="flex-row gap-3 mb-8">
           <View className="flex-1 bg-surface rounded-card p-4 border border-border">
             <View className="flex-row items-center mb-2">
-              <Ionicons name="hourglass-outline" size={20} color="#018ABE" />
+              <Ionicons name="hourglass-outline" size={20} color="#FF6A00" />
               <Text className="text-ink-muted text-sm ml-2">Em espera</Text>
             </View>
             <Text className="font-bold text-xl text-ink">
@@ -115,7 +115,7 @@ export default function EarningsScreen() {
         </Text>
 
         {isLoading ? (
-          <ActivityIndicator color="#018ABE" style={{ marginTop: 24 }} />
+          <ActivityIndicator color="#FF6A00" style={{ marginTop: 24 }} />
         ) : isError ? null : !earnings?.payments?.length ? (
           <EmptyState
             illustration={EmptyEarningsIllustration}
@@ -145,7 +145,7 @@ export default function EarningsScreen() {
                   <Ionicons
                     name={tx.status === 'RELEASED' ? 'checkmark' : 'hourglass'}
                     size={20}
-                    color={tx.status === 'RELEASED' ? '#0E9F6E' : '#018ABE'}
+                    color={tx.status === 'RELEASED' ? '#0E9F6E' : '#FF6A00'}
                   />
                 </View>
                 <View className="flex-1 ml-3">
@@ -158,7 +158,7 @@ export default function EarningsScreen() {
                 </View>
                 <Text
                   className="font-bold"
-                  style={{ color: tx.status === 'RELEASED' ? '#047857' : '#5B7A91' }}
+                  style={{ color: tx.status === 'RELEASED' ? '#047857' : '#5F6B7E' }}
                 >
                   +{formatCurrency(tx.amount)}
                 </Text>

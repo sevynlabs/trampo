@@ -54,7 +54,7 @@ export default function ServiceAreaScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="arrow-back" size={24} color="#001B48" />
+              <Ionicons name="arrow-back" size={24} color="#041E42" />
             </Pressable>
           ),
         }}
@@ -62,7 +62,7 @@ export default function ServiceAreaScreen() {
 
       {isLoading ? (
         <View className="flex-1 bg-background items-center justify-center">
-          <ActivityIndicator size="large" color="#018ABE" />
+          <ActivityIndicator size="large" color="#FF6A00" />
         </View>
       ) : (
         <View className="flex-1 bg-background">
@@ -88,7 +88,7 @@ export default function ServiceAreaScreen() {
                     <Ionicons
                       name="location"
                       size={22}
-                      color={isSelected ? '#018ABE' : '#94B2C4'}
+                      color={isSelected ? '#FF6A00' : '#9AA5B8'}
                     />
                     <View className="flex-1 ml-3">
                       <Text
@@ -101,7 +101,7 @@ export default function ServiceAreaScreen() {
                       <Text className="text-ink-muted text-sm">{opt.description}</Text>
                     </View>
                     {isSelected && (
-                      <Ionicons name="checkmark-circle" size={22} color="#018ABE" />
+                      <Ionicons name="checkmark-circle" size={22} color="#FF6A00" />
                     )}
                   </Pressable>
                 );

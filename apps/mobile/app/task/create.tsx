@@ -139,12 +139,12 @@ export default function CreateTaskScreen() {
         options={{
           headerShown: true,
           title: 'Criar serviço',
-          headerTitleStyle: { fontWeight: '600', color: '#001B48' },
-          headerStyle: { backgroundColor: '#F3F8FB' },
+          headerTitleStyle: { fontWeight: '600', color: '#041E42' },
+          headerStyle: { backgroundColor: '#F5F8FC' },
           headerShadowVisible: false,
           headerLeft: () => (
             <Pressable onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#001B48" />
+              <Ionicons name="arrow-back" size={24} color="#041E42" />
             </Pressable>
           ),
         }}
@@ -262,7 +262,7 @@ export default function CreateTaskScreen() {
             <Switch
               value={isUrgent}
               onValueChange={setIsUrgent}
-              trackColor={{ false: '#DCEAF1', true: '#018ABE' }}
+              trackColor={{ false: '#E6EBF2', true: '#FF6A00' }}
               thumbColor="#ffffff"
             />
           </Animated.View>
@@ -384,20 +384,20 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   locationBannerAction: {
-    color: '#018ABE',
+    color: '#FF6A00',
     fontWeight: '700',
     marginTop: 8,
     paddingVertical: 4,
   },
   missingHint: {
-    color: '#5B7A91',
+    color: '#5F6B7E',
     fontSize: 14,
     textAlign: 'center',
     marginTop: 16,
   },
   container: {
     flex: 1,
-    backgroundColor: '#F3F8FB',
+    backgroundColor: '#F5F8FC',
   },
   scroll: {
     flex: 1,
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#001B48',
+    color: '#041E42',
     marginBottom: 12,
   },
   categoryGrid: {
@@ -431,16 +431,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#DCEAF1',
-    shadowColor: '#02457A',
+    borderColor: '#E6EBF2',
+    shadowColor: '#0B2E5C',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 1,
   },
   categoryCardSelected: {
-    borderColor: '#018ABE',
-    backgroundColor: 'rgba(1, 138, 190, 0.05)',
+    borderColor: '#FF6A00',
+    backgroundColor: 'rgba(255, 106, 0, 0.05)',
   },
   categoryIcon: {
     fontSize: 24,
@@ -449,11 +449,11 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#5B7A91',
+    color: '#5F6B7E',
     textAlign: 'center',
   },
   categoryNameSelected: {
-    color: '#018ABE',
+    color: '#FF6A00',
   },
   categoryCheck: {
     position: 'absolute',
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#018ABE',
+    backgroundColor: '#FF6A00',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
     marginBottom: 16,
   },
   urgentContent: {
@@ -497,11 +497,11 @@ const styles = StyleSheet.create({
   urgentTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#001B48',
+    color: '#041E42',
   },
   urgentDescription: {
     fontSize: 13,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     marginTop: 2,
   },
   breakdownCard: {
@@ -509,13 +509,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
     marginTop: 8,
   },
   breakdownTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#001B48',
+    color: '#041E42',
     marginBottom: 12,
   },
   breakdownRow: {
@@ -526,11 +526,11 @@ const styles = StyleSheet.create({
   },
   breakdownLabel: {
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   breakdownValue: {
     fontSize: 14,
-    color: '#001B48',
+    color: '#041E42',
     fontWeight: '500',
   },
   breakdownValueWarning: {
@@ -540,22 +540,22 @@ const styles = StyleSheet.create({
   },
   breakdownValueMuted: {
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   breakdownDivider: {
     height: 1,
-    backgroundColor: '#EEF6FA',
+    backgroundColor: '#EEF3F9',
     marginVertical: 12,
   },
   breakdownTotalLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#001B48',
+    color: '#041E42',
   },
   breakdownTotalValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#018ABE',
+    color: '#FF6A00',
   },
   errorText: {
     color: '#E11D48',
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
   },
   bottomBlur: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(220, 234, 241, 0.5)',
+    borderTopColor: 'rgba(230, 235, 242, 0.5)',
   },
   bottomContent: {
     padding: 16,
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   bottomAndroid: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopWidth: 1,
-    borderTopColor: '#DCEAF1',
+    borderTopColor: '#E6EBF2',
     padding: 16,
     paddingBottom: 32,
   },

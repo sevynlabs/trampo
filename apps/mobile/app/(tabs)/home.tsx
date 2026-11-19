@@ -20,7 +20,7 @@ import { PressableCard } from '../../src/components/PressableCard';
 import { SkeletonCard } from '../../src/components/Skeleton';
 
 const STATUS_LABELS: Record<string, { label: string; bg: string; text: string }> = {
-  OPEN: { label: 'Aberto', bg: 'rgba(1, 138, 190, 0.1)', text: '#018ABE' },
+  OPEN: { label: 'Aberto', bg: 'rgba(255, 106, 0, 0.1)', text: '#FF6A00' },
   ACCEPTED: { label: 'Aceito', bg: 'rgba(245, 158, 11, 0.1)', text: '#D97706' },
   IN_PROGRESS: { label: 'Em andamento', bg: 'rgba(245, 158, 11, 0.1)', text: '#D97706' },
   COMPLETED: { label: 'Concluído', bg: 'rgba(14, 159, 110, 0.1)', text: '#0E9F6E' },
@@ -76,7 +76,7 @@ export default function HomeScreen() {
       {/* Header with subtle gradient */}
       <View style={[styles.headerContainer, { paddingTop: insets.top + 16 }]}>
         <LinearGradient
-          colors={['#EEF6FA', '#F3F8FB']}
+          colors={['#EEF3F9', '#F5F8FC']}
           style={StyleSheet.absoluteFill}
         />
         <View style={styles.header}>
@@ -104,7 +104,7 @@ export default function HomeScreen() {
             }
             style={styles.notificationButton}
           >
-            <Ionicons name="notifications-outline" size={22} color="#001B48" />
+            <Ionicons name="notifications-outline" size={22} color="#041E42" />
             {!!unread && unread > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>
@@ -131,7 +131,7 @@ export default function HomeScreen() {
           <Link href="/task/create" asChild>
             <Pressable style={styles.actionCardPrimary}>
               <LinearGradient
-                colors={['#02457A', '#018ABE']}
+                colors={['#FF8A2B', '#FF6A00']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
@@ -150,7 +150,7 @@ export default function HomeScreen() {
             <Link href="/(tabs)/feed" asChild>
               <Pressable style={styles.actionCardSecondary}>
                 <View style={styles.actionIcon}>
-                  <Ionicons name="search" size={28} color="#018ABE" />
+                  <Ionicons name="search" size={28} color="#FF6A00" />
                 </View>
                 <Text style={styles.actionTitle}>Buscar trabalhos</Text>
                 <Text style={styles.actionSubtitle}>
@@ -189,7 +189,7 @@ export default function HomeScreen() {
                     </View>
 
                     <View style={styles.taskAddress}>
-                      <Ionicons name="location-outline" size={14} color="#5B7A91" />
+                      <Ionicons name="location-outline" size={14} color="#5F6B7E" />
                       <Text style={styles.taskAddressText} numberOfLines={1}>
                         {task.address}
                       </Text>
@@ -262,7 +262,7 @@ export default function HomeScreen() {
                   </View>
 
                   <View style={styles.taskAddress}>
-                    <Ionicons name="location-outline" size={14} color="#5B7A91" />
+                    <Ionicons name="location-outline" size={14} color="#5F6B7E" />
                     <Text style={styles.taskAddressText} numberOfLines={1}>
                       {task.address}
                     </Text>
@@ -289,7 +289,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F8FB',
+    backgroundColor: '#F5F8FC',
   },
   errorBox: {
     alignItems: 'center',
@@ -297,11 +297,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   errorText: {
-    color: '#5B7A91',
+    color: '#5F6B7E',
     fontSize: 15,
   },
   retryText: {
-    color: '#018ABE',
+    color: '#FF6A00',
     fontSize: 15,
     fontWeight: '600',
     paddingVertical: 8,
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   headerContainer: {
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#DCEAF1',
+    borderBottomColor: '#E6EBF2',
   },
   header: {
     flexDirection: 'row',
@@ -323,12 +323,12 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#001B48',
+    color: '#041E42',
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     marginTop: 4,
   },
   notificationButton: {
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#02457A',
+    shadowColor: '#0B2E5C',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#018ABE',
+    shadowColor: '#FF6A00',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -390,8 +390,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#DCEAF1',
-    shadowColor: '#02457A',
+    borderColor: '#E6EBF2',
+    shadowColor: '#0B2E5C',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -413,12 +413,12 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#001B48',
+    color: '#041E42',
     marginBottom: 2,
   },
   actionSubtitle: {
     fontSize: 13,
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   sectionHeader: {
     marginBottom: 16,
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#001B48',
+    color: '#041E42',
   },
   skeletonContainer: {
     gap: 12,
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#001B48',
+    color: '#041E42',
     marginRight: 12,
   },
   statusBadge: {
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   taskAddressText: {
     flex: 1,
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     marginLeft: 4,
   },
   taskFooter: {
@@ -476,15 +476,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#EEF6FA',
+    borderTopColor: '#EEF3F9',
   },
   taskCategory: {
     fontSize: 13,
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   taskValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#018ABE',
+    color: '#FF6A00',
   },
 });

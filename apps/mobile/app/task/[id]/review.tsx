@@ -82,7 +82,7 @@ export default function ReviewScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="close" size={24} color="#001B48" />
+              <Ionicons name="close" size={24} color="#041E42" />
             </Pressable>
           ),
         }}
@@ -121,7 +121,7 @@ export default function ReviewScreen() {
               <Ionicons
                 name={star <= rating ? 'star' : 'star-outline'}
                 size={40}
-                color={star <= rating ? '#018ABE' : '#97CADB'}
+                color={star <= rating ? '#FF6A00' : '#FFC59E'}
               />
             </Pressable>
           ))}
