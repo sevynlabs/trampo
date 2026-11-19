@@ -10,7 +10,7 @@ import {
   StyleSheet,
   Linking,
 } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,11 +21,14 @@ import { TASK_CONSTANTS } from '@trampo/contracts';
 import { formatCurrency } from '../../src/lib/format';
 import { GradientButton } from '../../src/components/GradientButton';
 import { Input } from '../../src/components/Input';
+import { categoryIcon } from '../../src/components/ds';
 
 export default function CreateTaskScreen() {
   const router = useRouter();
+  // Prefilled when coming from a professional / category ("Contratar")
+  const params = useLocalSearchParams<{ categoryId?: string }>();
 
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(params.categoryId ?? null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
@@ -138,8 +141,8 @@ export default function CreateTaskScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: 'Criar serviço',
-          headerTitleStyle: { fontWeight: '600', color: '#041E42' },
+          title: 'Contratar serviço',
+          headerTitleStyle: { fontWeight: '800', color: '#041E42' },
           headerStyle: { backgroundColor: '#F5F8FC' },
           headerShadowVisible: false,
           headerLeft: () => (
@@ -172,7 +175,7 @@ export default function CreateTaskScreen() {
                     categoryId === cat.id && styles.categoryCardSelected,
                   ]}
                 >
-                  <Text style={styles.categoryIcon}>{cat.icon}</Text>
+                  <Ionicons name={categoryIcon(cat)} size={24} color={categoryId === cat.id ? '#FF6A00' : '#041E42'} style={styles.categoryIcon} />
                   <Text
                     style={[
                       styles.categoryName,
@@ -346,22 +349,22 @@ export default function CreateTaskScreen() {
             <BlurView intensity={80} tint="light" style={styles.bottomBlur}>
               <View style={styles.bottomContent}>
                 <GradientButton
-                  label="Publicar serviço"
+                  label="Solicitar"
                   onPress={handleSubmit}
                   disabled={!isValid}
                   loading={createTask.isPending}
-                  icon="rocket-outline"
+                  iconRight="arrow-forward"
                 />
               </View>
             </BlurView>
           ) : (
             <View style={styles.bottomAndroid}>
               <GradientButton
-                label="Publicar serviço"
+                label="Solicitar"
                 onPress={handleSubmit}
                 disabled={!isValid}
                 loading={createTask.isPending}
-                icon="rocket-outline"
+                iconRight="arrow-forward"
               />
             </View>
           )}

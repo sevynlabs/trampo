@@ -1,19 +1,22 @@
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Avatar, Badge, Card, ListRow, Rating, colors } from '../../src/components/ds';
 import { useQueryClient } from '@tanstack/react-query';
 import { trpc, clearTokens, getRefreshToken } from '../../src/lib/trpc';
 
-const KYC_STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  PENDING: { label: 'Pendente', color: 'text-warning' },
-  SUBMITTED: { label: 'Em análise', color: 'text-accent' },
-  APPROVED: { label: 'Aprovado', color: 'text-success' },
-  REJECTED: { label: 'Rejeitado', color: 'text-danger' },
+const KYC_STATUS_LABELS: Record<string, { label: string; tone: 'warning' | 'sky' | 'success' | 'danger' }> = {
+  PENDING: { label: 'Pendente', tone: 'warning' },
+  SUBMITTED: { label: 'Em análise', tone: 'sky' },
+  APPROVED: { label: 'Aprovado', tone: 'success' },
+  REJECTED: { label: 'Rejeitado', tone: 'danger' },
 };
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { data: user } = trpc.profiles.getMe.useQuery();
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
@@ -60,180 +63,86 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const kyc = kycStatus ? KYC_STATUS_LABELS[kycStatus] : null;
+
   return (
-    <View className="flex-1 bg-background">
-      {/* Header */}
-      <View className="bg-surface px-6 pt-16 pb-6 border-b border-border items-center">
-        <LinearGradient
-          colors={['#041E42', '#FF6A00']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            width: 80,
-            height: 80,
-            borderRadius: 9999,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 12,
-            shadowColor: '#FF6A00',
-            shadowOpacity: 0.4,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 6 },
-          }}
-        >
-          <Text className="font-display text-3xl text-white font-bold">
-            {user?.name?.charAt(0).toUpperCase() || '?'}
-          </Text>
-        </LinearGradient>
-        <Text className="font-display text-xl font-bold text-ink">
-          {user?.name || 'Usuário'}
-        </Text>
-        <Text className="text-ink-muted mt-1">{user?.phone}</Text>
-
-        {isTasker && kycStatus && (
-          <View className="flex-row items-center mt-3">
-            <Text className="text-ink-muted text-sm">Verificação: </Text>
-            <Text
-              className={`font-medium text-sm ${
-                KYC_STATUS_LABELS[kycStatus]?.color || 'text-ink'
-              }`}
-            >
-              {KYC_STATUS_LABELS[kycStatus]?.label || kycStatus}
-            </Text>
-          </View>
-        )}
-
-        {isTasker && (user?.taskerProfile?.rating ?? 0) > 0 && (
-          <View className="flex-row items-center mt-2">
-            <Ionicons name="star" size={16} color="#FF6A00" />
-            <Text className="text-ink-soft font-medium ml-1">
-              {user?.taskerProfile?.rating?.toFixed(1)}
-            </Text>
-          </View>
-        )}
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style="light" />
+      {/* Navy header */}
+      <View style={{ backgroundColor: colors.navy, paddingTop: insets.top + 16, paddingBottom: 56, alignItems: 'center' }}>
+        <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800' }}>Meu perfil</Text>
       </View>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }} style={{ marginTop: -44 }}>
+        <Card style={{ alignItems: 'center', paddingTop: 20 }}>
+          <Avatar name={user?.name} uri={user?.avatarUrl} size={84} verified={kycStatus === 'APPROVED'} />
+          <Text style={{ fontSize: 21, fontWeight: '900', color: colors.ink, marginTop: 10 }}>{user?.name || 'Usuário'}</Text>
+          <Text style={{ color: colors.inkMuted, marginTop: 2 }}>{user?.phone}</Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+            <Badge label={isTasker ? (user?.role === 'BOTH' ? 'Cliente e profissional' : 'Profissional') : 'Cliente'} tone="sky" />
+            {isTasker && kyc && <Badge label={`Verificação: ${kyc.label}`} tone={kyc.tone} />}
+          </View>
+          {isTasker && (user?.taskerProfile?.rating ?? 0) > 0 && (
+            <View style={{ marginTop: 8 }}>
+              <Rating value={user!.taskerProfile!.rating} />
+            </View>
+          )}
+          {isTasker && user && (
+            <Pressable onPress={() => router.push(`/user/${user.id}`)} hitSlop={8} accessibilityRole="button" style={{ marginTop: 10 }}>
+              <Text style={{ color: colors.sky, fontWeight: '700' }}>Ver meu perfil público</Text>
+            </Pressable>
+          )}
+        </Card>
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
-      >
         {/* Become a tasker CTA */}
         {user && !isTasker && (
           <Pressable
             onPress={() => becomeTasker.mutate()}
             disabled={becomeTasker.isPending}
-            className="mb-6 rounded-card overflow-hidden"
+            accessibilityRole="button"
+            style={{ marginTop: 14, backgroundColor: colors.orange, borderRadius: 18, padding: 18, flexDirection: 'row', alignItems: 'center' }}
           >
-            <LinearGradient
-              colors={['#FF8A2B', '#FF6A00']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ padding: 20, flexDirection: 'row', alignItems: 'center' }}
-            >
-              <View className="w-12 h-12 rounded-full items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.18)' }}>
-                <Ionicons name="briefcase-outline" size={24} color="#fff" />
-              </View>
-              <View className="flex-1 ml-3">
-                <Text className="text-white font-bold text-base">Quero oferecer serviços</Text>
-                <Text className="text-white/80 text-sm mt-0.5">
-                  Vire profissional e ganhe fazendo trampos
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={22} color="#fff" />
-            </LinearGradient>
+            <View style={{ width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' }}>
+              <Ionicons name="construct-outline" size={24} color="#fff" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Quero prestar serviços</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 2 }}>Divulgue seu trabalho e conquiste clientes</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={22} color="#fff" />
           </Pressable>
         )}
 
-        {/* Menu items */}
-        <View className="bg-surface rounded-card border border-border overflow-hidden mb-6">
-          <MenuItem
-            icon="person-outline"
-            label="Editar perfil"
-            onPress={() => router.push('/profile/edit')}
-          />
+        <Card style={{ marginTop: 14, paddingVertical: 4 }}>
+          <ListRow icon="person-outline" label="Editar perfil" onPress={() => router.push('/profile/edit')} />
+          {user?.role !== 'TASKER' && <ListRow icon="receipt-outline" label="Meus pedidos" onPress={() => router.push('/orders')} />}
+          {user?.role === 'BOTH' && <ListRow icon="construct-outline" label="Área do profissional" onPress={() => router.push('/pro')} />}
           {isTasker && (
             <>
-              <MenuItem
-                icon="grid-outline"
-                label="Categorias de serviço"
-                onPress={() => router.push('/profile/categories')}
-              />
-              <MenuItem
-                icon="location-outline"
-                label="Área de atuação"
-                onPress={() => router.push('/profile/service-area')}
-              />
-              <MenuItem
-                icon="document-outline"
-                label="Documentos (KYC)"
-                onPress={() => router.push('/kyc')}
-              />
+              <ListRow icon="grid-outline" label="Categorias de serviço" onPress={() => router.push('/profile/categories')} />
+              <ListRow icon="location-outline" label="Área de atuação" onPress={() => router.push('/profile/service-area')} />
+              <ListRow icon="document-outline" label="Documentos (verificação)" onPress={() => router.push('/kyc')} />
             </>
           )}
-        </View>
+          <ListRow icon="notifications-outline" label="Notificações" onPress={() => router.push('/notifications')} />
+        </Card>
 
         {user?.isAdmin && (
-          <View className="bg-surface rounded-card border border-border overflow-hidden mb-6">
-            <MenuItem
-              icon="shield-checkmark-outline"
-              label="Disputas (admin)"
-              onPress={() => router.push('/admin/disputes')}
-            />
-            <MenuItem
-              icon="pulse-outline"
-              label="Operações (admin)"
-              onPress={() => router.push('/admin/ops')}
-            />
-          </View>
+          <Card style={{ marginTop: 14, paddingVertical: 4 }}>
+            <ListRow icon="shield-checkmark-outline" label="Disputas (admin)" onPress={() => router.push('/admin/disputes')} />
+            <ListRow icon="pulse-outline" label="Operações (admin)" onPress={() => router.push('/admin/ops')} />
+          </Card>
         )}
 
-        <View className="bg-surface rounded-card border border-border overflow-hidden mb-6">
-          <MenuItem
-            icon="help-circle-outline"
-            label="Ajuda e suporte"
-            onPress={() => router.push('/info/help')}
-          />
-          <MenuItem
-            icon="document-text-outline"
-            label="Termos de uso"
-            onPress={() => router.push('/info/terms')}
-          />
-          <MenuItem
-            icon="shield-outline"
-            label="Política de privacidade"
-            onPress={() => router.push('/info/privacy')}
-          />
-        </View>
+        <Card style={{ marginTop: 14, paddingVertical: 4 }}>
+          <ListRow icon="help-circle-outline" label="Ajuda e suporte" onPress={() => router.push('/info/help')} />
+          <ListRow icon="document-text-outline" label="Termos de uso" onPress={() => router.push('/info/terms')} />
+          <ListRow icon="shield-outline" label="Política de privacidade" onPress={() => router.push('/info/privacy')} />
+        </Card>
 
-        <Pressable
-          onPress={handleLogout}
-          className="bg-surface rounded-card border border-danger/20 p-4 flex-row items-center justify-center"
-        >
-          <Ionicons name="log-out-outline" size={20} color="#E11D48" />
-          <Text className="text-danger font-medium ml-2">Sair da conta</Text>
-        </Pressable>
+        <Card style={{ marginTop: 14, paddingVertical: 4 }}>
+          <ListRow icon="log-out-outline" label="Sair da conta" danger onPress={handleLogout} />
+        </Card>
       </ScrollView>
     </View>
-  );
-}
-
-function MenuItem({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className="flex-row items-center p-4 border-b border-border last:border-b-0"
-    >
-      <Ionicons name={icon} size={22} color="#5F6B7E" />
-      <Text className="flex-1 text-ink ml-3">{label}</Text>
-      <Ionicons name="chevron-forward" size={20} color="#9AA5B8" />
-    </Pressable>
   );
 }

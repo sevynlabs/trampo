@@ -161,7 +161,7 @@ export default function FeedScreen() {
           entering={FadeIn.duration(300)}
           style={styles.headerTitle}
         >
-          Serviços próximos
+          Novas solicitações
         </Animated.Text>
 
         {/* Search */}
