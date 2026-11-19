@@ -15,6 +15,9 @@ const config: Config = {
     },
     extend: {
       colors: {
+        navy: { DEFAULT: "#041E42", soft: "#0B2E5C" },
+        brand: { DEFAULT: "#FF6A00", soft: "#FFF4EB" },
+        sky: { DEFAULT: "#0096D6", soft: "#E1F3FB" },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

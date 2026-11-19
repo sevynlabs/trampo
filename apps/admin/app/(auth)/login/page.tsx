@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -45,12 +46,12 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm rounded-2xl shadow-lg">
       <CardHeader className="space-y-2 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <ShieldCheck className="h-6 w-6" />
+        <div className="mx-auto">
+          <Logo size={40} />
         </div>
-        <CardTitle className="text-2xl">TRAMPO Admin</CardTitle>
+        <CardTitle className="pt-2 text-xl text-navy">Painel administrativo</CardTitle>
         <CardDescription>Entre com suas credenciais de administrador</CardDescription>
       </CardHeader>
       <CardContent>

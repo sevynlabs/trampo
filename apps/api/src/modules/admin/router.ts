@@ -209,6 +209,82 @@ export const adminRouter = router({
     }),
 
   /**
+   * Professionals directory for the admin panel: tasker profiles with
+   * categories, rating, jobs done and verification status.
+   */
+  listProfessionals: adminAuthProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(20),
+        search: z.string().trim().optional(),
+        status: z.enum(['all', 'active', 'verification', 'rejected', 'blocked']).default('all'),
+      })
+    )
+    .query(async ({ input }) => {
+      const { page, pageSize, search, status } = input;
+      const where: Prisma.TaskerProfileWhereInput = {};
+      if (search) {
+        where.OR = [
+          { user: { name: { contains: search, mode: 'insensitive' } } },
+          { user: { phone: { contains: search } } },
+          { categories: { some: { category: { name: { contains: search, mode: 'insensitive' } } } } },
+        ];
+      }
+      if (status === 'active') Object.assign(where, { kycStatus: 'APPROVED', user: { isActive: true } });
+      if (status === 'verification') where.kycStatus = { in: ['PENDING', 'SUBMITTED'] };
+      if (status === 'rejected') where.kycStatus = 'REJECTED';
+      if (status === 'blocked') where.user = { isActive: false };
+
+      const [total, profiles] = await Promise.all([
+        prisma.taskerProfile.count({ where }),
+        prisma.taskerProfile.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+          select: {
+            rating: true,
+            totalTasks: true,
+            totalEarnings: true,
+            kycStatus: true,
+            createdAt: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+                isActive: true,
+                _count: { select: { reviewsReceived: true } },
+              },
+            },
+            categories: { select: { category: { select: { name: true } } } },
+          },
+        }),
+      ]);
+
+      return {
+        professionals: profiles.map((p) => ({
+          id: p.user.id,
+          name: p.user.name,
+          phone: p.user.phone,
+          isActive: p.user.isActive,
+          categories: p.categories.map((c) => c.category.name),
+          rating: p.rating,
+          reviewCount: p.user._count.reviewsReceived,
+          totalTasks: p.totalTasks,
+          totalEarnings: p.totalEarnings,
+          kycStatus: p.kycStatus,
+          createdAt: p.createdAt.toISOString(),
+        })),
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      };
+    }),
+
+  /**
    * Full detail for a single user: profile, tasker stats + balance,
    * recent tasks (both sides), and reviews received.
    */

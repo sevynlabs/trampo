@@ -13,7 +13,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, BarChart } from "@/components/ui/charts";
+import { LineChart, BarChart, DonutChart } from "@/components/ui/charts";
 import {
   formatBRL,
   formatNumber,
@@ -32,10 +32,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Visão geral da plataforma TRAMPO — últimos 30 dias
-        </p>
+        <h1 className="text-2xl font-extrabold tracking-tight text-navy">Dashboard</h1>
+        <p className="text-muted-foreground">Visão geral da plataforma — últimos 30 dias</p>
       </div>
 
       {overview.isError && (
@@ -79,7 +77,7 @@ export default function DashboardPage() {
           icon={UserPlus}
         />
         <StatCard
-          label="Trampos ativos"
+          label="Serviços ativos"
           value={o ? formatNumber(o.activeTasks) : undefined}
           icon={Activity}
         />
@@ -93,7 +91,7 @@ export default function DashboardPage() {
 
       {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="rounded-2xl shadow-sm">
           <CardHeader>
             <CardTitle className="text-base">Receita diária</CardTitle>
           </CardHeader>
@@ -104,11 +102,12 @@ export default function DashboardPage() {
                 value: d.revenue,
               }))}
               formatValue={formatBRL}
+              className="text-sky"
             />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl shadow-sm">
           <CardHeader>
             <CardTitle className="text-base">Novos usuários por dia</CardTitle>
           </CardHeader>
@@ -124,28 +123,50 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Funnel */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Funil de trampos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {funnel.data && (
-            <BarChart
-              formatValue={formatNumber}
-              data={[
-                { label: "Abertos", value: funnel.data.open },
-                { label: "Aceitos", value: funnel.data.accepted },
-                { label: "Em andamento", value: funnel.data.inProgress },
-                { label: "Concluídos", value: funnel.data.completed },
-                { label: "Liberados (pagos)", value: funnel.data.released },
-                { label: "Cancelados", value: funnel.data.cancelled, tone: "muted" },
-                { label: "Em disputa", value: funnel.data.disputed, tone: "danger" },
-              ]}
-            />
-          )}
-        </CardContent>
-      </Card>
+      {/* Status + funnel */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        <Card className="rounded-2xl shadow-sm lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">Status dos serviços</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {funnel.data && (
+              <DonutChart
+                centerLabel="serviços"
+                data={[
+                  { label: "Concluídos", value: funnel.data.completed + funnel.data.released, color: "#FF6A00" },
+                  { label: "Em andamento", value: funnel.data.accepted + funnel.data.inProgress, color: "#0096D6" },
+                  { label: "Abertos", value: funnel.data.open, color: "#041E42" },
+                  { label: "Cancelados", value: funnel.data.cancelled, color: "#CBD5E1" },
+                  { label: "Em disputa", value: funnel.data.disputed, color: "#E11D48" },
+                ]}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl shadow-sm lg:col-span-3">
+          <CardHeader>
+            <CardTitle className="text-base">Funil de serviços</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {funnel.data && (
+              <BarChart
+                formatValue={formatNumber}
+                data={[
+                  { label: "Abertos", value: funnel.data.open },
+                  { label: "Aceitos", value: funnel.data.accepted },
+                  { label: "Em andamento", value: funnel.data.inProgress },
+                  { label: "Concluídos", value: funnel.data.completed },
+                  { label: "Liberados (pagos)", value: funnel.data.released },
+                  { label: "Cancelados", value: funnel.data.cancelled, tone: "muted" },
+                  { label: "Em disputa", value: funnel.data.disputed, tone: "danger" },
+                ]}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
