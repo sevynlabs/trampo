@@ -40,10 +40,18 @@ export const profilesRouter = router({
 
     if (!user) return null;
 
+    const identity = await prisma.identityVerification.findUnique({
+      where: { userId: user.id },
+      select: { status: true, rejectReason: true },
+    });
+
     // Never send PII hashes, the encrypted CPF blob or the device token back
     const { cpfHash, cpfEncrypted: _cpfEncrypted, pushToken: _pushToken, ...safeUser } = user;
     return {
       ...safeUser,
+      /** Minimum verification (every user). SUBMITTED is enough to post/hire. */
+      identityStatus: identity?.status ?? 'PENDING',
+      identityRejectReason: identity?.rejectReason ?? null,
       publicCode: formatPublicCode(user.publicCode),
       hasCpf: !!cpfHash,
       isAdmin: isAdminUser(user.id),

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure } from '../../trpc';
+import { router, protectedProcedure, verifiedClientProcedure } from '../../trpc';
 import { createTaskInput } from '@trampo/contracts';
 import { prisma } from '@trampo/db';
 import { calculatePrice } from '../../domain/pricing';
@@ -29,7 +29,7 @@ export const tasksRouter = router({
   /**
    * Create a new task
    */
-  create: protectedProcedure
+  create: verifiedClientProcedure
     .input(createTaskInput)
     .mutation(async ({ ctx, input }) => {
       const { categoryId, title, description, address, location, baseValue } = input;

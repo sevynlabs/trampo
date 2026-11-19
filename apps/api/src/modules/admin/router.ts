@@ -24,6 +24,7 @@ import { dashboardRouter } from './dashboard';
 import { financeRouter } from './finance';
 import { campaignsRouter } from './campaigns';
 import { bannersAdminRouter } from './banners';
+import { identityAdminRouter } from './identity';
 
 /** Supabase Storage bucket holding KYC documents. */
 const KYC_BUCKET = 'kyc-documents';
@@ -128,7 +129,14 @@ export const adminRouter = router({
       await Promise.all([
         prisma.user.count(),
         prisma.user.count({ where: { role: { in: ['TASKER', 'BOTH'] } } }),
-        prisma.taskerProfile.count({ where: { kycStatus: 'SUBMITTED' } }),
+        prisma.taskerProfile
+          .count({ where: { kycStatus: 'SUBMITTED' } })
+          .then(async (pro) =>
+            pro +
+            (await prisma.identityVerification.count({
+              where: { status: 'SUBMITTED', NOT: { user: { taskerProfile: { kycStatus: 'SUBMITTED' } } } },
+            }))
+          ),
         prisma.task.count({
           where: { status: { in: ['ACCEPTED', 'IN_PROGRESS'] } },
         }),
@@ -497,10 +505,13 @@ export const adminRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Perfil não encontrado' });
       }
 
+      // Identity documents now live in identity_verifications (all users);
+      // fall back to the legacy columns for profiles from before the split.
+      const identity = await prisma.identityVerification.findUnique({ where: { userId: profile.userId } });
       const [front, back, selfie, criminalRecord] = await Promise.all([
-        signKycUrl(profile.documentFrontPath),
-        signKycUrl(profile.documentBackPath),
-        signKycUrl(profile.selfiePath),
+        signKycUrl(identity?.documentFrontPath ?? profile.documentFrontPath),
+        signKycUrl(identity?.documentBackPath ?? profile.documentBackPath),
+        signKycUrl(identity?.selfiePath ?? profile.selfiePath),
         signKycUrl(profile.criminalRecordPath),
       ]);
 
@@ -518,6 +529,7 @@ export const adminRouter = router({
           email: profile.user.email,
           createdAt: profile.user.createdAt.toISOString(),
         },
+        identityStatus: identity?.status ?? 'PENDING',
         documents: { front, back, selfie, criminalRecord },
         criminalRecordIsPdf: !!profile.criminalRecordPath?.endsWith('.pdf'),
         decisions: profile.kycDecisions.map((d) => ({
@@ -538,6 +550,25 @@ export const adminRouter = router({
     .input(z.object({ profileId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const userId = await prisma.$transaction(async (tx) => {
+        const target = await tx.taskerProfile.findUnique({
+          where: { id: input.profileId },
+          select: { userId: true, criminalRecordPath: true },
+        });
+        const identity = target
+          ? await tx.identityVerification.findUnique({ where: { userId: target.userId }, select: { status: true } })
+          : null;
+        if (!target?.criminalRecordPath || (identity?.status !== 'SUBMITTED' && identity?.status !== 'APPROVED')) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Faltam documentos de identidade ou a certidão de antecedentes',
+          });
+        }
+        // Reviewing a professional covers their identity documents too.
+        await tx.identityVerification.updateMany({
+          where: { userId: target.userId, status: 'SUBMITTED' },
+          data: { status: 'APPROVED', approvedAt: new Date(), rejectedAt: null, rejectReason: null },
+        });
+
         const updated = await tx.taskerProfile.updateMany({
           where: { id: input.profileId, kycStatus: 'SUBMITTED' },
           data: {
@@ -573,8 +604,8 @@ export const adminRouter = router({
       }
 
       await notify(userId, {
-        title: 'KYC Aprovado! ✅',
-        body: 'Seus documentos foram aprovados. Você já pode aceitar trampos!',
+        title: 'Conta profissional aprovada! ✅',
+        body: 'Documentos e antecedentes aprovados. Você já pode ver e aceitar trampos!',
         data: { type: 'kyc_approved' },
       });
 
@@ -630,8 +661,8 @@ export const adminRouter = router({
       }
 
       await notify(userId, {
-        title: 'KYC Reprovado',
-        body: `Seus documentos foram reprovados: ${input.reason}. Corrija e envie novamente.`,
+        title: 'Conta profissional reprovada',
+        body: `Sua verificação profissional foi reprovada: ${input.reason}. Corrija e envie novamente.`,
         data: { type: 'kyc_rejected' },
       });
 
@@ -681,4 +712,5 @@ export const adminRouter = router({
   finance: financeRouter,
   campaigns: campaignsRouter,
   banners: bannersAdminRouter,
+  identity: identityAdminRouter,
 });

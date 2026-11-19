@@ -13,7 +13,7 @@ const NAV = [
   { href: "/finance", label: "Financeiro", icon: Wallet, exact: false },
   { href: "/campaigns", label: "Campanhas", icon: Megaphone, exact: false },
   { href: "/banners", label: "Anunciantes", icon: GalleryHorizontal, exact: false },
-  { href: "/kyc", label: "Verificação (KYC)", icon: ShieldCheck, exact: false },
+  { href: "/kyc", label: "Verificação", icon: ShieldCheck, exact: false },
 ];
 
 export function Sidebar() {

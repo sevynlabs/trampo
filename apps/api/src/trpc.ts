@@ -128,14 +128,17 @@ const isApprovedTasker = t.middleware(async ({ ctx, next }) => {
     throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
 
-  const profile = await prisma.taskerProfile.findUnique({
-    where: { userId: ctx.user.id },
-  });
+  const [profile, identity] = await Promise.all([
+    prisma.taskerProfile.findUnique({ where: { userId: ctx.user.id } }),
+    prisma.identityVerification.findUnique({ where: { userId: ctx.user.id }, select: { status: true } }),
+  ]);
 
-  if (!profile || profile.kycStatus !== 'APPROVED') {
+  // Professionals need BOTH layers approved by the team: identity documents
+  // and the criminal-record certificate (TaskerProfile.kycStatus).
+  if (!profile || profile.kycStatus !== 'APPROVED' || identity?.status !== 'APPROVED') {
     throw new TRPCError({
       code: 'FORBIDDEN',
-      message: 'KYC approval required to perform this action',
+      message: 'Sua conta profissional ainda não foi aprovada (documentos e antecedentes criminais).',
     });
   }
 
@@ -149,6 +152,30 @@ const isApprovedTasker = t.middleware(async ({ ctx, next }) => {
 });
 
 export const taskerProcedure = t.procedure.use(isApprovedTasker);
+
+/**
+ * Middleware: client actions (post a task, pay/hire) require the identity
+ * documents to have been SENT (approval may come later). A rejected identity
+ * blocks again until the user resubmits.
+ */
+const hasSentIdentity = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
+  const identity = await prisma.identityVerification.findUnique({
+    where: { userId: ctx.user.id },
+    select: { status: true },
+  });
+  if (identity?.status !== 'SUBMITTED' && identity?.status !== 'APPROVED') {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'Envie seu documento e a selfie para publicar e contratar serviços.',
+    });
+  }
+  return next({ ctx: { ...ctx, user: ctx.user } });
+});
+
+export const verifiedClientProcedure = t.procedure.use(isAuthenticated).use(hasSentIdentity);
 
 /**
  * Middleware: Require admin user (allowlisted via ADMIN_USER_IDS)

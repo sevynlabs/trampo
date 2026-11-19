@@ -90,6 +90,7 @@ export default function KycReviewPage({
     await Promise.all([
       utils.admin.getKycDetails.invalidate({ profileId }),
       utils.admin.listPendingKyc.invalidate(),
+      utils.admin.identity.listPending.invalidate(),
       utils.admin.dashboardStats.invalidate(),
     ]);
   };
@@ -133,6 +134,9 @@ export default function KycReviewPage({
         <>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">
+                Conta profissional · identidade + antecedentes
+              </p>
               <h1 className="text-2xl font-bold tracking-tight">
                 {data.user.name || "Sem nome"}
               </h1>
@@ -291,7 +295,7 @@ export default function KycReviewPage({
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reprovar KYC</DialogTitle>
+            <DialogTitle>Reprovar conta profissional</DialogTitle>
             <DialogDescription>
               Informe o motivo. O profissional será notificado e poderá reenviar
               os documentos.

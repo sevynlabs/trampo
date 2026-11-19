@@ -9,6 +9,7 @@ import {
   Switch,
   StyleSheet,
   Linking,
+  Alert,
 } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +42,21 @@ export default function CreateTaskScreen() {
   );
 
   const { data: categories } = trpc.categories.list.useQuery();
+  const { data: me } = trpc.profiles.getMe.useQuery();
+  const identitySent = me?.identityStatus === 'SUBMITTED' || me?.identityStatus === 'APPROVED';
+
+  /** Minimum verification: identity documents must be sent before posting. */
+  const askForIdentity = () =>
+    Alert.alert(
+      'Verifique sua identidade',
+      me?.identityStatus === 'REJECTED'
+        ? 'Seus documentos foram reprovados. Envie novamente para publicar serviços.'
+        : 'Para a segurança de todos, envie uma foto do seu documento e uma selfie antes de publicar. Leva 1 minuto.',
+      [
+        { text: 'Agora não', style: 'cancel' },
+        { text: 'Verificar agora', onPress: () => router.push('/kyc') },
+      ]
+    );
   const utils = trpc.useUtils();
 
   const createTask = trpc.tasks.create.useMutation({
@@ -49,6 +65,7 @@ export default function CreateTaskScreen() {
       router.replace(`/task/${data.id}`);
     },
     onError: (err) => {
+      if (err.data?.code === 'PRECONDITION_FAILED') return askForIdentity();
       setError(err.message);
     },
   });
@@ -120,6 +137,10 @@ export default function CreateTaskScreen() {
   };
 
   const handleSubmit = () => {
+    if (me && !identitySent) {
+      askForIdentity();
+      return;
+    }
     if (!isValid || !location || !categoryId) return;
     setError('');
 

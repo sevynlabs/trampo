@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure, taskerProcedure } from '../../trpc';
+import { router, protectedProcedure, taskerProcedure, verifiedClientProcedure } from '../../trpc';
 import { prisma } from '@trampo/db';
 import { env } from '../../lib/env';
 import {
@@ -44,7 +44,7 @@ export const paymentsRouter = router({
    * Create payment charge (Pix) for a task
    * Called when tasker accepts the task
    */
-  createCharge: protectedProcedure
+  createCharge: verifiedClientProcedure
     .input(z.object({ taskId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const task = await prisma.task.findUnique({

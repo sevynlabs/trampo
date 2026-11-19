@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
+import { BadgeCheck, ShieldCheck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import {
   Table,
@@ -17,15 +17,43 @@ import { formatDateTime } from "@/lib/utils";
 
 export default function KycQueuePage() {
   const router = useRouter();
-  const query = trpc.admin.listPendingKyc.useQuery();
-  const items = query.data;
+  const proQuery = trpc.admin.listPendingKyc.useQuery();
+  const idQuery = trpc.admin.identity.listPending.useQuery();
+  const query = { isLoading: proQuery.isLoading || idQuery.isLoading };
+
+  // One queue, two kinds: professionals (identity + criminal record) and
+  // identity-only (minimum verification of clients). Oldest first.
+  const items =
+    proQuery.data && idQuery.data
+      ? [
+          ...proQuery.data.map((p) => ({
+            key: `pro-${p.profileId}`,
+            kind: "pro" as const,
+            href: `/kyc/${p.profileId}`,
+            name: p.name,
+            email: p.email,
+            phone: p.phone,
+            submittedAt: p.submittedAt,
+          })),
+          ...idQuery.data.map((u) => ({
+            key: `id-${u.userId}`,
+            kind: "identity" as const,
+            href: `/kyc/identidade/${u.userId}`,
+            name: u.name,
+            email: u.email,
+            phone: u.phone,
+            submittedAt: u.submittedAt,
+          })),
+        ].sort((a, b) => (a.submittedAt ?? "").localeCompare(b.submittedAt ?? ""))
+      : undefined;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Fila de KYC</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Fila de verificação</h1>
         <p className="text-muted-foreground">
-          Profissionais aguardando verificação de documentos
+          Identidade (todos os usuários) e conta profissional (identidade +
+          antecedentes criminais)
         </p>
       </div>
 
@@ -34,6 +62,7 @@ export default function KycQueuePage() {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>Telefone</TableHead>
               <TableHead>Enviado em</TableHead>
               <TableHead className="text-right">Ação</TableHead>
@@ -43,7 +72,7 @@ export default function KycQueuePage() {
             {query.isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 4 }).map((__, j) => (
+                  {Array.from({ length: 5 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-5 w-full" />
                     </TableCell>
@@ -53,9 +82,9 @@ export default function KycQueuePage() {
             ) : items && items.length > 0 ? (
               items.map((item) => (
                 <TableRow
-                  key={item.profileId}
+                  key={item.key}
                   className="cursor-pointer"
-                  onClick={() => router.push(`/kyc/${item.profileId}`)}
+                  onClick={() => router.push(item.href)}
                 >
                   <TableCell className="font-medium">
                     {item.name || "Sem nome"}
@@ -63,6 +92,17 @@ export default function KycQueuePage() {
                       <div className="text-xs text-muted-foreground">
                         {item.email}
                       </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {item.kind === "pro" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                        <ShieldCheck className="h-3 w-3" /> Profissional
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                        <BadgeCheck className="h-3 w-3" /> Identidade
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>{item.phone}</TableCell>
@@ -74,7 +114,7 @@ export default function KycQueuePage() {
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        router.push(`/kyc/${item.profileId}`);
+                        router.push(item.href);
                       }}
                     >
                       Revisar
@@ -84,10 +124,10 @@ export default function KycQueuePage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="py-12 text-center">
+                <TableCell colSpan={5} className="py-12 text-center">
                   <ShieldCheck className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
                   <p className="text-muted-foreground">
-                    Nenhum KYC pendente. Tudo em dia! 🎉
+                    Nenhuma verificação pendente. Tudo em dia! 🎉
                   </p>
                 </TableCell>
               </TableRow>

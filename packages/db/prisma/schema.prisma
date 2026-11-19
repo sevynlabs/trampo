@@ -101,6 +101,7 @@ model User {
 
   // Relations
   taskerProfile   TaskerProfile?
+  identity        IdentityVerification?
   tasksAsClient   Task[]          @relation("ClientTasks")
   assignments     TaskAssignment[]
   sentMessages    Message[]       @relation("SentMessages")
@@ -138,6 +139,10 @@ model TaskerProfile {
   kycRejectedAt   DateTime? @map("kyc_rejected_at")
   kycRejectReason String?   @map("kyc_reject_reason")
 
+  // Professional verification: kycStatus/kycSubmittedAt/... now track the
+  // review of the criminal-record certificate (only for professionals).
+  // The identity documents moved to IdentityVerification (all users); the
+  // three columns below are legacy and no longer written.
   // KYC Documents (stored in Supabase Storage, only paths here)
   documentFrontPath String?  @map("document_front_path")
   documentBackPath  String?  @map("document_back_path")
@@ -575,4 +580,27 @@ model ServiceArea {
 
   @@index([boundary], type: Gist)
   @@map("service_areas")
+}
+
+/// Minimum verification for EVERY user (client or professional):
+/// identity document + selfie holding it. Sending is enough to post and hire;
+/// professionals additionally need it APPROVED plus the criminal record.
+model IdentityVerification {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String    @unique @map("user_id") @db.Uuid
+  documentFrontPath String?   @map("document_front_path")
+  documentBackPath  String?   @map("document_back_path")
+  selfiePath        String?   @map("selfie_path")
+  status            KycStatus @default(PENDING)
+  submittedAt       DateTime? @map("submitted_at")
+  approvedAt        DateTime? @map("approved_at")
+  rejectedAt        DateTime? @map("rejected_at")
+  rejectReason      String?   @map("reject_reason")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, submittedAt])
+  @@map("identity_verifications")
 }

@@ -19,6 +19,7 @@ import { formatCurrency } from '../../src/lib/format';
 import { EmptyState, EmptyTasksIllustration } from '../../src/components/illustrations';
 import { PressableCard } from '../../src/components/PressableCard';
 import { SkeletonCard } from '../../src/components/Skeleton';
+import { GradientButton } from '../../src/components/GradientButton';
 
 function formatDistance(meters: number) {
   if (meters < 1000) return `${Math.round(meters)}m`;
@@ -34,6 +35,9 @@ export default function FeedScreen() {
   const [locationError, setLocationError] = useState('');
   const [permissionDenied, setPermissionDenied] = useState(false);
   const { data: me } = trpc.profiles.getMe.useQuery();
+  // Available tasks only show up once the team approved identity + criminal record
+  const proStatus = me?.taskerProfile?.kycStatus ?? 'PENDING';
+  const proApproved = proStatus === 'APPROVED' && me?.identityStatus === 'APPROVED';
   const [searchFocused, setSearchFocused] = useState(false);
 
   const { data: categories } = trpc.categories.list.useQuery();
@@ -54,7 +58,7 @@ export default function FeedScreen() {
       categoryId: selectedCategory,
       limit: 50,
     },
-    { enabled: !!location }
+    { enabled: !!location && proApproved }
   );
 
   const loadLocation = useCallback(async () => {
@@ -106,6 +110,33 @@ export default function FeedScreen() {
         : (a.distance ?? 0) - (b.distance ?? 0)
     );
   }, [tasks, search, sortBy]);
+
+  if (me && !proApproved) {
+    return (
+      <View style={styles.errorContainer}>
+        <Animated.View entering={FadeIn.duration(300)} style={styles.errorContent}>
+          <View style={styles.errorIcon}>
+            <Ionicons name="shield-checkmark-outline" size={40} color="#FF6A00" />
+          </View>
+          <Text style={styles.errorTitle}>
+            {proStatus === 'SUBMITTED' ? 'Conta profissional em análise' : 'Conclua sua conta profissional'}
+          </Text>
+          <Text style={styles.errorText}>
+            {proStatus === 'SUBMITTED'
+              ? 'Estamos conferindo seus documentos e a certidão de antecedentes. Os serviços disponíveis aparecem aqui assim que a equipe aprovar.'
+              : proStatus === 'REJECTED'
+                ? 'Sua verificação foi reprovada. Veja o motivo e envie novamente.'
+                : 'Para ver e aceitar serviços, envie seu documento, a selfie e a certidão de antecedentes criminais.'}
+          </Text>
+          {proStatus !== 'SUBMITTED' && (
+            <View style={{ alignSelf: 'stretch', marginTop: 20 }}>
+              <GradientButton label="Ir para verificação" onPress={() => router.push('/kyc')} icon="arrow-forward" />
+            </View>
+          )}
+        </Animated.View>
+      </View>
+    );
+  }
 
   if (locationError) {
     return (

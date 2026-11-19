@@ -29,12 +29,13 @@ export default function ProfileScreen() {
   const becomeTasker = trpc.profiles.becomeTasker.useMutation({
     onSuccess: () => {
       utils.profiles.getMe.invalidate();
+      utils.kyc.getStatus.invalidate();
       Alert.alert(
-        'Bem-vindo, profissional! 🎉',
-        'Agora configure suas categorias e envie seus documentos para começar a pegar trampos.',
+        'Conta profissional ativada! 🎉',
+        'Para ver e aceitar serviços, envie a certidão de antecedentes criminais. Depois escolha suas categorias.',
         [
           { text: 'Depois', style: 'cancel' },
-          { text: 'Configurar', onPress: () => router.push('/profile/categories') },
+          { text: 'Enviar agora', onPress: () => router.push('/kyc') },
         ]
       );
     },
@@ -64,6 +65,17 @@ export default function ProfileScreen() {
   };
 
   const kyc = kycStatus ? KYC_STATUS_LABELS[kycStatus] : null;
+  const identity = KYC_STATUS_LABELS[user?.identityStatus ?? 'PENDING'];
+
+  const confirmBecomeTasker = () =>
+    Alert.alert(
+      'Mudar para conta profissional',
+      'Você continua podendo contratar serviços normalmente. Para receber e aceitar trampos, será preciso enviar a certidão de antecedentes criminais (gratuita, pelo gov.br) e ter a conta aprovada pela equipe.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Ativar', onPress: () => becomeTasker.mutate() },
+      ]
+    );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -84,7 +96,8 @@ export default function ProfileScreen() {
           <Text style={{ color: colors.inkMuted, marginTop: 2 }}>{user?.phone}</Text>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
             <Badge label={isTasker ? (user?.role === 'BOTH' ? 'Cliente e profissional' : 'Profissional') : 'Cliente'} tone="sky" />
-            {isTasker && kyc && <Badge label={`Verificação: ${kyc.label}`} tone={kyc.tone} />}
+            {user && <Badge label={`Identidade: ${identity.label}`} tone={identity.tone} />}
+            {isTasker && kyc && <Badge label={`Profissional: ${kyc.label}`} tone={kyc.tone} />}
           </View>
           {isTasker && (user?.taskerProfile?.rating ?? 0) > 0 && (
             <View style={{ marginTop: 8 }}>
@@ -118,7 +131,7 @@ export default function ProfileScreen() {
         {/* Become a tasker CTA */}
         {user && !isTasker && (
           <Pressable
-            onPress={() => becomeTasker.mutate()}
+            onPress={confirmBecomeTasker}
             disabled={becomeTasker.isPending}
             accessibilityRole="button"
             style={{ marginTop: 14, backgroundColor: colors.orange, borderRadius: 18, padding: 18, flexDirection: 'row', alignItems: 'center' }}
@@ -127,8 +140,8 @@ export default function ProfileScreen() {
               <Ionicons name="construct-outline" size={24} color="#fff" />
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Quero prestar serviços</Text>
-              <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 2 }}>Divulgue seu trabalho e conquiste clientes</Text>
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Mudar para conta profissional</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 2 }}>Preste serviços e conquiste clientes no Trampo</Text>
             </View>
             <Ionicons name="chevron-forward" size={22} color="#fff" />
           </Pressable>
@@ -136,13 +149,14 @@ export default function ProfileScreen() {
 
         <Card style={{ marginTop: 14, paddingVertical: 4 }}>
           <ListRow icon="person-outline" label="Editar perfil" onPress={() => router.push('/profile/edit')} />
+          <ListRow icon="id-card-outline" label="Verificação de identidade" onPress={() => router.push('/kyc')} />
           {user?.role !== 'TASKER' && <ListRow icon="receipt-outline" label="Meus pedidos" onPress={() => router.push('/orders')} />}
           {user?.role === 'BOTH' && <ListRow icon="construct-outline" label="Área do profissional" onPress={() => router.push('/pro')} />}
           {isTasker && (
             <>
               <ListRow icon="grid-outline" label="Categorias de serviço" onPress={() => router.push('/profile/categories')} />
               <ListRow icon="location-outline" label="Área de atuação" onPress={() => router.push('/profile/service-area')} />
-              <ListRow icon="document-outline" label="Documentos (verificação)" onPress={() => router.push('/kyc')} />
+              <ListRow icon="shield-checkmark-outline" label="Antecedentes criminais" onPress={() => router.push('/kyc')} />
             </>
           )}
           <ListRow icon="notifications-outline" label="Notificações" onPress={() => router.push('/notifications')} />

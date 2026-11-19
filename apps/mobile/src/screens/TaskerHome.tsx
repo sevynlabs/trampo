@@ -44,7 +44,9 @@ export function TaskerHome({ embedded = false }: { embedded?: boolean }) {
   const activeAssigned = (assigned.data ?? []).filter((t) => ACTIVE_ASSIGNED.includes(t.status));
   const firstName = user?.name?.split(' ')[0];
   const profile = user?.taskerProfile;
-  const kycApproved = profile?.kycStatus === 'APPROVED';
+  // Professionals need identity AND criminal record approved by the team
+  const kycApproved = profile?.kycStatus === 'APPROVED' && user?.identityStatus === 'APPROVED';
+  const proStatus = profile?.kycStatus ?? 'PENDING';
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -96,9 +98,15 @@ export function TaskerHome({ embedded = false }: { embedded?: boolean }) {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name="shield-checkmark-outline" size={22} color={colors.orange} />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={{ fontWeight: '800', color: colors.ink }}>Verifique sua identidade</Text>
+                <Text style={{ fontWeight: '800', color: colors.ink }}>
+                  {proStatus === 'SUBMITTED' ? 'Conta profissional em análise' : 'Conclua sua conta profissional'}
+                </Text>
                 <Text style={{ fontSize: 13, color: colors.inkMuted }}>
-                  {profile?.kycStatus === 'SUBMITTED' ? 'Documentos em análise.' : 'Necessário para receber solicitações.'}
+                  {proStatus === 'SUBMITTED'
+                    ? 'Os serviços disponíveis aparecem assim que a equipe aprovar.'
+                    : proStatus === 'REJECTED'
+                      ? 'Verificação reprovada. Toque para ver o motivo e reenviar.'
+                      : 'Envie documento, selfie e a certidão de antecedentes criminais.'}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
