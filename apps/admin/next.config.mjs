@@ -6,6 +6,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Self-contained server for the Docker image (Railway)
+  output: "standalone",
   // Shared TS sources (legal texts) from the monorepo
   transpilePackages: ["@trampo/contracts"],
   eslint: {

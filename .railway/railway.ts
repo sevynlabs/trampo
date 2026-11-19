@@ -12,8 +12,18 @@ export default defineRailway(() => {
     replicas: { "iad": 1 },
   });
 
+  // Painel (admin.trampooficial.com) + site público (trampooficial.com):
+  // um app Next.js; o endereço visitado decide o que aparece (middleware).
+  const admin = service("admin", {
+    source: github("sevynlabs/trampo"),
+    build: { buildEnvironment: "V3", builder: "DOCKERFILE", dockerfilePath: "apps/admin/Dockerfile" },
+    healthcheck: "/privacidade",
+    healthcheckTimeout: 60,
+    replicas: { "iad": 1 },
+  });
+
   return project("trampo", {
     variables: { managed: false },
-    resources: [api],
+    resources: [api, admin],
   });
 });
