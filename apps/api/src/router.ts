@@ -12,6 +12,7 @@ import { paymentsRouter } from './modules/payments/router';
 import { disputesRouter } from './modules/disputes/router';
 import { adminRouter } from './modules/admin/router';
 import { notificationsRouter } from './modules/notifications/router';
+import { bannersRouter } from './modules/banners/router';
 
 /**
  * Main application router
@@ -31,6 +32,7 @@ export const appRouter = router({
   disputes: disputesRouter,
   admin: adminRouter,
   notifications: notificationsRouter,
+  banners: bannersRouter,
 });
 
 // Export type for client

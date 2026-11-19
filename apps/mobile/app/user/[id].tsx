@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trpc } from '../../src/lib/trpc';
-import { Avatar, Card, Rating, Button, Chip, IconCircle, categoryIcon, colors, shadow } from '../../src/components/ds';
+import { Avatar, Card, Rating, Button, Chip, IconCircle, ProfileCardShare, categoryIcon, colors, shadow } from '../../src/components/ds';
 
 function since(iso: string) {
   const months = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / (30 * 24 * 3600 * 1000)));
@@ -21,8 +21,9 @@ type Tab = 'about' | 'services' | 'reviews';
 export default function PublicProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, card } = useLocalSearchParams<{ id: string; card?: string }>();
   const [tab, setTab] = useState<Tab>('about');
+  const [cardOpen, setCardOpen] = useState(card === '1');
 
   const { data: me } = trpc.profiles.getMe.useQuery();
   const { data: profile, isLoading, isError, refetch } = trpc.profiles.getPublic.useQuery({ userId: id! });
@@ -63,7 +64,11 @@ export default function PublicProfileScreen() {
               {profile.isTasker ? 'Perfil do profissional' : 'Perfil'}
             </Text>
             <Pressable
-              onPress={() => Share.share({ message: `Conheça ${profile.name ?? 'este profissional'} no Trampo!` })}
+              onPress={() =>
+                profile.isTasker
+                  ? setCardOpen(true)
+                  : Share.share({ message: `Conheça ${profile.name ?? 'este perfil'} no Trampo! ID: ${profile.publicCode}` })
+              }
               hitSlop={10}
               accessibilityRole="button"
               accessibilityLabel="Compartilhar perfil"
@@ -88,6 +93,10 @@ export default function PublicProfileScreen() {
               <Rating value={profile.rating} count={profile.reviewCount} size={15} />
             </View>
           )}
+          <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.orangeTint, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
+            <Text style={{ fontSize: 11, fontWeight: '800', color: colors.orange, letterSpacing: 0.8 }}>ID</Text>
+            <Text selectable style={{ marginLeft: 6, fontSize: 13, fontWeight: '800', color: colors.navy, letterSpacing: 1 }}>{profile.publicCode}</Text>
+          </View>
         </View>
 
         {profile.isTasker && (
@@ -171,6 +180,25 @@ export default function PublicProfileScreen() {
             ))}
         </View>
       </ScrollView>
+
+      {profile.isTasker && (
+        <ProfileCardShare
+          visible={cardOpen}
+          onClose={() => setCardOpen(false)}
+          data={{
+            name: profile.name,
+            avatarUrl: profile.avatarUrl,
+            publicCode: profile.publicCode,
+            categories: profile.categories,
+            rating: profile.rating,
+            reviewCount: profile.reviewCount,
+            totalTasks: profile.totalTasks,
+            kycVerified: profile.kycVerified,
+            bio: profile.bio,
+            timeOnPlatform: time.value,
+          }}
+        />
+      )}
 
       {profile.isTasker && !isMe && (
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 12, paddingBottom: insets.bottom + 12, flexDirection: 'row', gap: 12, borderTopWidth: 1, borderTopColor: colors.hairline }}>

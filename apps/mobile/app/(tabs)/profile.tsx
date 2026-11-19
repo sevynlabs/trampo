@@ -86,10 +86,27 @@ export default function ProfileScreen() {
               <Rating value={user!.taskerProfile!.rating} />
             </View>
           )}
+          {user?.publicCode && (
+            <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.orangeTint, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: colors.orange, letterSpacing: 0.8 }}>MEU ID</Text>
+              <Text selectable style={{ marginLeft: 6, fontSize: 13, fontWeight: '800', color: colors.navy, letterSpacing: 1 }}>{user.publicCode}</Text>
+            </View>
+          )}
           {isTasker && user && (
-            <Pressable onPress={() => router.push(`/user/${user.id}`)} hitSlop={8} accessibilityRole="button" style={{ marginTop: 10 }}>
-              <Text style={{ color: colors.sky, fontWeight: '700' }}>Ver meu perfil público</Text>
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 18, marginTop: 12 }}>
+              <Pressable onPress={() => router.push(`/user/${user.id}`)} hitSlop={8} accessibilityRole="button">
+                <Text style={{ color: colors.sky, fontWeight: '700' }}>Ver perfil público</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push({ pathname: '/user/[id]', params: { id: user.id, card: '1' } })}
+                hitSlop={8}
+                accessibilityRole="button"
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+              >
+                <Ionicons name="card-outline" size={16} color={colors.orange} />
+                <Text style={{ color: colors.orange, fontWeight: '800', marginLeft: 4 }}>Cartão de visita</Text>
+              </Pressable>
+            </View>
           )}
         </Card>
 

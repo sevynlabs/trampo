@@ -22,6 +22,7 @@ import {
   IconButton,
   ProfessionalCard,
   TaskRow,
+  AdBannerCarousel,
   categoryIcon,
   colors,
 } from '../../src/components/ds';
@@ -74,8 +75,9 @@ function ClientHome() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-        <Animated.View entering={FadeInDown.duration(380)}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, paddingBottom: 120 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <AdBannerCarousel />
+        <Animated.View entering={FadeInDown.duration(380)} style={{ marginTop: 18 }}>
           <Text style={{ fontSize: 26, fontWeight: '900', color: colors.ink, letterSpacing: -0.6 }}>
             Olá{firstName ? `, ${firstName}` : ''}! 👋
           </Text>

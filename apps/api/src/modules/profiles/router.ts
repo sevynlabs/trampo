@@ -9,6 +9,15 @@ import crypto from 'crypto';
 
 const isTaskerRole = (role: string) => role === 'TASKER' || role === 'BOTH';
 
+/** Stored as "TR4F9A2C"; shown to people as "TR-4F9A2C". */
+export const formatPublicCode = (code: string) => `${code.slice(0, 2)}-${code.slice(2)}`;
+
+/** Accepts "TR-4F9A2C", "tr4f9a2c", "#TR 4F9A2C"… → "TR4F9A2C" (or null). */
+export function parsePublicCode(raw: string): string | null {
+  const c = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return /^TR[0-9A-F]{6}$/.test(c) ? c : null;
+}
+
 export const profilesRouter = router({
   /**
    * Get current user profile
@@ -31,7 +40,12 @@ export const profilesRouter = router({
 
     // Never send PII hashes, the encrypted CPF blob or the device token back
     const { cpfHash, cpfEncrypted: _cpfEncrypted, pushToken: _pushToken, ...safeUser } = user;
-    return { ...safeUser, hasCpf: !!cpfHash, isAdmin: isAdminUser(user.id) };
+    return {
+      ...safeUser,
+      publicCode: formatPublicCode(user.publicCode),
+      hasCpf: !!cpfHash,
+      isAdmin: isAdminUser(user.id),
+    };
   }),
 
   /**
@@ -130,6 +144,7 @@ export const profilesRouter = router({
           avatarUrl: true,
           createdAt: true,
           role: true,
+          publicCode: true,
           taskerProfile: {
             select: {
               rating: true,
@@ -151,6 +166,7 @@ export const profilesRouter = router({
         id: user.id,
         name: user.name,
         avatarUrl: user.avatarUrl,
+        publicCode: formatPublicCode(user.publicCode),
         memberSince: user.createdAt.toISOString(),
         isTasker: user.role === 'TASKER' || user.role === 'BOTH',
         rating: user.taskerProfile?.rating ?? 0,
@@ -160,6 +176,20 @@ export const profilesRouter = router({
         reviewCount: user._count.reviewsReceived,
         categories: user.taskerProfile?.categories.map((c) => c.category) ?? [],
       };
+    }),
+
+  /**
+   * Resolve a public in-app code ("TR-4F9A2C", typed from a shared profile
+   * card) to the user id, so the app can open that profile.
+   */
+  findByCode: protectedProcedure
+    .input(z.object({ code: z.string().trim().max(16) }))
+    .query(async ({ input }) => {
+      const code = parsePublicCode(input.code);
+      if (!code) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Código inválido' });
+      const user = await prisma.user.findUnique({ where: { publicCode: code }, select: { id: true, isActive: true } });
+      if (!user || !user.isActive) throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum perfil com esse código' });
+      return { userId: user.id };
     }),
 
   /**
@@ -177,6 +207,7 @@ export const profilesRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const q = input.query || undefined;
+      const code = q ? parsePublicCode(q) : null;
       const profiles = await prisma.taskerProfile.findMany({
         where: {
           kycStatus: 'APPROVED',
@@ -186,6 +217,7 @@ export const profilesRouter = router({
           ...(q
             ? {
                 OR: [
+                  ...(code ? [{ user: { publicCode: code } }] : []),
                   { user: { name: { contains: q, mode: 'insensitive' as const } } },
                   { bio: { contains: q, mode: 'insensitive' as const } },
                   { categories: { some: { category: { name: { contains: q, mode: 'insensitive' as const } } } } },

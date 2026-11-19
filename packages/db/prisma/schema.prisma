@@ -90,6 +90,9 @@ model User {
   name          String?
   email         String?
   avatarUrl     String?   @map("avatar_url")
+  /// Public in-app ID shown on the shareable profile card (e.g. "TR4F9A2C",
+  /// displayed as "TR-4F9A2C"). Never a contact — just a handle to search for.
+  publicCode    String    @unique @default(dbgenerated("('TR'::text || upper(substr(md5(((random())::text || (clock_timestamp())::text)), 1, 6)))")) @map("public_code")
   role          UserRole  @default(CLIENT)
   pushToken     String?   @map("push_token") // Expo push token
   isActive      Boolean   @default(true) @map("is_active")
@@ -252,6 +255,26 @@ model Coupon {
   updatedAt  DateTime   @updatedAt @map("updated_at")
 
   @@map("coupons")
+}
+
+/// Advertiser banner shown in the carousel at the top of the app's home.
+model AdBanner {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  advertiser  String    // who is paying for the slot
+  title       String    // internal name + accessibility label
+  imageUrl    String    @map("image_url") // ~2.4:1 landscape image
+  linkUrl     String?   @map("link_url") // opened when the banner is tapped
+  isActive    Boolean   @default(true) @map("is_active")
+  sortOrder   Int       @default(0) @map("sort_order")
+  startsAt    DateTime? @map("starts_at")
+  endsAt      DateTime? @map("ends_at")
+  impressions Int       @default(0)
+  clicks      Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([isActive, sortOrder])
+  @@map("ad_banners")
 }
 
 /// Key/value store for admin-managed integration toggles + config.

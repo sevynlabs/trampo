@@ -2,6 +2,8 @@
 export { Logo, LogoMark } from './Logo';
 export { BrandHero } from './Hero';
 export { FloatingHero } from './FloatingHero';
+export { AdBannerCarousel } from './AdBannerCarousel';
+export { ProfileCardShare } from './ProfileCard';
 export type { FloatingItem } from './FloatingHero';
 export { Touchable } from './Touchable';
 export {

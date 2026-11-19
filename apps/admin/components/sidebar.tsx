@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, HardHat, ShieldCheck, Wallet, Megaphone } from "lucide-react";
+import { LayoutDashboard, Users, HardHat, ShieldCheck, Wallet, Megaphone, GalleryHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 
@@ -12,6 +12,7 @@ const NAV = [
   { href: "/professionals", label: "Profissionais", icon: HardHat, exact: false },
   { href: "/finance", label: "Financeiro", icon: Wallet, exact: false },
   { href: "/campaigns", label: "Campanhas", icon: Megaphone, exact: false },
+  { href: "/banners", label: "Anunciantes", icon: GalleryHorizontal, exact: false },
   { href: "/kyc", label: "Verificação (KYC)", icon: ShieldCheck, exact: false },
 ];
 

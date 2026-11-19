@@ -7,7 +7,7 @@ import * as SecureStore from 'expo-secure-store';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trpc } from '../lib/trpc';
 import { formatCurrency } from '../lib/format';
-import { Avatar, Card, Button, SectionHeader, IconButton, TaskRow, ListRow, colors } from '../components/ds';
+import { Avatar, Card, Button, SectionHeader, IconButton, TaskRow, ListRow, AdBannerCarousel, colors } from '../components/ds';
 
 const ACTIVE_ASSIGNED = ['ACCEPTED', 'IN_PROGRESS', 'COMPLETED', 'DISPUTED'];
 const AVAILABLE_KEY = 'trampo_tasker_available';
@@ -74,6 +74,9 @@ export function TaskerHome({ embedded = false }: { embedded?: boolean }) {
         contentContainerStyle={{ padding: 20, paddingTop: 8, paddingBottom: 120 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        <View style={{ marginBottom: 16 }}>
+          <AdBannerCarousel />
+        </View>
         <Card style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }}>
           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: available ? colors.success : colors.inkFaint }} />
           <Text style={{ flex: 1, marginLeft: 10, fontSize: 14.5, fontWeight: '600', color: colors.ink }}>
