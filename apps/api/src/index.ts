@@ -72,7 +72,8 @@ app.onError((err, c) => {
 });
 
 // Start server
-const port = parseInt(env.API_PORT);
+// Railway (and most hosts) inject PORT; API_PORT is the local default
+const port = parseInt(process.env.PORT ?? env.API_PORT);
 
 console.log(`
 ╔══════════════════════════════════════════════════╗

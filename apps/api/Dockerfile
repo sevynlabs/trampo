@@ -1,44 +1,49 @@
-FROM node:20-alpine AS base
-RUN npm install -g pnpm
+# API image (Railway). Build from the repo root:
+#   docker build -f apps/api/Dockerfile .
+FROM node:24-alpine AS base
+RUN apk add --no-cache openssl \
+  && corepack enable \
+  && corepack prepare pnpm@9.4.0 --activate
 
-# Build stage
+# ---------------------------------------------------------------- build stage
 FROM base AS builder
 WORKDIR /app
 
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl
+# Workspace manifests first (better layer cache). pnpm needs every workspace
+# package.json to accept the frozen lockfile, even the ones we don't build.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+COPY apps/api/package.json apps/api/
+COPY apps/admin/package.json apps/admin/
+COPY apps/mobile/package.json apps/mobile/
+COPY packages/db/package.json packages/db/
+COPY packages/contracts/package.json packages/contracts/
 
-# Copy workspace files
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY packages/db ./packages/db
-COPY packages/contracts ./packages/contracts
-COPY apps/api ./apps/api
+# Only the API and what it depends on
+RUN pnpm install --frozen-lockfile --filter "@trampo/api..."
 
-# Install all dependencies (including devDependencies for build)
-RUN pnpm install --frozen-lockfile
+COPY packages/db packages/db
+COPY packages/contracts packages/contracts
+COPY apps/api apps/api
 
-# Generate Prisma client (using specific version to match package.json)
-WORKDIR /app/packages/db
-RUN npx prisma@5.15.0 generate
-WORKDIR /app
+RUN pnpm --filter @trampo/db generate \
+  && pnpm --filter @trampo/api build
 
-# Build API
-RUN pnpm --filter @trampo/api build
-
-# Production stage
+# -------------------------------------------------------------- runtime stage
 FROM base AS runner
 WORKDIR /app
-
 ENV NODE_ENV=production
 
-# Copy built files
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
 WORKDIR /app/apps/api
-
+USER node
 EXPOSE 3000
+
+# Railway also probes /health before switching traffic (zero-downtime deploys)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- "http://127.0.0.1:${PORT:-${API_PORT:-3000}}/health" > /dev/null || exit 1
 
 CMD ["node", "dist/index.js"]
