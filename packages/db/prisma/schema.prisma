@@ -90,6 +90,9 @@ model User {
   name          String?
   email         String?
   avatarUrl     String?   @map("avatar_url")
+  /// Public in-app ID shown on the shareable profile card (e.g. "TR4F9A2C",
+  /// displayed as "TR-4F9A2C"). Never a contact — just a handle to search for.
+  publicCode    String    @unique @default(dbgenerated("('TR'::text || upper(substr(md5(((random())::text || (clock_timestamp())::text)), 1, 6)))")) @map("public_code")
   role          UserRole  @default(CLIENT)
   pushToken     String?   @map("push_token") // Expo push token
   isActive      Boolean   @default(true) @map("is_active")
@@ -98,6 +101,7 @@ model User {
 
   // Relations
   taskerProfile   TaskerProfile?
+  identity        IdentityVerification?
   tasksAsClient   Task[]          @relation("ClientTasks")
   assignments     TaskAssignment[]
   sentMessages    Message[]       @relation("SentMessages")
@@ -135,10 +139,16 @@ model TaskerProfile {
   kycRejectedAt   DateTime? @map("kyc_rejected_at")
   kycRejectReason String?   @map("kyc_reject_reason")
 
+  // Professional verification: kycStatus/kycSubmittedAt/... now track the
+  // review of the criminal-record certificate (only for professionals).
+  // The identity documents moved to IdentityVerification (all users); the
+  // three columns below are legacy and no longer written.
   // KYC Documents (stored in Supabase Storage, only paths here)
   documentFrontPath String?  @map("document_front_path")
   documentBackPath  String?  @map("document_back_path")
   selfiePath        String?  @map("selfie_path")
+  /// Certidão de antecedentes criminais (PDF do gov.br ou foto)
+  criminalRecordPath String? @map("criminal_record_path")
 
   // Asaas integration
   asaasAccountId  String?   @unique @map("asaas_account_id")
@@ -153,6 +163,9 @@ model TaskerProfile {
   // Location for feed
   currentLocation Unsupported("geography(Point, 4326)")? @map("current_location")
   serviceRadius   Int       @default(10000) @map("service_radius") // In meters
+  // Base city (reverse-geocoded from currentLocation in the app's "Área de atuação")
+  city            String?
+  state           String?   // UF, e.g. "MG"
 
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
@@ -252,6 +265,26 @@ model Coupon {
   updatedAt  DateTime   @updatedAt @map("updated_at")
 
   @@map("coupons")
+}
+
+/// Advertiser banner shown in the carousel at the top of the app's home.
+model AdBanner {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  advertiser  String    // who is paying for the slot
+  title       String    // internal name + accessibility label
+  imageUrl    String    @map("image_url") // ~2.4:1 landscape image
+  linkUrl     String?   @map("link_url") // opened when the banner is tapped
+  isActive    Boolean   @default(true) @map("is_active")
+  sortOrder   Int       @default(0) @map("sort_order")
+  startsAt    DateTime? @map("starts_at")
+  endsAt      DateTime? @map("ends_at")
+  impressions Int       @default(0)
+  clicks      Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([isActive, sortOrder])
+  @@map("ad_banners")
 }
 
 /// Key/value store for admin-managed integration toggles + config.
@@ -454,12 +487,18 @@ model Review {
   tags       String[] // ["Pontual", "Caprichoso", etc]
   createdAt  DateTime @default(now()) @map("created_at")
 
+  // Moderation: hidden reviews are kept but excluded from public listings
+  // and from the reviewee's rating.
+  hiddenAt     DateTime? @map("hidden_at")
+  hiddenReason String?   @map("hidden_reason")
+
   task     Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   reviewer User @relation("ReviewsGiven", fields: [reviewerId], references: [id])
   reviewee User @relation("ReviewsReceived", fields: [revieweeId], references: [id])
 
   @@unique([taskId, reviewerId]) // One review per user per task
   @@index([revieweeId])
+  @@index([createdAt])
   @@map("reviews")
 }
 
@@ -550,4 +589,27 @@ model ServiceArea {
 
   @@index([boundary], type: Gist)
   @@map("service_areas")
+}
+
+/// Minimum verification for EVERY user (client or professional):
+/// identity document + selfie holding it. Sending is enough to post and hire;
+/// professionals additionally need it APPROVED plus the criminal record.
+model IdentityVerification {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String    @unique @map("user_id") @db.Uuid
+  documentFrontPath String?   @map("document_front_path")
+  documentBackPath  String?   @map("document_back_path")
+  selfiePath        String?   @map("selfie_path")
+  status            KycStatus @default(PENDING)
+  submittedAt       DateTime? @map("submitted_at")
+  approvedAt        DateTime? @map("approved_at")
+  rejectedAt        DateTime? @map("rejected_at")
+  rejectReason      String?   @map("reject_reason")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, submittedAt])
+  @@map("identity_verifications")
 }

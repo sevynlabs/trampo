@@ -4,3 +4,4 @@ export * from './tasks';
 export * from './payments';
 export * from './reviews';
 export * from './common';
+export * from './legal';

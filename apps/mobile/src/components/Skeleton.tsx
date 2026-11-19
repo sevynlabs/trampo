@@ -10,8 +10,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const SKELETON_BASE = '#DCEAF1';
-const SKELETON_HIGHLIGHT = '#EEF6FA';
+const SKELETON_BASE = '#E6EBF2';
+const SKELETON_HIGHLIGHT = '#EEF3F9';
 
 interface SkeletonProps {
   width?: number | `${number}%`;
@@ -167,8 +167,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#DCEAF1',
-    shadowColor: '#02457A',
+    borderColor: '#E6EBF2',
+    shadowColor: '#0B2E5C',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.07,
     shadowRadius: 14,
@@ -193,6 +193,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#DCEAF1',
+    borderTopColor: '#E6EBF2',
   },
 });

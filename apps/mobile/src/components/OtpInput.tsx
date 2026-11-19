@@ -6,6 +6,7 @@ import {
   Text,
   StyleSheet,
 } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -78,9 +79,9 @@ function OtpDigitBox({
   const getBorderColor = () => {
     if (isError) return '#E11D48';
     if (isSuccess) return '#0E9F6E';
-    if (isActive) return '#018ABE';
-    if (isFilled) return '#02457A';
-    return '#DCEAF1';
+    if (isActive) return '#FF6A00';
+    if (isFilled) return '#0B2E5C';
+    return '#E6EBF2';
   };
 
   const getBackgroundColor = () => {
@@ -118,7 +119,7 @@ export function OtpInput({
   success,
   disabled,
 }: OtpInputProps) {
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const shakeAnimation = useSharedValue(0);
   const prevError = useRef<string | undefined>(undefined);
 
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#02457A',
+    shadowColor: '#0B2E5C',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -225,12 +226,12 @@ const styles = StyleSheet.create({
   digitText: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#001B48',
+    color: '#041E42',
   },
   cursor: {
     width: 2,
     height: 24,
-    backgroundColor: '#018ABE',
+    backgroundColor: '#FF6A00',
     borderRadius: 1,
   },
   hiddenInput: {

@@ -9,7 +9,10 @@
     "push": "prisma db push",
     "migrate": "prisma migrate dev",
     "studio": "prisma studio",
-    "typecheck": "tsc --noEmit"
+    "seed": "tsx --env-file=../../.env prisma/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:status": "prisma migrate status"
   },
   "dependencies": {
     "@prisma/client": "^5.15.0"

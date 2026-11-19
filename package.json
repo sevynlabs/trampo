@@ -14,7 +14,17 @@
     "db:push": "pnpm --filter @trampo/db push",
     "db:migrate": "pnpm --filter @trampo/db migrate",
     "db:studio": "pnpm --filter @trampo/db studio",
-    "clean": "turbo clean && rm -rf node_modules"
+    "db:seed": "pnpm --filter @trampo/db seed",
+    "clean": "turbo clean && rm -rf node_modules",
+    "db:migrate:deploy": "pnpm --filter @trampo/db migrate:deploy"
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "19.3.0",
+      "react-dom": "19.3.0",
+      "@expo/dom-webview": "~58.0.2",
+      "@react-native/metro-config": "0.88.1"
+    }
   },
   "devDependencies": {
     "turbo": "^2.0.0",

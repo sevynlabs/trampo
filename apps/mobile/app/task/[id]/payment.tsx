@@ -85,7 +85,7 @@ export default function PaymentScreen() {
               accessibilityRole="button"
               accessibilityLabel="Fechar"
             >
-              <Ionicons name="close" size={24} color="#001B48" />
+              <Ionicons name="close" size={24} color="#041E42" />
             </Pressable>
           ),
         }}
@@ -128,7 +128,7 @@ export default function PaymentScreen() {
           </View>
         ) : createCharge.isPending || !charge ? (
           <View className="py-20 items-center">
-            <ActivityIndicator size="large" color="#018ABE" />
+            <ActivityIndicator size="large" color="#FF6A00" />
             <Text className="text-ink-muted mt-3">Gerando cobrança Pix...</Text>
           </View>
         ) : (
@@ -182,7 +182,7 @@ export default function PaymentScreen() {
 
             {/* Waiting indicator */}
             <View className="flex-row items-center justify-center mb-6">
-              <ActivityIndicator color="#5B7A91" />
+              <ActivityIndicator color="#5F6B7E" />
               <Text className="text-ink-muted ml-2">Aguardando pagamento...</Text>
             </View>
 

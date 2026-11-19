@@ -53,7 +53,7 @@ export default function ServiceCategoriesScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="arrow-back" size={24} color="#001B48" />
+              <Ionicons name="arrow-back" size={24} color="#041E42" />
             </Pressable>
           ),
         }}
@@ -61,7 +61,7 @@ export default function ServiceCategoriesScreen() {
 
       {isLoading ? (
         <View className="flex-1 bg-background items-center justify-center">
-          <ActivityIndicator size="large" color="#018ABE" />
+          <ActivityIndicator size="large" color="#FF6A00" />
         </View>
       ) : (
         <View className="flex-1 bg-background">
@@ -98,7 +98,7 @@ export default function ServiceCategoriesScreen() {
                       <Ionicons
                         name="checkmark-circle"
                         size={18}
-                        color="#018ABE"
+                        color="#FF6A00"
                         style={{ marginLeft: 6 }}
                       />
                     )}

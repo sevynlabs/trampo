@@ -75,13 +75,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#001B48',
+    color: '#041E42',
     letterSpacing: -0.5,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     lineHeight: 22,
   },
 });

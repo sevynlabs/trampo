@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure, taskerProcedure } from '../../trpc';
+import { router, protectedProcedure, taskerProcedure, verifiedClientProcedure } from '../../trpc';
+import { getPlatformConfig } from '../../lib/platform-settings';
 import { prisma } from '@trampo/db';
 import { env } from '../../lib/env';
 import {
@@ -19,7 +20,7 @@ const isDev = env.NODE_ENV === 'development';
  * Money a tasker can withdraw: released earnings minus withdrawals that are
  * paid OR still pending (a pending transfer may already have gone through).
  */
-async function getAvailableBalance(userId: string, taskerProfileId: string): Promise<number> {
+export async function getAvailableBalance(userId: string, taskerProfileId: string): Promise<number> {
   const [released, withdrawals] = await Promise.all([
     prisma.payment.aggregate({
       where: { task: { assignment: { taskerId: userId } }, status: 'RELEASED' },
@@ -44,7 +45,7 @@ export const paymentsRouter = router({
    * Create payment charge (Pix) for a task
    * Called when tasker accepts the task
    */
-  createCharge: protectedProcedure
+  createCharge: verifiedClientProcedure
     .input(z.object({ taskId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const task = await prisma.task.findUnique({
@@ -399,11 +400,19 @@ export const paymentsRouter = router({
   requestWithdrawal: taskerProcedure
     .input(
       z.object({
-        amount: z.number().int().min(1000), // min R$ 10,00
+        amount: z.number().int().min(100), // live minimum checked below (admin settings)
         pixKey: z.string().min(3).max(140),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const { withdrawalMinAmount } = await getPlatformConfig();
+      if (input.amount < withdrawalMinAmount) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Saque mínimo é R$ ${(withdrawalMinAmount / 100).toFixed(2).replace('.', ',')}`,
+        });
+      }
+
       const profile = await prisma.taskerProfile.findUnique({
         where: { userId: ctx.user.id },
       });

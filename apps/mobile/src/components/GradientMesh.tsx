@@ -111,25 +111,25 @@ export function GradientMesh({
       <Svg width={SCREEN_WIDTH} height={height} style={StyleSheet.absoluteFill}>
         <Defs>
           <RadialGradient id="mesh1" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#02457A" stopOpacity={config.circle1} />
-            <Stop offset="100%" stopColor="#02457A" stopOpacity="0" />
+            <Stop offset="0%" stopColor="#0B2E5C" stopOpacity={config.circle1} />
+            <Stop offset="100%" stopColor="#0B2E5C" stopOpacity="0" />
           </RadialGradient>
           <RadialGradient id="mesh2" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#018ABE" stopOpacity={config.circle2} />
-            <Stop offset="100%" stopColor="#018ABE" stopOpacity="0" />
+            <Stop offset="0%" stopColor="#FF6A00" stopOpacity={config.circle2} />
+            <Stop offset="100%" stopColor="#FF6A00" stopOpacity="0" />
           </RadialGradient>
           <RadialGradient id="mesh3" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#97CADB" stopOpacity={config.circle3} />
-            <Stop offset="100%" stopColor="#97CADB" stopOpacity="0" />
+            <Stop offset="0%" stopColor="#FFC59E" stopOpacity={config.circle3} />
+            <Stop offset="100%" stopColor="#FFC59E" stopOpacity="0" />
           </RadialGradient>
           <RadialGradient id="mesh4" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#D6E8EE" stopOpacity={config.circle4} />
-            <Stop offset="100%" stopColor="#D6E8EE" stopOpacity="0" />
+            <Stop offset="0%" stopColor="#FFF1E6" stopOpacity={config.circle4} />
+            <Stop offset="100%" stopColor="#FFF1E6" stopOpacity="0" />
           </RadialGradient>
         </Defs>
 
         {/* Background */}
-        <Rect x="0" y="0" width="100%" height="100%" fill="#F3F8FB" />
+        <Rect x="0" y="0" width="100%" height="100%" fill="#F5F8FC" />
 
         {/* Animated gradient circles */}
         <AnimatedMeshCircle
@@ -189,16 +189,16 @@ export function GradientMeshCompact({
       <Svg width={SCREEN_WIDTH} height={height} style={StyleSheet.absoluteFill}>
         <Defs>
           <RadialGradient id="meshCompact1" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#02457A" stopOpacity="0.3" />
-            <Stop offset="100%" stopColor="#02457A" stopOpacity="0" />
+            <Stop offset="0%" stopColor="#0B2E5C" stopOpacity="0.3" />
+            <Stop offset="100%" stopColor="#0B2E5C" stopOpacity="0" />
           </RadialGradient>
           <RadialGradient id="meshCompact2" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#018ABE" stopOpacity="0.25" />
-            <Stop offset="100%" stopColor="#018ABE" stopOpacity="0" />
+            <Stop offset="0%" stopColor="#FF6A00" stopOpacity="0.25" />
+            <Stop offset="100%" stopColor="#FF6A00" stopOpacity="0" />
           </RadialGradient>
         </Defs>
 
-        <Rect x="0" y="0" width="100%" height="100%" fill="#F3F8FB" />
+        <Rect x="0" y="0" width="100%" height="100%" fill="#F5F8FC" />
 
         <AnimatedMeshCircle
           cx={SCREEN_WIDTH * 0.15}

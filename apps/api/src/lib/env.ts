@@ -36,6 +36,17 @@ const envSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
 
+  // App Store / Google Play reviewer login. Only this exact number accepts this
+  // fixed code (no SMS is sent). Leave both unset to disable. Works in production.
+  REVIEW_PHONE: z
+    .string()
+    .regex(/^\+55\d{10,11}$/)
+    .optional(),
+  REVIEW_OTP_CODE: z
+    .string()
+    .regex(/^\d{6}$/)
+    .optional(),
+
   // Redis
   UPSTASH_REDIS_REST_URL: z.string().url(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1),

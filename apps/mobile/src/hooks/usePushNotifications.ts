@@ -7,10 +7,12 @@ import { router } from 'expo-router';
 import { trpc } from '../lib/trpc';
 import { getNotificationRoute } from '../lib/notificationRoutes';
 
-// Remote push was removed from Expo Go (SDK 53+): importing expo-notifications
-// there throws on Android. Load it only in development/production builds.
+// Remote push was removed from Expo Go on ANDROID (SDK 53+): importing
+// expo-notifications there throws. iOS Expo Go still gets Expo push tokens,
+// so only Android-in-Expo-Go skips it (dev/production builds always load it).
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-const Notifications: typeof NotificationsModule | null = isExpoGo
+const pushUnsupported = isExpoGo && Platform.OS === 'android';
+const Notifications: typeof NotificationsModule | null = pushUnsupported
   ? null
   : // eslint-disable-next-line @typescript-eslint/no-require-imports
     require('expo-notifications');
@@ -35,7 +37,7 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!Notifications) {
-      if (__DEV__) console.log('[PUSH] Expo Go: push notifications disabled');
+      if (__DEV__) console.log('[PUSH] Expo Go (Android): push notifications disabled');
       return;
     }
 

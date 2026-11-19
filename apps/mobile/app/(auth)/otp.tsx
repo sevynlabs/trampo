@@ -104,7 +104,7 @@ export default function OtpScreen() {
             accessibilityRole="button"
             accessibilityLabel="Voltar"
           >
-            <Ionicons name="arrow-back" size={24} color="#001B48" />
+            <Ionicons name="arrow-back" size={24} color="#041E42" />
           </Pressable>
         </Animated.View>
 
@@ -140,7 +140,7 @@ export default function OtpScreen() {
         {/* Loading indicator */}
         {verifyOtp.isPending && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator color="#018ABE" size="small" />
+            <ActivityIndicator color="#FF6A00" size="small" />
             <Text style={styles.loadingText}>Verificando...</Text>
           </View>
         )}
@@ -162,10 +162,10 @@ export default function OtpScreen() {
               style={styles.resendButton}
             >
               {resendOtp.isPending ? (
-                <ActivityIndicator color="#018ABE" size="small" />
+                <ActivityIndicator color="#FF6A00" size="small" />
               ) : (
                 <>
-                  <Ionicons name="refresh" size={18} color="#018ABE" />
+                  <Ionicons name="refresh" size={18} color="#FF6A00" />
                   <Text style={styles.resendText}>Reenviar código</Text>
                 </>
               )}
@@ -187,7 +187,7 @@ export default function OtpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F8FB',
+    backgroundColor: '#F5F8FC',
   },
   meshContainer: {
     position: 'absolute',
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
-    shadowColor: '#02457A',
+    shadowColor: '#0B2E5C',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -217,17 +217,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#001B48',
+    color: '#041E42',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     marginBottom: 40,
     lineHeight: 22,
   },
   phoneHighlight: {
-    color: '#02457A',
+    color: '#0B2E5C',
     fontWeight: '600',
   },
   otpContainer: {
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   resendContainer: {
     alignItems: 'center',
@@ -250,11 +250,11 @@ const styles = StyleSheet.create({
   },
   countdownText: {
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   countdownNumber: {
     fontWeight: '600',
-    color: '#02457A',
+    color: '#0B2E5C',
   },
   resendButton: {
     flexDirection: 'row',
@@ -262,13 +262,13 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    backgroundColor: 'rgba(1, 138, 190, 0.08)',
+    backgroundColor: 'rgba(255, 106, 0, 0.08)',
     borderRadius: 12,
   },
   resendText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#018ABE',
+    color: '#FF6A00',
   },
   changeNumberButton: {
     alignItems: 'center',
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   },
   changeNumberText: {
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     textDecorationLine: 'underline',
   },
 });

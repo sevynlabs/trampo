@@ -2,6 +2,7 @@
 
 // Buttons
 export { GradientButton } from './GradientButton';
+export * from './ds';
 
 // Cards
 export { PressableCard } from './PressableCard';

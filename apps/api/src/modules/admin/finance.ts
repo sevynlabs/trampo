@@ -6,7 +6,9 @@ import {
   requireAdminRole,
 } from '../../trpc';
 import { prisma, Prisma } from '@trampo/db';
+import { parsePublicCode } from '../../lib/public-code';
 import { logAudit } from '../../lib/audit';
+import { codePrefix, uuidPrefixRange } from './period';
 
 const PAYMENT_STATUS = z.enum([
   'PENDING',
@@ -41,6 +43,10 @@ export const financeRouter = router({
         pageSize: z.number().int().min(1).max(100).default(20),
         status: z.union([PAYMENT_STATUS, z.literal('ALL')]).default('ALL'),
         days: z.number().int().min(1).max(365).optional(),
+        /** Payment id prefix / short code (#A1B2C3D4), task title or code, payer name/phone. */
+        search: z.string().trim().max(120).optional(),
+        sortBy: z.enum(['createdAt', 'amount', 'paidAt']).default('createdAt'),
+        sortDir: z.enum(['asc', 'desc']).default('desc'),
       })
     )
     .query(async ({ input }) => {
@@ -51,12 +57,34 @@ export const financeRouter = router({
           gte: new Date(Date.now() - input.days * 24 * 60 * 60 * 1000),
         };
       }
+      if (input.search) {
+        const q = input.search;
+        const or: Prisma.PaymentWhereInput[] = [
+          { task: { title: { contains: q, mode: 'insensitive' } } },
+          { user: { name: { contains: q, mode: 'insensitive' } } },
+          ...(parsePublicCode(q) ? [{ user: { publicCode: parsePublicCode(q)! } }] : []),
+          { user: { phone: { contains: q } } },
+        ];
+        const prefix = codePrefix(q);
+        if (prefix) {
+          const range = uuidPrefixRange(prefix);
+          or.push({ id: range }, { taskId: range });
+        }
+        where.OR = or;
+      }
+
+      const orderBy: Prisma.PaymentOrderByWithRelationInput[] = [
+        input.sortBy === 'paidAt'
+          ? { paidAt: { sort: input.sortDir, nulls: 'last' } }
+          : { [input.sortBy]: input.sortDir },
+        { id: 'asc' },
+      ];
 
       const [total, payments] = await Promise.all([
         prisma.payment.count({ where }),
         prisma.payment.findMany({
           where,
-          orderBy: { createdAt: 'desc' },
+          orderBy,
           skip: (input.page - 1) * input.pageSize,
           take: input.pageSize,
           select: {
@@ -68,7 +96,7 @@ export const financeRouter = router({
             createdAt: true,
             paidAt: true,
             task: { select: { id: true, title: true } },
-            user: { select: { id: true, name: true } },
+            user: { select: { id: true, name: true, avatarUrl: true, publicCode: true } },
           },
         }),
       ]);
@@ -85,6 +113,9 @@ export const financeRouter = router({
           taskId: p.task?.id ?? null,
           taskTitle: p.task?.title ?? null,
           payerName: p.user?.name ?? null,
+          payerId: p.user?.id ?? null,
+          avatarUrl: p.user?.avatarUrl ?? null,
+          payerPublicCode: p.user?.publicCode ?? null,
         })),
         total,
         page: input.page,

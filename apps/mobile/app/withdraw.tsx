@@ -17,6 +17,7 @@ import Animated, { FadeIn, FadeInDown, BounceIn } from 'react-native-reanimated'
 import { trpc } from '../src/lib/trpc';
 import { formatCurrency, centsToInput, parseMoneyToCents } from '../src/lib/format';
 import { GradientButton } from '../src/components/GradientButton';
+import { usePlatformConfig } from '../src/lib/platform-config';
 
 type ScreenState = 'form' | 'processing' | 'success' | 'error';
 
@@ -68,12 +69,14 @@ export default function WithdrawScreen() {
     },
   });
 
+  // Minimum set in the admin (the API enforces it too)
+  const { withdrawalMinAmount: minWithdrawal } = usePlatformConfig();
   const amountCents = parseMoneyToCents(amount);
   const amountValid = Number.isFinite(amountCents);
   const validationMessage = !amountValid
     ? 'Informe um valor válido'
-    : amountCents < 1000
-      ? 'O valor mínimo é R$ 10,00'
+    : amountCents < minWithdrawal
+      ? `O valor mínimo é ${formatCurrency(minWithdrawal)}`
       : amountCents > available
         ? 'O valor é maior que o seu saldo disponível'
         : pixKey.trim().length < 3
@@ -123,7 +126,7 @@ export default function WithdrawScreen() {
 
   const renderProcessingScreen = () => (
     <Animated.View entering={FadeIn} style={styles.centerContainer}>
-      <ActivityIndicator size="large" color="#018ABE" />
+      <ActivityIndicator size="large" color="#FF6A00" />
       <Text style={styles.processingTitle}>Enviando Pix...</Text>
       <Text style={styles.processingAmount}>{formatCurrency(amountCents)}</Text>
     </Animated.View>
@@ -221,7 +224,7 @@ export default function WithdrawScreen() {
     >
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#018ABE" />
+          <ActivityIndicator size="large" color="#FF6A00" />
         </View>
       ) : balanceError ? (
         <View style={styles.loadingContainer}>
@@ -247,7 +250,7 @@ export default function WithdrawScreen() {
               onChangeText={setAmount}
               keyboardType="decimal-pad"
               placeholder="0,00"
-              placeholderTextColor="#94B2C4"
+              placeholderTextColor="#9AA5B8"
               style={styles.amountInput}
             />
             <Pressable
@@ -259,7 +262,7 @@ export default function WithdrawScreen() {
               <Text style={styles.maxButton}>Tudo</Text>
             </Pressable>
           </View>
-          <Text style={styles.minAmountHint}>Mínimo R$ 10,00</Text>
+          <Text style={styles.minAmountHint}>Mínimo {formatCurrency(minWithdrawal)}</Text>
 
           {/* Pix key */}
           <Text style={styles.inputLabel}>Chave Pix</Text>
@@ -269,7 +272,7 @@ export default function WithdrawScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             placeholder="CPF, e-mail, +55 telefone ou chave aleatória"
-            placeholderTextColor="#94B2C4"
+            placeholderTextColor="#9AA5B8"
             style={styles.pixKeyInput}
           />
 
@@ -280,9 +283,9 @@ export default function WithdrawScreen() {
             disabled={!valid}
             loading={requestWithdrawal.isPending}
           />
-          {available < 1000 ? (
+          {available < minWithdrawal ? (
             <Text style={styles.insufficientFundsText}>
-              Você precisa de pelo menos R$ 10,00 disponíveis para sacar.
+              Você precisa de pelo menos {formatCurrency(minWithdrawal)} disponíveis para sacar.
             </Text>
           ) : (
             validationMessage && (
@@ -312,7 +315,7 @@ export default function WithdrawScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Voltar"
               >
-                <Ionicons name="arrow-back" size={24} color="#001B48" />
+                <Ionicons name="arrow-back" size={24} color="#041E42" />
               </Pressable>
             ),
         }}
@@ -331,7 +334,7 @@ export default function WithdrawScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F8FB',
+    backgroundColor: '#F5F8FC',
   },
   flex1: {
     flex: 1,
@@ -359,27 +362,27 @@ const styles = StyleSheet.create({
   availableCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
     alignItems: 'center',
   },
   availableLabel: {
-    color: '#5B7A91',
+    color: '#5F6B7E',
     fontSize: 14,
   },
   availableAmount: {
     fontFamily: 'System',
     fontSize: 30,
     fontWeight: 'bold',
-    color: '#001B48',
+    color: '#041E42',
     marginTop: 4,
   },
 
   // Input labels
   inputLabel: {
-    color: '#001B48',
+    color: '#041E42',
     fontWeight: '500',
     marginBottom: 8,
   },
@@ -390,29 +393,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
     borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 8,
   },
   currencyPrefix: {
-    color: '#5B7A91',
+    color: '#5F6B7E',
     fontWeight: 'bold',
   },
   amountInput: {
     flex: 1,
     paddingVertical: 16,
     marginLeft: 8,
-    color: '#001B48',
+    color: '#041E42',
     fontSize: 18,
   },
   maxButton: {
-    color: '#018ABE',
+    color: '#FF6A00',
     fontWeight: 'bold',
     fontSize: 14,
   },
   minAmountHint: {
-    color: '#94B2C4',
+    color: '#9AA5B8',
     fontSize: 12,
     marginBottom: 24,
   },
@@ -421,17 +424,17 @@ const styles = StyleSheet.create({
   pixKeyInput: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    color: '#001B48',
+    color: '#041E42',
     marginBottom: 32,
   },
 
   // Insufficient funds
   insufficientFundsText: {
-    color: '#5B7A91',
+    color: '#5F6B7E',
     textAlign: 'center',
     fontSize: 14,
     marginTop: 16,
@@ -441,13 +444,13 @@ const styles = StyleSheet.create({
   processingTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#001B48',
+    color: '#041E42',
     marginTop: 24,
   },
   processingAmount: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#018ABE',
+    color: '#FF6A00',
     marginTop: 8,
   },
 
@@ -455,7 +458,7 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#001B48',
+    color: '#041E42',
     marginTop: 24,
     textAlign: 'center',
   },
@@ -468,13 +471,13 @@ const styles = StyleSheet.create({
   },
   successDetail: {
     fontSize: 16,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     marginTop: 12,
     textAlign: 'center',
   },
   successId: {
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     marginTop: 8,
     fontFamily: 'Courier',
     textAlign: 'center',
@@ -488,13 +491,13 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#001B48',
+    color: '#041E42',
     marginTop: 24,
     textAlign: 'center',
   },
   errorMessage: {
     fontSize: 16,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     marginTop: 16,
     textAlign: 'center',
     paddingHorizontal: 16,
@@ -516,7 +519,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelText: {
-    color: '#5B7A91',
+    color: '#5F6B7E',
     fontSize: 16,
     fontWeight: '600',
   },

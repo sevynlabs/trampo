@@ -116,3 +116,64 @@ export function BarChart({
     </div>
   );
 }
+
+/** Donut chart with legend (e.g. "Status dos serviços"). */
+export function DonutChart({
+  data,
+  size = 160,
+  centerLabel,
+}: {
+  data: { label: string; value: number; color: string }[];
+  size?: number;
+  centerLabel?: string;
+}) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const r = 15.9155; // circumference = 100
+  let offset = 25; // start at 12 o'clock
+
+  return (
+    <div className="flex flex-col items-center gap-6 sm:flex-row">
+      <svg viewBox="0 0 42 42" width={size} height={size} className="shrink-0" role="img" aria-label="Distribuição">
+        <circle cx="21" cy="21" r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
+        {total > 0 &&
+          data.map((d) => {
+            const pct = (d.value / total) * 100;
+            const el = (
+              <circle
+                key={d.label}
+                cx="21"
+                cy="21"
+                r={r}
+                fill="none"
+                stroke={d.color}
+                strokeWidth="6"
+                strokeDasharray={`${pct} ${100 - pct}`}
+                strokeDashoffset={offset}
+              >
+                <title>{`${d.label}: ${d.value}`}</title>
+              </circle>
+            );
+            offset -= pct;
+            return el;
+          })}
+        <text x="21" y="22.5" textAnchor="middle" fontSize="6" fontWeight="800" className="fill-foreground">
+          {total}
+        </text>
+        {centerLabel && (
+          <text x="21" y="28" textAnchor="middle" fontSize="2.6" className="fill-muted-foreground">
+            {centerLabel}
+          </text>
+        )}
+      </svg>
+      <ul className="w-full space-y-2 text-sm">
+        {data.map((d) => (
+          <li key={d.label} className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
+            <span className="flex-1 text-muted-foreground">{d.label}</span>
+            <span className="font-semibold tabular-nums">{total ? Math.round((d.value / total) * 100) : 0}%</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

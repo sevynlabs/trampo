@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure } from '../../trpc';
+import { router, protectedProcedure, verifiedClientProcedure } from '../../trpc';
 import { createTaskInput } from '@trampo/contracts';
 import { prisma } from '@trampo/db';
 import { calculatePrice } from '../../domain/pricing';
+import { getPricingRates, assertNotInMaintenance } from '../../lib/platform-settings';
 
 const URGENT_WINDOW_MS = 60 * 60 * 1000;
 
@@ -25,18 +26,29 @@ function resolveSchedule(scheduledAt: string | undefined, isUrgent: boolean) {
   return { scheduledAt: date, isUrgent: isUrgent || msAhead < URGENT_WINDOW_MS };
 }
 
+/** calculatePrice throws a plain Error below the minimum → turn it into a 400 with the message. */
+function priceOrBadRequest(...args: Parameters<typeof calculatePrice>) {
+  try {
+    return calculatePrice(...args);
+  } catch (err) {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: (err as Error).message });
+  }
+}
+
 export const tasksRouter = router({
   /**
    * Create a new task
    */
-  create: protectedProcedure
+  create: verifiedClientProcedure
     .input(createTaskInput)
     .mutation(async ({ ctx, input }) => {
       const { categoryId, title, description, address, location, baseValue } = input;
       const { scheduledAt, isUrgent } = resolveSchedule(input.scheduledAt, input.isUrgent);
 
-      // ALWAYS recalculate price server-side
-      const price = calculatePrice(baseValue, isUrgent);
+      await assertNotInMaintenance();
+
+      // ALWAYS recalculate price server-side, with the live platform fees
+      const price = priceOrBadRequest(baseValue, isUrgent, await getPricingRates());
 
       // Create task with PostGIS point
       const task = await prisma.$queryRaw<{ id: string }[]>`
@@ -120,7 +132,7 @@ export const tasksRouter = router({
         input.scheduledAt ?? task.scheduledAt?.toISOString(),
         input.isUrgent
       );
-      const price = calculatePrice(input.baseValue, schedule.isUrgent);
+      const price = priceOrBadRequest(input.baseValue, schedule.isUrgent, await getPricingRates());
 
       // Guarded write: fails if the task was accepted in the meantime
       const updated = await prisma.task.updateMany({

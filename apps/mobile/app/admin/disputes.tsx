@@ -63,7 +63,7 @@ export default function AdminDisputesScreen() {
           headerTitleStyle: { fontWeight: 'bold' },
           headerLeft: () => (
             <Pressable onPress={() => router.back()} className="mr-4">
-              <Ionicons name="arrow-back" size={24} color="#001B48" />
+              <Ionicons name="arrow-back" size={24} color="#041E42" />
             </Pressable>
           ),
         }}
@@ -73,12 +73,12 @@ export default function AdminDisputesScreen() {
         className="flex-1 bg-background"
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+          <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
         }
       >
         {isLoading && (
           <View className="py-20 items-center">
-            <ActivityIndicator size="large" color="#018ABE" />
+            <ActivityIndicator size="large" color="#FF6A00" />
           </View>
         )}
 

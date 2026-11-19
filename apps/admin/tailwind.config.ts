@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 const config: Config = {
   darkMode: ["class"],
@@ -6,6 +7,9 @@ const config: Config = {
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./lib/**/*.{ts,tsx}",
+    "./features/**/*.{ts,tsx}",
+    "./hooks/**/*.{ts,tsx}",
+    "./constants/**/*.{ts,tsx}",
   ],
   theme: {
     container: {
@@ -15,6 +19,10 @@ const config: Config = {
     },
     extend: {
       colors: {
+        // TRAMPO brand tokens — documented in components/ds/README.md
+        navy: { DEFAULT: "#041E42", soft: "#0B2E5C", 50: "#EEF2F8", 100: "#D9E2EF", 900: "#021230" },
+        brand: { DEFAULT: "#FF6A00", soft: "#FFF4EB" },
+        sky: { DEFAULT: "#0096D6", soft: "#E1F3FB" },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -49,7 +57,17 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
       },
+      boxShadow: {
+        card: "0 1px 2px rgba(4,30,66,0.04), 0 4px 16px -4px rgba(4,30,66,0.08)",
+        "card-hover": "0 2px 4px rgba(4,30,66,0.06), 0 12px 28px -8px rgba(4,30,66,0.16)",
+        brand: "0 8px 20px -6px rgba(255,106,0,0.45)",
+      },
+      fontSize: {
+        "2xs": ["0.6875rem", { lineHeight: "1rem" }],
+      },
       borderRadius: {
+        xl: "calc(var(--radius) + 2px)",
+        "2xl": "calc(var(--radius) + 6px)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
@@ -70,7 +88,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 };
 
 export default config;

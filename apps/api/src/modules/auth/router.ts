@@ -12,6 +12,10 @@ import { redis, checkRateLimit } from '../../lib/redis';
 const DEV_OTP_CODE = '123456';
 const isDevOtpEnabled = env.NODE_ENV === 'development' && env.DEV_OTP_ENABLED;
 
+/** Store-review account: one fixed number + fixed code, configured via env. */
+const isReviewPhone = (phone: string) =>
+  !!env.REVIEW_PHONE && !!env.REVIEW_OTP_CODE && phone === env.REVIEW_PHONE;
+
 // Token blocklist prefix for Redis
 const TOKEN_BLOCKLIST_PREFIX = 'token:blocked:';
 const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -41,6 +45,12 @@ export const authRouter = router({
     .mutation(async ({ input }) => {
       const { phone } = input;
       await assertPhoneRateLimit('send', phone);
+
+      // Store reviewer: no SMS, the fixed code is given in the review notes
+      if (isReviewPhone(phone)) {
+        console.log('[AUTH] Review account requested a code');
+        return { success: true, message: 'OTP sent' };
+      }
 
       // In development with DEV_OTP_ENABLED=true, skip Twilio
       if (isDevOtpEnabled) {
@@ -73,7 +83,12 @@ export const authRouter = router({
       await assertPhoneRateLimit('verify', phone);
 
       // Verify OTP
-      if (isDevOtpEnabled) {
+      if (isReviewPhone(phone)) {
+        if (code !== env.REVIEW_OTP_CODE) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Código inválido ou expirado' });
+        }
+        console.log('[AUTH] Review account signed in');
+      } else if (isDevOtpEnabled) {
         // Accept dev code ONLY when explicitly enabled
         if (code !== DEV_OTP_CODE) {
           throw new TRPCError({

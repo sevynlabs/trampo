@@ -7,7 +7,10 @@ import { uuidSchema, coordinatesSchema, taskStatusSchema, paginationSchema } fro
 
 // Business constants (in centavos)
 export const TASK_CONSTANTS = {
+  /** Default minimum (R$ 50). The live minimum comes from the admin settings (config.public). */
   MIN_VALUE: 5000, // R$ 50.00
+  /** Hard floor accepted by the API schema; the settings minimum must be ≥ this. */
+  ABSOLUTE_MIN_VALUE: 1000, // R$ 10.00
   MAX_VALUE: 10_000_000, // R$ 100.000,00 (keeps fees well inside int4)
   TASKER_FEE: 0.15, // 15%
   CLIENT_FEE: 0.05, // 5%
@@ -28,7 +31,7 @@ export const createTaskInput = z.object({
   baseValue: z
     .number()
     .int()
-    .min(TASK_CONSTANTS.MIN_VALUE, `Minimum value is R$ ${TASK_CONSTANTS.MIN_VALUE / 100}`)
+    .min(TASK_CONSTANTS.ABSOLUTE_MIN_VALUE, `Minimum value is R$ ${TASK_CONSTANTS.ABSOLUTE_MIN_VALUE / 100}`)
     .max(TASK_CONSTANTS.MAX_VALUE),
 });
 

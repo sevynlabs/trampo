@@ -9,6 +9,7 @@ import {
   withRateLimit,
 } from '../../trpc';
 import { prisma, Prisma } from '@trampo/db';
+import { formatPublicCode, parsePublicCode } from '../../lib/public-code';
 import { reconcileOnce } from '../../jobs/reconciler';
 import {
   getPendingJobCount,
@@ -23,6 +24,15 @@ import { notify } from '../../integrations/push';
 import { dashboardRouter } from './dashboard';
 import { financeRouter } from './finance';
 import { campaignsRouter } from './campaigns';
+import { bannersAdminRouter } from './banners';
+import { identityAdminRouter } from './identity';
+import { servicesAdminRouter } from './services';
+import { requestsAdminRouter } from './requests';
+import { reviewsAdminRouter } from './reviews';
+import { disputesAdminRouter } from './disputes';
+import { reportsAdminRouter } from './reports';
+import { settingsAdminRouter } from './settings';
+import { marketingRouter } from './marketing';
 
 /** Supabase Storage bucket holding KYC documents. */
 const KYC_BUCKET = 'kyc-documents';
@@ -127,7 +137,14 @@ export const adminRouter = router({
       await Promise.all([
         prisma.user.count(),
         prisma.user.count({ where: { role: { in: ['TASKER', 'BOTH'] } } }),
-        prisma.taskerProfile.count({ where: { kycStatus: 'SUBMITTED' } }),
+        prisma.taskerProfile
+          .count({ where: { kycStatus: 'SUBMITTED' } })
+          .then(async (pro) =>
+            pro +
+            (await prisma.identityVerification.count({
+              where: { status: 'SUBMITTED', NOT: { user: { taskerProfile: { kycStatus: 'SUBMITTED' } } } },
+            }))
+          ),
         prisma.task.count({
           where: { status: { in: ['ACCEPTED', 'IN_PROGRESS'] } },
         }),
@@ -152,18 +169,29 @@ export const adminRouter = router({
         search: z.string().trim().optional(),
         role: z.enum(['ALL', 'CLIENT', 'TASKER', 'BOTH']).default('ALL'),
         status: z.enum(['all', 'active', 'blocked']).default('all'),
+        /** Identity verification (every user). PENDING also matches users who never sent anything. */
+        identity: z.enum(['all', 'PENDING', 'SUBMITTED', 'APPROVED', 'REJECTED']).default('all'),
+        sortBy: z.enum(['createdAt', 'name']).default('createdAt'),
+        sortDir: z.enum(['asc', 'desc']).default('desc'),
       })
     )
     .query(async ({ input }) => {
-      const { page, pageSize, search, role, status } = input;
+      const { page, pageSize, search, role, status, identity, sortBy, sortDir } = input;
 
       const where: Prisma.UserWhereInput = {};
+      if (identity === 'PENDING') {
+        where.AND = [{ OR: [{ identity: null }, { identity: { status: 'PENDING' } }] }];
+      } else if (identity !== 'all') {
+        where.identity = { status: identity };
+      }
 
       if (search) {
+        const code = parsePublicCode(search);
         where.OR = [
           { name: { contains: search, mode: 'insensitive' } },
           { email: { contains: search, mode: 'insensitive' } },
           { phone: { contains: search } },
+          ...(code ? [{ publicCode: code }] : []),
         ];
       }
       if (role !== 'ALL') where.role = role;
@@ -174,18 +202,24 @@ export const adminRouter = router({
         prisma.user.count({ where }),
         prisma.user.findMany({
           where,
-          orderBy: { createdAt: 'desc' },
+          orderBy: [
+            sortBy === 'name' ? { name: { sort: sortDir, nulls: 'last' } } : { createdAt: sortDir },
+            { id: 'asc' },
+          ],
           skip: (page - 1) * pageSize,
           take: pageSize,
           select: {
             id: true,
             name: true,
+            avatarUrl: true,
             phone: true,
             email: true,
             role: true,
             isActive: true,
             createdAt: true,
+            publicCode: true,
             taskerProfile: { select: { kycStatus: true } },
+            identity: { select: { status: true } },
           },
         }),
       ]);
@@ -194,12 +228,143 @@ export const adminRouter = router({
         users: users.map((u) => ({
           id: u.id,
           name: u.name,
+          avatarUrl: u.avatarUrl,
           phone: u.phone,
           email: u.email,
           role: u.role,
           isActive: u.isActive,
           kycStatus: u.taskerProfile?.kycStatus ?? null,
           createdAt: u.createdAt.toISOString(),
+          /** In-app ID shown to users ("TR-4F9A2C") */
+          publicCode: formatPublicCode(u.publicCode),
+          /** Minimum (identity) verification — applies to clients AND professionals */
+          identityStatus: u.identity?.status ?? 'PENDING',
+        })),
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      };
+    }),
+
+  /**
+   * Counts for the Usuários quick tabs (Todos · Clientes · Profissionais · Ambos)
+   * plus identity verification breakdown.
+   */
+  userCounts: adminAuthProcedure.query(async () => {
+    const [byRole, byIdentity, total] = await Promise.all([
+      prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
+      prisma.identityVerification.groupBy({ by: ['status'], _count: { _all: true } }),
+      prisma.user.count(),
+    ]);
+    const role = (r: string) => byRole.find((x) => x.role === r)?._count._all ?? 0;
+    const idc = (st: string) => byIdentity.find((x) => x.status === st)?._count._all ?? 0;
+    const withRecord = byIdentity.reduce((sum, x) => sum + x._count._all, 0);
+    return {
+      all: total,
+      CLIENT: role('CLIENT'),
+      TASKER: role('TASKER'),
+      BOTH: role('BOTH'),
+      identity: {
+        PENDING: idc('PENDING') + (total - withRecord),
+        SUBMITTED: idc('SUBMITTED'),
+        APPROVED: idc('APPROVED'),
+        REJECTED: idc('REJECTED'),
+      },
+    };
+  }),
+
+  /**
+   * Professionals directory for the admin panel: tasker profiles with
+   * categories, rating, jobs done and verification status.
+   */
+  listProfessionals: adminAuthProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(20),
+        search: z.string().trim().optional(),
+        status: z.enum(['all', 'active', 'verification', 'rejected', 'blocked']).default('all'),
+        /** Real category filter (TaskerProfileCategory). */
+        categoryId: z.string().uuid().optional(),
+        sortBy: z.enum(['createdAt', 'name', 'rating', 'totalTasks']).default('createdAt'),
+        sortDir: z.enum(['asc', 'desc']).default('desc'),
+      })
+    )
+    .query(async ({ input }) => {
+      const { page, pageSize, search, status, categoryId, sortBy, sortDir } = input;
+      const where: Prisma.TaskerProfileWhereInput = {};
+      if (search) {
+        where.OR = [
+          { user: { name: { contains: search, mode: 'insensitive' } } },
+          { user: { phone: { contains: search } } },
+          ...(parsePublicCode(search) ? [{ user: { publicCode: parsePublicCode(search)! } }] : []),
+          { categories: { some: { category: { name: { contains: search, mode: 'insensitive' } } } } },
+          { city: { contains: search, mode: 'insensitive' } },
+          { state: { equals: search.toUpperCase() } },
+        ];
+      }
+      if (status === 'active') Object.assign(where, { kycStatus: 'APPROVED', user: { isActive: true } });
+      if (status === 'verification') where.kycStatus = { in: ['PENDING', 'SUBMITTED'] };
+      if (status === 'rejected') where.kycStatus = 'REJECTED';
+      if (status === 'blocked') where.user = { isActive: false };
+      if (categoryId) where.categories = { some: { categoryId } };
+
+      const primaryOrder: Prisma.TaskerProfileOrderByWithRelationInput =
+        sortBy === 'name'
+          ? { user: { name: { sort: sortDir, nulls: 'last' } } }
+          : { [sortBy]: sortDir };
+
+      const [total, profiles] = await Promise.all([
+        prisma.taskerProfile.count({ where }),
+        prisma.taskerProfile.findMany({
+          where,
+          orderBy: [primaryOrder, { id: 'asc' }],
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+          select: {
+            rating: true,
+            totalTasks: true,
+            totalEarnings: true,
+            kycStatus: true,
+            createdAt: true,
+            city: true,
+            state: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+                phone: true,
+                isActive: true,
+                publicCode: true,
+                _count: { select: { reviewsReceived: true } },
+              },
+            },
+            categories: { select: { category: { select: { name: true } } } },
+          },
+        }),
+      ]);
+
+      return {
+        professionals: profiles.map((p) => ({
+          id: p.user.id,
+          name: p.user.name,
+          avatarUrl: p.user.avatarUrl,
+          phone: p.user.phone,
+          isActive: p.user.isActive,
+          categories: p.categories.map((c) => c.category.name),
+          rating: p.rating,
+          reviewCount: p.user._count.reviewsReceived,
+          totalTasks: p.totalTasks,
+          totalEarnings: p.totalEarnings,
+          kycStatus: p.kycStatus,
+          createdAt: p.createdAt.toISOString(),
+          city: p.city,
+          state: p.state,
+          publicCode: formatPublicCode(p.user.publicCode),
+          /** "Uberlândia, MG" or null when the professional hasn't set a base location. */
+          location: p.city ? `${p.city}${p.state ? `, ${p.state}` : ''}` : null,
         })),
         total,
         page,
@@ -217,7 +382,7 @@ export const adminRouter = router({
     .query(async ({ input }) => {
       const user = await prisma.user.findUnique({
         where: { id: input.id },
-        include: { taskerProfile: true },
+        include: { taskerProfile: true, identity: true },
       });
 
       if (!user) {
@@ -277,9 +442,28 @@ export const adminRouter = router({
 
       const withdrawn = withdrawnAgg?._sum.amount ?? 0;
 
+      // Client-side summary (every user can hire)
+      const [clientTaskCount, clientCompleted, spentAgg, lastClientTask, clientRatingAgg] = await Promise.all([
+        prisma.task.count({ where: { clientId: user.id } }),
+        prisma.task.count({ where: { clientId: user.id, status: { in: ['COMPLETED', 'RELEASED'] } } }),
+        prisma.payment.aggregate({
+          where: { userId: user.id, status: { in: ['CONFIRMED', 'HELD', 'RELEASED'] } },
+          _sum: { amount: true },
+        }),
+        prisma.task.findFirst({ where: { clientId: user.id }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } }),
+        // Reviews the user received AS A CLIENT (written by the professional)
+        prisma.review.aggregate({
+          where: { revieweeId: user.id, hiddenAt: null, task: { clientId: user.id } },
+          _avg: { rating: true },
+          _count: { _all: true },
+        }),
+      ]);
+
       return {
         user: {
           id: user.id,
+          /** In-app ID ("TR-4F9A2C"), same as the user sees in the app */
+          publicCode: formatPublicCode(user.publicCode),
           name: user.name,
           phone: user.phone,
           email: user.email,
@@ -287,6 +471,22 @@ export const adminRouter = router({
           role: user.role,
           isActive: user.isActive,
           createdAt: user.createdAt.toISOString(),
+        },
+        /** Minimum verification (document + selfie) — clients and professionals */
+        identity: {
+          status: user.identity?.status ?? 'PENDING',
+          submittedAt: user.identity?.submittedAt?.toISOString() ?? null,
+          approvedAt: user.identity?.approvedAt?.toISOString() ?? null,
+          rejectReason: user.identity?.rejectReason ?? null,
+          hasDocuments: !!(user.identity?.documentFrontPath && user.identity?.selfiePath),
+        },
+        clientSummary: {
+          tasksCount: clientTaskCount,
+          completedCount: clientCompleted,
+          totalSpent: spentAgg._sum.amount ?? 0,
+          lastTaskAt: lastClientTask?.createdAt.toISOString() ?? null,
+          ratingAsClient: clientRatingAgg._avg.rating ?? 0,
+          ratingAsClientCount: clientRatingAgg._count._all,
         },
         taskerProfile: profile
           ? {
@@ -420,10 +620,14 @@ export const adminRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Perfil não encontrado' });
       }
 
-      const [front, back, selfie] = await Promise.all([
-        signKycUrl(profile.documentFrontPath),
-        signKycUrl(profile.documentBackPath),
-        signKycUrl(profile.selfiePath),
+      // Identity documents now live in identity_verifications (all users);
+      // fall back to the legacy columns for profiles from before the split.
+      const identity = await prisma.identityVerification.findUnique({ where: { userId: profile.userId } });
+      const [front, back, selfie, criminalRecord] = await Promise.all([
+        signKycUrl(identity?.documentFrontPath ?? profile.documentFrontPath),
+        signKycUrl(identity?.documentBackPath ?? profile.documentBackPath),
+        signKycUrl(identity?.selfiePath ?? profile.selfiePath),
+        signKycUrl(profile.criminalRecordPath),
       ]);
 
       return {
@@ -440,7 +644,9 @@ export const adminRouter = router({
           email: profile.user.email,
           createdAt: profile.user.createdAt.toISOString(),
         },
-        documents: { front, back, selfie },
+        identityStatus: identity?.status ?? 'PENDING',
+        documents: { front, back, selfie, criminalRecord },
+        criminalRecordIsPdf: !!profile.criminalRecordPath?.endsWith('.pdf'),
         decisions: profile.kycDecisions.map((d) => ({
           id: d.id,
           decision: d.decision,
@@ -459,6 +665,25 @@ export const adminRouter = router({
     .input(z.object({ profileId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const userId = await prisma.$transaction(async (tx) => {
+        const target = await tx.taskerProfile.findUnique({
+          where: { id: input.profileId },
+          select: { userId: true, criminalRecordPath: true },
+        });
+        const identity = target
+          ? await tx.identityVerification.findUnique({ where: { userId: target.userId }, select: { status: true } })
+          : null;
+        if (!target?.criminalRecordPath || (identity?.status !== 'SUBMITTED' && identity?.status !== 'APPROVED')) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Faltam documentos de identidade ou a certidão de antecedentes',
+          });
+        }
+        // Reviewing a professional covers their identity documents too.
+        await tx.identityVerification.updateMany({
+          where: { userId: target.userId, status: 'SUBMITTED' },
+          data: { status: 'APPROVED', approvedAt: new Date(), rejectedAt: null, rejectReason: null },
+        });
+
         const updated = await tx.taskerProfile.updateMany({
           where: { id: input.profileId, kycStatus: 'SUBMITTED' },
           data: {
@@ -494,8 +719,8 @@ export const adminRouter = router({
       }
 
       await notify(userId, {
-        title: 'KYC Aprovado! ✅',
-        body: 'Seus documentos foram aprovados. Você já pode aceitar trampos!',
+        title: 'Conta profissional aprovada! ✅',
+        body: 'Documentos e antecedentes aprovados. Você já pode ver e aceitar trampos!',
         data: { type: 'kyc_approved' },
       });
 
@@ -551,8 +776,8 @@ export const adminRouter = router({
       }
 
       await notify(userId, {
-        title: 'KYC Reprovado',
-        body: `Seus documentos foram reprovados: ${input.reason}. Corrija e envie novamente.`,
+        title: 'Conta profissional reprovada',
+        body: `Sua verificação profissional foi reprovada: ${input.reason}. Corrija e envie novamente.`,
         data: { type: 'kyc_rejected' },
       });
 
@@ -601,4 +826,13 @@ export const adminRouter = router({
   dashboard: dashboardRouter,
   finance: financeRouter,
   campaigns: campaignsRouter,
+  banners: bannersAdminRouter,
+  identity: identityAdminRouter,
+  services: servicesAdminRouter,
+  requests: requestsAdminRouter,
+  reviews: reviewsAdminRouter,
+  disputes: disputesAdminRouter,
+  reports: reportsAdminRouter,
+  settings: settingsAdminRouter,
+  marketing: marketingRouter,
 });

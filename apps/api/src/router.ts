@@ -10,8 +10,10 @@ import { chatRouter } from './modules/chat/router';
 import { reviewsRouter } from './modules/reviews/router';
 import { paymentsRouter } from './modules/payments/router';
 import { disputesRouter } from './modules/disputes/router';
+import { configRouter } from './modules/config/router';
 import { adminRouter } from './modules/admin/router';
 import { notificationsRouter } from './modules/notifications/router';
+import { bannersRouter } from './modules/banners/router';
 
 /**
  * Main application router
@@ -29,8 +31,10 @@ export const appRouter = router({
   reviews: reviewsRouter,
   payments: paymentsRouter,
   disputes: disputesRouter,
+  config: configRouter,
   admin: adminRouter,
   notifications: notificationsRouter,
+  banners: bannersRouter,
 });
 
 // Export type for client

@@ -60,7 +60,7 @@ export function SelectionCard({
 
   const containerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-    borderColor: selected ? '#018ABE' : '#DCEAF1',
+    borderColor: selected ? '#FF6A00' : '#E6EBF2',
     borderWidth: interpolate(selectionProgress.value, [0, 1], [1, 2]),
   }));
 
@@ -73,8 +73,8 @@ export function SelectionCard({
     opacity: checkScale.value,
   }));
 
-  const iconColor = selected ? '#018ABE' : '#5B7A91';
-  const titleColor = selected ? '#018ABE' : '#001B48';
+  const iconColor = selected ? '#FF6A00' : '#5F6B7E';
+  const titleColor = selected ? '#FF6A00' : '#041E42';
 
   return (
     <AnimatedPressable
@@ -88,7 +88,7 @@ export function SelectionCard({
       {/* Selection background tint */}
       <Animated.View style={[styles.selectionBackground, backgroundAnimatedStyle]}>
         <LinearGradient
-          colors={['#018ABE', '#97CADB']}
+          colors={['#FF6A00', '#FFC59E']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#02457A',
+    shadowColor: '#0B2E5C',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -153,13 +153,13 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#EEF6FA',
+    backgroundColor: '#EEF3F9',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
   },
   iconContainerSelected: {
-    backgroundColor: 'rgba(1, 138, 190, 0.1)',
+    backgroundColor: 'rgba(255, 106, 0, 0.1)',
   },
   textContainer: {
     flex: 1,
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     lineHeight: 20,
   },
   checkContainer: {
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#018ABE',
+    backgroundColor: '#FF6A00',
     alignItems: 'center',
     justifyContent: 'center',
   },

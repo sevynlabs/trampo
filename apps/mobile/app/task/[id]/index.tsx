@@ -1,76 +1,38 @@
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
-import { useRouter, useLocalSearchParams, Stack, Link } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trpc } from '../../../src/lib/trpc';
 import { formatCurrency } from '../../../src/lib/format';
-
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; color: string; bgColor: string }
-> = {
-  OPEN: { label: 'Aberto', color: 'text-accent', bgColor: 'bg-accent/10' },
-  ACCEPTED: { label: 'Aceito', color: 'text-warning', bgColor: 'bg-warning/10' },
-  IN_PROGRESS: { label: 'Em andamento', color: 'text-warning', bgColor: 'bg-warning/10' },
-  COMPLETED: { label: 'Concluído', color: 'text-success', bgColor: 'bg-success/10' },
-  RELEASED: { label: 'Finalizado', color: 'text-success', bgColor: 'bg-success/10' },
-  CANCELLED: { label: 'Cancelado', color: 'text-danger', bgColor: 'bg-danger/10' },
-  DISPUTED: { label: 'Em disputa', color: 'text-danger', bgColor: 'bg-danger/10' },
-};
+import {
+  ScreenHeader,
+  Card,
+  Button,
+  Avatar,
+  Badge,
+  IconButton,
+  IconCircle,
+  InfoRow,
+  StatusBadge,
+  StatusTimeline,
+  categoryIcon,
+  colors,
+} from '../../../src/components/ds';
+import type { TimelineStep } from '../../../src/components/ds';
+import { Image } from 'expo-image';
+import { categoryPhoto } from '../../../src/theme/photos';
 
 const PAYMENT_STATUS_CONFIG: Record<
   string,
-  { label: string; description: string; color: string; bgColor: string; icon: keyof typeof Ionicons.glyphMap }
+  { label: string; description: string; icon: keyof typeof Ionicons.glyphMap }
 > = {
-  PENDING: {
-    label: 'Aguardando pagamento',
-    description: 'O cliente ainda não pagou o Pix.',
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
-    icon: 'time-outline',
-  },
-  CONFIRMED: {
-    label: 'Pagamento confirmado',
-    description: 'O valor está garantido e protegido.',
-    color: 'text-success',
-    bgColor: 'bg-success/10',
-    icon: 'shield-checkmark-outline',
-  },
-  HELD: {
-    label: 'Pagamento retido',
-    description: 'Será liberado ao profissional após a conclusão.',
-    color: 'text-accent',
-    bgColor: 'bg-accent/10',
-    icon: 'lock-closed-outline',
-  },
-  RELEASED: {
-    label: 'Pagamento liberado',
-    description: 'O valor foi liberado ao profissional.',
-    color: 'text-success',
-    bgColor: 'bg-success/10',
-    icon: 'checkmark-done-outline',
-  },
-  REFUNDED: {
-    label: 'Reembolsado',
-    description: 'O valor foi devolvido ao cliente.',
-    color: 'text-ink-muted',
-    bgColor: 'bg-border/40',
-    icon: 'arrow-undo-outline',
-  },
-  DISPUTED: {
-    label: 'Em disputa',
-    description: 'O pagamento está retido até a resolução.',
-    color: 'text-danger',
-    bgColor: 'bg-danger/10',
-    icon: 'alert-circle-outline',
-  },
-  EXPIRED: {
-    label: 'Pix expirado',
-    description: 'A cobrança expirou sem pagamento.',
-    color: 'text-danger',
-    bgColor: 'bg-danger/10',
-    icon: 'close-circle-outline',
-  },
+  PENDING: { label: 'Aguardando pagamento', description: 'O cliente ainda não pagou o Pix.', icon: 'time-outline' },
+  CONFIRMED: { label: 'Pagamento confirmado', description: 'O valor está garantido e protegido.', icon: 'shield-checkmark-outline' },
+  HELD: { label: 'Pagamento retido', description: 'Será liberado ao profissional após a conclusão.', icon: 'lock-closed-outline' },
+  RELEASED: { label: 'Pagamento liberado', description: 'O valor foi liberado ao profissional.', icon: 'checkmark-done-outline' },
+  REFUNDED: { label: 'Reembolsado', description: 'O valor foi devolvido ao cliente.', icon: 'arrow-undo-outline' },
+  DISPUTED: { label: 'Em disputa', description: 'O pagamento está retido até a resolução.', icon: 'alert-circle-outline' },
+  EXPIRED: { label: 'Pix expirado', description: 'A cobrança expirou sem pagamento.', icon: 'close-circle-outline' },
 };
 
 // Mirrors the server rule: free up to 30 min before the scheduled time,
@@ -78,33 +40,15 @@ const PAYMENT_STATUS_CONFIG: Record<
 const FREE_CANCEL_MINUTES = 30;
 const CANCEL_PENALTY_RATE = 0.2;
 
-function BackButton({ onPress }: { onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className="mr-4"
-      hitSlop={10}
-      accessibilityRole="button"
-      accessibilityLabel="Voltar"
-    >
-      <Ionicons name="arrow-back" size={24} color="#001B48" />
-    </Pressable>
-  );
-}
+const STEP_INDEX: Record<string, number> = { OPEN: 0, ACCEPTED: 1, IN_PROGRESS: 2, COMPLETED: 3, RELEASED: 3 };
 
+/** "Meu pedido" (client) / "Solicitação de serviço" (professional). */
 export default function TaskDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const {
-    data: task,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isRefetching,
-  } = trpc.tasks.getById.useQuery({ id: id! });
+  const { data: task, isLoading, isError, error, refetch, isRefetching } = trpc.tasks.getById.useQuery({ id: id! });
   const { data: me } = trpc.profiles.getMe.useQuery();
 
   const utils = trpc.useUtils();
@@ -145,8 +89,8 @@ export default function TaskDetailScreen() {
       Alert.alert(
         'Pronto',
         result.penalty > 0
-          ? `Trampo cancelado. Taxa de cancelamento: ${formatCurrency(result.penalty)}.`
-          : 'Trampo cancelado.'
+          ? `Pedido cancelado. Taxa de cancelamento: ${formatCurrency(result.penalty)}.`
+          : 'Pedido cancelado.'
       );
       router.back();
     },
@@ -162,83 +106,56 @@ export default function TaskDetailScreen() {
 
   if (isError || (!isLoading && !task)) {
     return (
-      <>
-        <Stack.Screen
-          options={{
-            headerShown: true,
-            title: 'Detalhes',
-            headerLeft: () => <BackButton onPress={() => router.back()} />,
-          }}
-        />
-        <View className="flex-1 bg-background items-center justify-center px-8">
-          <Ionicons name="alert-circle-outline" size={48} color="#5B7A91" />
-          <Text className="text-ink font-semibold text-lg mt-3 text-center">
-            Não foi possível abrir este trampo
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <ScreenHeader title="Detalhes" paddingTop={insets.top} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.inkMuted} />
+          <Text style={{ fontSize: 18, fontWeight: '800', color: colors.ink, marginTop: 12, textAlign: 'center' }}>
+            Não foi possível abrir este pedido
           </Text>
-          <Text className="text-ink-muted mt-1 text-center">
-            {error?.message ?? 'Ele pode ter sido removido.'}
-          </Text>
-          <Pressable
+          <Text style={{ color: colors.inkMuted, marginTop: 4, textAlign: 'center' }}>{error?.message ?? 'Ele pode ter sido removido.'}</Text>
+          <Button
+            label={isRefetching ? 'Carregando...' : 'Tentar novamente'}
+            variant="outline"
             onPress={() => refetch()}
             disabled={isRefetching}
-            className="mt-6 px-6 py-3 rounded-button bg-accent/10"
-            accessibilityRole="button"
-          >
-            <Text className="text-accent font-bold">
-              {isRefetching ? 'Carregando...' : 'Tentar novamente'}
-            </Text>
-          </Pressable>
+            style={{ marginTop: 20 }}
+          />
         </View>
-      </>
+      </View>
     );
   }
 
   if (isLoading || !task) {
     return (
-      <>
-        <Stack.Screen
-          options={{
-            headerShown: true,
-            title: 'Detalhes',
-            headerLeft: () => <BackButton onPress={() => router.back()} />,
-          }}
-        />
-        <View className="flex-1 bg-background items-center justify-center">
-          <ActivityIndicator size="large" color="#018ABE" />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <ScreenHeader title="Detalhes" paddingTop={insets.top} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={colors.orange} />
         </View>
-      </>
+      </View>
     );
   }
 
   const isClient = task.clientId === me?.id;
   const isTasker = task.assignment?.taskerId === me?.id;
-  const status = STATUS_CONFIG[task.status] || STATUS_CONFIG.OPEN;
 
   const canPay =
-    isClient &&
-    task.status === 'ACCEPTED' &&
-    (!payment || payment.status === 'PENDING' || payment.status === 'EXPIRED');
+    isClient && task.status === 'ACCEPTED' && (!payment || payment.status === 'PENDING' || payment.status === 'EXPIRED');
   const canAccept = !isClient && task.status === 'OPEN' && me?.role !== 'CLIENT';
   const canStart = isTasker && task.status === 'ACCEPTED';
   const canComplete = isTasker && task.status === 'IN_PROGRESS';
   // Clients cancel; a tasker can only give up an accepted task (it reopens)
-  const canCancel =
-    (isClient && ['OPEN', 'ACCEPTED'].includes(task.status)) ||
-    (isTasker && task.status === 'ACCEPTED');
+  const canCancel = (isClient && ['OPEN', 'ACCEPTED'].includes(task.status)) || (isTasker && task.status === 'ACCEPTED');
   const canChat = (isClient || isTasker) && task.status !== 'OPEN' && task.status !== 'CANCELLED';
   const canReview = (isClient || isTasker) && ['COMPLETED', 'RELEASED'].includes(task.status);
-  const canDispute =
-    (isClient || isTasker) && ['IN_PROGRESS', 'COMPLETED'].includes(task.status);
+  const canDispute = (isClient || isTasker) && ['IN_PROGRESS', 'COMPLETED'].includes(task.status);
 
   const handleAccept = () => {
-    Alert.alert(
-      'Aceitar serviço',
-      `Você receberá ${formatCurrency(task.taskerValue)} por este serviço. Confirmar?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Aceitar', onPress: () => acceptTask.mutate({ taskId: task.id }) },
-      ]
-    );
+    Alert.alert('Aceitar serviço', `Você receberá ${formatCurrency(task.taskerValue)} por este serviço. Confirmar?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Aceitar', onPress: () => acceptTask.mutate({ taskId: task.id }) },
+    ]);
   };
 
   const handleStart = () => {
@@ -257,308 +174,256 @@ export default function TaskDetailScreen() {
 
   const handleCancel = () => {
     if (isTasker) {
-      Alert.alert(
-        'Desistir do trampo',
-        'O trampo volta para o feed e outro profissional poderá aceitá-lo.',
-        [
-          { text: 'Voltar', style: 'cancel' },
-          {
-            text: 'Desistir',
-            style: 'destructive',
-            onPress: () => cancelTask.mutate({ taskId: task.id }),
-          },
-        ]
-      );
+      Alert.alert('Desistir do serviço', 'O pedido volta para as solicitações e outro profissional poderá aceitá-lo.', [
+        { text: 'Voltar', style: 'cancel' },
+        { text: 'Desistir', style: 'destructive', onPress: () => cancelTask.mutate({ taskId: task.id }) },
+      ]);
       return;
     }
 
-    const minutesLeft = task.scheduledAt
-      ? (new Date(task.scheduledAt).getTime() - Date.now()) / 60000
-      : Infinity;
+    const minutesLeft = task.scheduledAt ? (new Date(task.scheduledAt).getTime() - Date.now()) / 60000 : Infinity;
     const penalty =
-      task.status === 'ACCEPTED' && minutesLeft < FREE_CANCEL_MINUTES
-        ? Math.round(task.totalValue * CANCEL_PENALTY_RATE)
-        : 0;
+      task.status === 'ACCEPTED' && minutesLeft < FREE_CANCEL_MINUTES ? Math.round(task.totalValue * CANCEL_PENALTY_RATE) : 0;
 
     Alert.alert(
-      'Cancelar trampo',
+      'Cancelar pedido',
       penalty > 0
         ? `Faltam menos de ${FREE_CANCEL_MINUTES} minutos para o horário marcado. Será cobrada uma taxa de ${formatCurrency(penalty)} (20%).`
         : 'O cancelamento é gratuito. Se você já pagou, o valor será estornado.',
       [
         { text: 'Voltar', style: 'cancel' },
-        {
-          text: 'Cancelar trampo',
-          style: 'destructive',
-          onPress: () => cancelTask.mutate({ taskId: task.id }),
-        },
+        { text: 'Cancelar pedido', style: 'destructive', onPress: () => cancelTask.mutate({ taskId: task.id }) },
       ]
     );
   };
 
-  const hasActions =
-    canChat || canPay || canAccept || canStart || canComplete || canCancel || canReview || canDispute;
+  const hasActions = canChat || canPay || canAccept || canStart || canComplete || canCancel || canReview || canDispute;
+
+  const fmtStep = (d?: Date | string | null) =>
+    d
+      ? new Date(d)
+          .toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+          .replace(',', ' •')
+      : null;
+  const steps: TimelineStep[] = [
+    { label: 'Solicitado', caption: fmtStep(task.createdAt) },
+    { label: 'Confirmado', caption: fmtStep(task.acceptedAt) },
+    { label: 'Em andamento', caption: fmtStep(task.startedAt) },
+    { label: 'Concluído', caption: fmtStep(task.completedAt) },
+  ];
+  const currentStep = STEP_INDEX[task.status] ?? 0;
+  const offTrack = task.status === 'CANCELLED' || task.status === 'DISPUTED';
+  const orderCode = `#TR-${task.id.replace(/-/g, '').slice(0, 4).toUpperCase()}`;
+  const other = isClient ? task.assignment?.tasker ?? null : task.client;
+  const scheduled = task.scheduledAt ? new Date(task.scheduledAt) : null;
+  const coverPhoto = categoryPhoto(task.category);
+  const headerTitle = isClient ? 'Meu pedido' : task.status === 'OPEN' ? 'Solicitação de serviço' : 'Detalhes do serviço';
+
+  type Primary = { label: string; icon: keyof typeof Ionicons.glyphMap; onPress: () => void; loading: boolean };
+  const primary: Primary | null = canPay
+    ? { label: 'Pagar com Pix', icon: 'qr-code-outline', onPress: () => router.push(`/task/${task.id}/payment`), loading: false }
+    : canAccept
+      ? { label: 'Aceitar serviço', icon: 'checkmark-circle-outline', onPress: handleAccept, loading: acceptTask.isPending }
+      : canStart
+        ? { label: 'Iniciar trabalho', icon: 'play-outline', onPress: handleStart, loading: startTask.isPending }
+        : canComplete
+          ? { label: 'Concluir serviço', icon: 'checkmark-done-outline', onPress: handleComplete, loading: completeTask.isPending }
+          : canReview
+            ? {
+                label: isClient ? 'Finalizar e avaliar' : 'Avaliar cliente',
+                icon: 'star-outline',
+                onPress: () => router.push(`/task/${task.id}/review`),
+                loading: false,
+              }
+            : null;
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: 'Detalhes',
-          headerTitleStyle: { fontWeight: 'bold' },
-          headerLeft: () => <BackButton onPress={() => router.back()} />,
-          headerRight: () =>
-            isClient && task.status === 'OPEN' ? (
-              <Pressable
-                onPress={() => router.push(`/task/${task.id}/edit`)}
-                className="ml-4"
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Editar trampo"
-              >
-                <Ionicons name="create-outline" size={22} color="#018ABE" />
-              </Pressable>
-            ) : null,
-        }}
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScreenHeader
+        title={headerTitle}
+        center
+        paddingTop={insets.top}
+        right={
+          isClient && task.status === 'OPEN' ? (
+            <IconButton icon="create-outline" label="Editar pedido" color={colors.orange} onPress={() => router.push(`/task/${task.id}/edit`)} />
+          ) : null
+        }
       />
 
-      <ScrollView
-        className="flex-1 bg-background"
-        contentContainerStyle={{ paddingBottom: 140 }}
-      >
-        {/* Status */}
-        <View className={`px-6 py-4 ${status.bgColor}`}>
-          <Text className={`font-bold ${status.color}`}>{status.label}</Text>
-        </View>
-
-        <View className="p-6">
-          {/* Title & category */}
-          <Text className="font-display text-2xl font-bold text-ink mb-2">
-            {task.title}
-          </Text>
-          <View className="flex-row items-center mb-4">
-            <Text className="text-ink-muted">{task.category.name}</Text>
-            {task.isUrgent && (
-              <View className="bg-warning/15 px-2 py-1 rounded-chip ml-2">
-                <Text className="text-xs font-bold" style={{ color: '#92400E' }}>
-                  Urgente
-                </Text>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 4, paddingBottom: 230 }}>
+        {!!coverPhoto && (
+          <View style={{ height: 170, borderRadius: 20, overflow: 'hidden', marginBottom: 14 }}>
+            <Image source={coverPhoto} contentFit="cover" style={{ flex: 1 }} accessibilityIgnoresInvertColors />
+            {isClient && task.assignment && (
+              <View style={{ position: 'absolute', left: 12, bottom: 12 }}>
+                <Badge label="Profissional verificado" tone="success" icon="checkmark-circle" />
               </View>
             )}
           </View>
+        )}
 
-          {/* Description */}
-          {task.description && (
-            <Text className="text-ink-soft mb-6">{task.description}</Text>
-          )}
-
-          {/* Address */}
-          <View className="flex-row items-start mb-6">
-            <Ionicons name="location-outline" size={20} color="#5B7A91" />
-            <Text className="text-ink-soft flex-1 ml-2">{task.address}</Text>
+        {/* Order + timeline */}
+        <Card>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <IconCircle icon={categoryIcon(task.category)} size={52} bg={colors.skySoft} color={colors.navy} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: colors.ink }}>Pedido {orderCode}</Text>
+              <Text numberOfLines={2} style={{ fontSize: 14, color: colors.inkSoft }}>
+                {task.title}
+              </Text>
+            </View>
           </View>
+          <View style={{ height: 1, backgroundColor: colors.hairline, marginVertical: 16 }} />
+          {offTrack ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <StatusBadge status={task.status} />
+              <Text style={{ flex: 1, marginLeft: 10, fontSize: 13, color: colors.inkMuted }}>
+                {task.status === 'CANCELLED' ? 'Este pedido foi cancelado.' : 'Nossa equipe está analisando o caso.'}
+              </Text>
+            </View>
+          ) : (
+            <StatusTimeline steps={steps} current={currentStep} />
+          )}
+          {task.isUrgent && (
+            <View style={{ marginTop: 12 }}>
+              <Badge label="Urgente (+30%)" tone="warning" icon="flash" />
+            </View>
+          )}
+        </Card>
 
-          {/* Client info */}
-          <View className="bg-surface rounded-card border border-border p-4 mb-6">
-            <Text className="text-ink-muted text-sm mb-2">
-              {isClient ? 'Você criou este serviço' : 'Solicitado por'}
+        {/* Other party */}
+        {other ? (
+          <Card style={{ marginTop: 14 }} onPress={() => router.push(`/user/${other.id}`)}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Avatar name={other.name} uri={other.avatarUrl} size={56} verified={isClient} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={{ fontSize: 12.5, color: colors.inkMuted }}>{isClient ? 'Profissional' : 'Cliente'}</Text>
+                <Text style={{ fontSize: 16.5, fontWeight: '800', color: colors.ink }}>{other.name ?? 'Usuário'}</Text>
+                <Text style={{ fontSize: 13, color: colors.inkMuted }}>{task.category.name}</Text>
+              </View>
+              {canChat && (
+                <IconButton icon="chatbubble-ellipses-outline" label="Abrir chat" filled onPress={() => router.push(`/task/${task.id}/chat`)} />
+              )}
+            </View>
+          </Card>
+        ) : isClient ? (
+          <Card style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.skySoft }}>
+            <Ionicons name="hourglass-outline" size={22} color={colors.sky} />
+            <Text style={{ flex: 1, marginLeft: 10, fontSize: 14, color: colors.ink }}>
+              Aguardando um profissional da categoria aceitar o seu pedido.
             </Text>
-            {!isClient && task.client && (
-              <Pressable
-                onPress={() => router.push(`/user/${task.client.id}`)}
-                className="flex-row items-center"
-              >
-                <View className="w-10 h-10 bg-accent/10 rounded-full items-center justify-center">
-                  <Text className="text-accent font-bold">
-                    {task.client.name?.charAt(0).toUpperCase() || '?'}
-                  </Text>
-                </View>
-                <Text className="text-ink font-medium flex-1 ml-3">{task.client.name}</Text>
-                <Ionicons name="chevron-forward" size={18} color="#94B2C4" />
-              </Pressable>
-            )}
-            {isClient && task.assignment?.tasker && (
-              <Pressable
-                onPress={() => router.push(`/user/${task.assignment!.tasker.id}`)}
-                className="flex-row items-center mt-3 pt-3 border-t border-border"
-              >
-                <View className="w-10 h-10 bg-accent/10 rounded-full items-center justify-center">
-                  <Text className="text-accent font-bold">
-                    {task.assignment.tasker.name?.charAt(0).toUpperCase() || '?'}
-                  </Text>
-                </View>
-                <View className="flex-1 ml-3">
-                  <Text className="text-ink-muted text-xs">Profissional</Text>
-                  <Text className="text-ink font-medium">{task.assignment.tasker.name}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#94B2C4" />
-              </Pressable>
-            )}
-          </View>
+          </Card>
+        ) : null}
 
-          {/* Payment status */}
-          {payment && PAYMENT_STATUS_CONFIG[payment.status] && (
-            <View
-              className={`rounded-card p-4 mb-6 ${PAYMENT_STATUS_CONFIG[payment.status].bgColor}`}
-            >
-              <View className="flex-row items-center">
-                <Ionicons
-                  name={PAYMENT_STATUS_CONFIG[payment.status].icon}
-                  size={22}
-                  color="#5B7A91"
-                />
-                <View className="flex-1 ml-3">
-                  <Text className={`font-bold ${PAYMENT_STATUS_CONFIG[payment.status].color}`}>
-                    {PAYMENT_STATUS_CONFIG[payment.status].label}
-                  </Text>
-                  <Text className="text-ink-muted text-sm mt-0.5">
-                    {PAYMENT_STATUS_CONFIG[payment.status].description}
-                  </Text>
-                </View>
-              </View>
+        {/* Schedule */}
+        <Card style={{ marginTop: 14 }}>
+          <Text style={{ fontSize: 17, fontWeight: '800', color: colors.ink, marginBottom: 12 }}>Detalhes do agendamento</Text>
+          <InfoRow icon="calendar-outline">
+            {scheduled ? scheduled.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }) : 'Assim que possível'}
+          </InfoRow>
+          {scheduled && <InfoRow icon="time-outline">{scheduled.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</InfoRow>}
+          <InfoRow icon="location-outline">{task.address}</InfoRow>
+          {task.description ? (
+            <>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: colors.ink, marginTop: 6, marginBottom: 4 }}>Descrição</Text>
+              <Text style={{ fontSize: 14.5, lineHeight: 20, color: colors.inkSoft }}>{task.description}</Text>
+            </>
+          ) : null}
+        </Card>
+
+        {/* Payment status */}
+        {payment && PAYMENT_STATUS_CONFIG[payment.status] && (
+          <Card style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center' }}>
+            <IconCircle icon={PAYMENT_STATUS_CONFIG[payment.status].icon} bg={colors.background} color={colors.navy} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={{ fontWeight: '800', color: colors.ink }}>{PAYMENT_STATUS_CONFIG[payment.status].label}</Text>
+              <Text style={{ fontSize: 13, color: colors.inkMuted, marginTop: 2 }}>{PAYMENT_STATUS_CONFIG[payment.status].description}</Text>
             </View>
+          </Card>
+        )}
+
+        {/* Values: the client sees what they pay, the tasker what they get */}
+        <Card style={{ marginTop: 14 }}>
+          <Text style={{ fontSize: 17, fontWeight: '800', color: colors.ink, marginBottom: 12 }}>Valores</Text>
+          <PriceLine label="Valor do serviço" value={formatCurrency(task.baseValue)} />
+          {task.urgencyFee > 0 && <PriceLine label="Taxa de urgência" value={`+${formatCurrency(task.urgencyFee)}`} />}
+          {isClient ? (
+            <PriceLine label="Taxa de serviço (5%)" value={`+${formatCurrency(task.serviceFee)}`} muted />
+          ) : (
+            <PriceLine label="Comissão Trampo (15%)" value={`-${formatCurrency(task.baseValue + task.urgencyFee - task.taskerValue)}`} muted />
           )}
-
-          {/* Price breakdown: the client sees what they pay, the tasker what they get */}
-          <View className="bg-surface rounded-card border border-border p-4">
-            <Text className="text-ink font-medium mb-3">Valores</Text>
-            <View className="flex-row justify-between mb-2">
-              <Text className="text-ink-muted">Valor base</Text>
-              <Text className="text-ink">{formatCurrency(task.baseValue)}</Text>
-            </View>
-            {task.urgencyFee > 0 && (
-              <View className="flex-row justify-between mb-2">
-                <Text className="text-ink-muted">Taxa de urgência</Text>
-                <Text className="text-ink">+{formatCurrency(task.urgencyFee)}</Text>
-              </View>
-            )}
-            {isClient ? (
-              <View className="flex-row justify-between mb-3">
-                <Text className="text-ink-muted">Taxa de serviço (5%)</Text>
-                <Text className="text-ink-muted">+{formatCurrency(task.serviceFee)}</Text>
-              </View>
-            ) : (
-              <View className="flex-row justify-between mb-3">
-                <Text className="text-ink-muted">Comissão TRAMPO (15%)</Text>
-                <Text className="text-ink-muted">
-                  -{formatCurrency(task.baseValue + task.urgencyFee - task.taskerValue)}
-                </Text>
-              </View>
-            )}
-            <View className="flex-row justify-between pt-3 border-t border-border">
-              <Text className="text-ink font-bold">
-                {isClient ? 'Total a pagar' : 'Você recebe'}
-              </Text>
-              <Text className="text-accent font-bold text-lg">
-                {formatCurrency(isClient ? task.totalValue : task.taskerValue)}
-              </Text>
-            </View>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderTopWidth: 1,
+              borderTopColor: colors.hairline,
+              paddingTop: 12,
+              marginTop: 4,
+            }}
+          >
+            <Text style={{ fontWeight: '800', color: colors.ink }}>{isClient ? 'Total' : 'Você recebe'}</Text>
+            <Text style={{ fontSize: 22, fontWeight: '900', color: colors.ink }}>
+              {formatCurrency(isClient ? task.totalValue : task.taskerValue)}
+            </Text>
           </View>
-        </View>
+        </Card>
       </ScrollView>
 
-      {/* Action buttons */}
       {hasActions && (
-      <View
-        className="absolute bottom-0 left-0 right-0 bg-surface border-t border-border p-4"
-        style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
-      >
-        <View className="flex-row gap-3">
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#fff',
+            borderTopWidth: 1,
+            borderTopColor: colors.hairline,
+            paddingHorizontal: 20,
+            paddingTop: 14,
+            paddingBottom: Math.max(insets.bottom, 14) + 6,
+          }}
+        >
+          {primary && <Button label={primary.label} icon={primary.icon} onPress={primary.onPress} loading={primary.loading} />}
           {canChat && (
-            <Link href={`/task/${task.id}/chat`} asChild>
-              <Pressable className="flex-1 bg-border py-4 rounded-button items-center flex-row justify-center">
-                <Ionicons name="chatbubble-outline" size={20} color="#5B7A91" />
-                <Text className="text-ink-soft font-bold ml-2">Chat</Text>
-              </Pressable>
-            </Link>
+            <Button
+              label={isClient ? 'Falar com o profissional' : 'Falar com o cliente'}
+              variant="soft"
+              icon="chatbubble-outline"
+              size="md"
+              onPress={() => router.push(`/task/${task.id}/chat`)}
+              style={{ marginTop: primary ? 10 : 0 }}
+            />
           )}
-
-          {canPay && (
-            <Link href={`/task/${task.id}/payment`} asChild>
-              <Pressable className="flex-1 bg-accent py-4 rounded-button items-center flex-row justify-center">
-                <Ionicons name="qr-code-outline" size={20} color="#fff" />
-                <Text className="text-white font-bold ml-2">Pagar com Pix</Text>
-              </Pressable>
-            </Link>
-          )}
-
-          {canAccept && (
-            <Pressable
-              onPress={handleAccept}
-              disabled={acceptTask.isPending}
-              className="flex-1 bg-success py-4 rounded-button items-center"
-            >
-              {acceptTask.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold">Aceitar</Text>
+          {(canCancel || canDispute) && (
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 24, marginTop: 12 }}>
+              {canCancel && (
+                <Pressable onPress={handleCancel} disabled={cancelTask.isPending} hitSlop={8} accessibilityRole="button">
+                  <Text style={{ color: colors.danger, fontWeight: '700' }}>
+                    {cancelTask.isPending ? 'Cancelando...' : isTasker ? 'Desistir do serviço' : 'Cancelar pedido'}
+                  </Text>
+                </Pressable>
               )}
-            </Pressable>
-          )}
-
-          {canStart && (
-            <Pressable
-              onPress={handleStart}
-              disabled={startTask.isPending}
-              className="flex-1 bg-accent py-4 rounded-button items-center"
-            >
-              {startTask.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold">Iniciar trabalho</Text>
+              {canDispute && (
+                <Pressable onPress={() => router.push(`/task/${task.id}/dispute`)} hitSlop={8} accessibilityRole="button">
+                  <Text style={{ color: colors.inkMuted, fontWeight: '600' }}>Abrir suporte</Text>
+                </Pressable>
               )}
-            </Pressable>
-          )}
-
-          {canComplete && (
-            <Pressable
-              onPress={handleComplete}
-              disabled={completeTask.isPending}
-              className="flex-1 bg-success py-4 rounded-button items-center"
-            >
-              {completeTask.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold">Concluir</Text>
-              )}
-            </Pressable>
-          )}
-
-          {canCancel && (
-            <Pressable
-              onPress={handleCancel}
-              disabled={cancelTask.isPending}
-              className="bg-danger/10 py-4 px-6 rounded-button items-center"
-              accessibilityRole="button"
-            >
-              {cancelTask.isPending ? (
-                <ActivityIndicator color="#E11D48" />
-              ) : (
-                <Text className="text-danger font-bold">{isTasker ? 'Desistir' : 'Cancelar'}</Text>
-              )}
-            </Pressable>
-          )}
-
-          {canReview && (
-            <Link href={`/task/${task.id}/review`} asChild>
-              <Pressable className="flex-1 bg-accent py-4 rounded-button items-center flex-row justify-center">
-                <Ionicons name="star" size={20} color="#fff" />
-                <Text className="text-white font-bold ml-2">Avaliar</Text>
-              </Pressable>
-            </Link>
+            </View>
           )}
         </View>
-
-        {canDispute && (
-          <Link href={`/task/${task.id}/dispute`} asChild>
-            <Pressable className="mt-3 py-2 items-center flex-row justify-center">
-              <Ionicons name="alert-circle-outline" size={16} color="#E11D48" />
-              <Text className="text-danger text-sm ml-1">Tive um problema com este trampo</Text>
-            </Pressable>
-          </Link>
-        )}
-      </View>
       )}
-    </>
+    </View>
+  );
+}
+
+function PriceLine({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+      <Text style={{ color: colors.inkMuted }}>{label}</Text>
+      <Text style={{ color: muted ? colors.inkMuted : colors.ink, fontWeight: '600' }}>{value}</Text>
+    </View>
   );
 }

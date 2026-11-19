@@ -9,23 +9,27 @@ import {
   Switch,
   StyleSheet,
   Linking,
+  Alert,
 } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Location from 'expo-location';
 import { trpc } from '../../src/lib/trpc';
-import { TASK_CONSTANTS } from '@trampo/contracts';
+import { usePlatformConfig, pct } from '../../src/lib/platform-config';
 import { formatCurrency } from '../../src/lib/format';
 import { GradientButton } from '../../src/components/GradientButton';
 import { Input } from '../../src/components/Input';
+import { categoryIcon } from '../../src/components/ds';
 
 export default function CreateTaskScreen() {
   const router = useRouter();
+  // Prefilled when coming from a professional / category ("Contratar")
+  const params = useLocalSearchParams<{ categoryId?: string }>();
 
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(params.categoryId ?? null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
@@ -38,6 +42,21 @@ export default function CreateTaskScreen() {
   );
 
   const { data: categories } = trpc.categories.list.useQuery();
+  const { data: me } = trpc.profiles.getMe.useQuery();
+  const identitySent = me?.identityStatus === 'SUBMITTED' || me?.identityStatus === 'APPROVED';
+
+  /** Minimum verification: identity documents must be sent before posting. */
+  const askForIdentity = () =>
+    Alert.alert(
+      'Verifique sua identidade',
+      me?.identityStatus === 'REJECTED'
+        ? 'Seus documentos foram reprovados. Envie novamente para publicar serviços.'
+        : 'Para a segurança de todos, envie uma foto do seu documento e uma selfie antes de publicar. Leva 1 minuto.',
+      [
+        { text: 'Agora não', style: 'cancel' },
+        { text: 'Verificar agora', onPress: () => router.push('/kyc') },
+      ]
+    );
   const utils = trpc.useUtils();
 
   const createTask = trpc.tasks.create.useMutation({
@@ -46,6 +65,7 @@ export default function CreateTaskScreen() {
       router.replace(`/task/${data.id}`);
     },
     onError: (err) => {
+      if (err.data?.code === 'PRECONDITION_FAILED') return askForIdentity();
       setError(err.message);
     },
   });
@@ -74,12 +94,13 @@ export default function CreateTaskScreen() {
     loadLocation();
   }, []);
 
+  // Live fees/limits set in the admin (the server recalculates on submit)
+  const config = usePlatformConfig();
   const parsedValue = parseInt(baseValue.replace(/\D/g, '')) || 0;
-  const isValidValue =
-    parsedValue >= TASK_CONSTANTS.MIN_VALUE && parsedValue <= TASK_CONSTANTS.MAX_VALUE;
+  const isValidValue = parsedValue >= config.minTaskValue && parsedValue <= config.maxTaskValue;
 
-  const urgencyFee = isUrgent ? Math.round(parsedValue * TASK_CONSTANTS.URGENCY_FEE) : 0;
-  const serviceFee = Math.round((parsedValue + urgencyFee) * TASK_CONSTANTS.CLIENT_FEE);
+  const urgencyFee = isUrgent ? Math.round(parsedValue * config.urgencyFee) : 0;
+  const serviceFee = Math.round((parsedValue + urgencyFee) * config.clientFee);
   const totalValue = parsedValue + urgencyFee + serviceFee;
 
   const isValid =
@@ -97,9 +118,9 @@ export default function CreateTaskScreen() {
       : address.length < 5
         ? 'Informe o endereço'
         : !isValidValue
-          ? parsedValue > TASK_CONSTANTS.MAX_VALUE
-            ? 'O valor máximo é R$ 100.000,00'
-            : 'O valor mínimo é R$ 50,00'
+          ? parsedValue > config.maxTaskValue
+            ? `O valor máximo é ${formatCurrency(config.maxTaskValue)}`
+            : `O valor mínimo é ${formatCurrency(config.minTaskValue)}`
           : !location
             ? locationStatus === 'loading'
               ? 'Obtendo sua localização...'
@@ -117,6 +138,14 @@ export default function CreateTaskScreen() {
   };
 
   const handleSubmit = () => {
+    if (config.maintenanceMode) {
+      Alert.alert('Em manutenção', 'O Trampo está em manutenção. Tente publicar novamente em alguns minutos.');
+      return;
+    }
+    if (me && !identitySent) {
+      askForIdentity();
+      return;
+    }
     if (!isValid || !location || !categoryId) return;
     setError('');
 
@@ -138,13 +167,13 @@ export default function CreateTaskScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: 'Criar serviço',
-          headerTitleStyle: { fontWeight: '600', color: '#001B48' },
-          headerStyle: { backgroundColor: '#F3F8FB' },
+          title: 'Contratar serviço',
+          headerTitleStyle: { fontWeight: '800', color: '#041E42' },
+          headerStyle: { backgroundColor: '#F5F8FC' },
           headerShadowVisible: false,
           headerLeft: () => (
             <Pressable onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#001B48" />
+              <Ionicons name="arrow-back" size={24} color="#041E42" />
             </Pressable>
           ),
         }}
@@ -172,7 +201,7 @@ export default function CreateTaskScreen() {
                     categoryId === cat.id && styles.categoryCardSelected,
                   ]}
                 >
-                  <Text style={styles.categoryIcon}>{cat.icon}</Text>
+                  <Ionicons name={categoryIcon(cat)} size={24} color={categoryId === cat.id ? '#FF6A00' : '#041E42'} style={styles.categoryIcon} />
                   <Text
                     style={[
                       styles.categoryName,
@@ -237,7 +266,7 @@ export default function CreateTaskScreen() {
               icon="cash-outline"
               error={
                 baseValue && !isValidValue
-                  ? `Valor mínimo: ${formatCurrency(TASK_CONSTANTS.MIN_VALUE)}`
+                  ? `Valor mínimo: ${formatCurrency(config.minTaskValue)}`
                   : undefined
               }
             />
@@ -255,14 +284,14 @@ export default function CreateTaskScreen() {
               <View style={styles.urgentText}>
                 <Text style={styles.urgentTitle}>Urgente</Text>
                 <Text style={styles.urgentDescription}>
-                  +30% para serviços em até 1h
+                  +{pct(config.urgencyFee)} para serviços em até 1h
                 </Text>
               </View>
             </View>
             <Switch
               value={isUrgent}
               onValueChange={setIsUrgent}
-              trackColor={{ false: '#DCEAF1', true: '#018ABE' }}
+              trackColor={{ false: '#E6EBF2', true: '#FF6A00' }}
               thumbColor="#ffffff"
             />
           </Animated.View>
@@ -290,7 +319,7 @@ export default function CreateTaskScreen() {
               )}
 
               <View style={styles.breakdownRow}>
-                <Text style={styles.breakdownLabel}>Taxa de serviço (5%)</Text>
+                <Text style={styles.breakdownLabel}>Taxa de serviço ({pct(config.clientFee)})</Text>
                 <Text style={styles.breakdownValueMuted}>
                   +{formatCurrency(serviceFee)}
                 </Text>
@@ -346,22 +375,22 @@ export default function CreateTaskScreen() {
             <BlurView intensity={80} tint="light" style={styles.bottomBlur}>
               <View style={styles.bottomContent}>
                 <GradientButton
-                  label="Publicar serviço"
+                  label="Solicitar"
                   onPress={handleSubmit}
                   disabled={!isValid}
                   loading={createTask.isPending}
-                  icon="rocket-outline"
+                  iconRight="arrow-forward"
                 />
               </View>
             </BlurView>
           ) : (
             <View style={styles.bottomAndroid}>
               <GradientButton
-                label="Publicar serviço"
+                label="Solicitar"
                 onPress={handleSubmit}
                 disabled={!isValid}
                 loading={createTask.isPending}
-                icon="rocket-outline"
+                iconRight="arrow-forward"
               />
             </View>
           )}
@@ -384,20 +413,20 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   locationBannerAction: {
-    color: '#018ABE',
+    color: '#FF6A00',
     fontWeight: '700',
     marginTop: 8,
     paddingVertical: 4,
   },
   missingHint: {
-    color: '#5B7A91',
+    color: '#5F6B7E',
     fontSize: 14,
     textAlign: 'center',
     marginTop: 16,
   },
   container: {
     flex: 1,
-    backgroundColor: '#F3F8FB',
+    backgroundColor: '#F5F8FC',
   },
   scroll: {
     flex: 1,
@@ -413,7 +442,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#001B48',
+    color: '#041E42',
     marginBottom: 12,
   },
   categoryGrid: {
@@ -431,16 +460,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#DCEAF1',
-    shadowColor: '#02457A',
+    borderColor: '#E6EBF2',
+    shadowColor: '#0B2E5C',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 1,
   },
   categoryCardSelected: {
-    borderColor: '#018ABE',
-    backgroundColor: 'rgba(1, 138, 190, 0.05)',
+    borderColor: '#FF6A00',
+    backgroundColor: 'rgba(255, 106, 0, 0.05)',
   },
   categoryIcon: {
     fontSize: 24,
@@ -449,11 +478,11 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#5B7A91',
+    color: '#5F6B7E',
     textAlign: 'center',
   },
   categoryNameSelected: {
-    color: '#018ABE',
+    color: '#FF6A00',
   },
   categoryCheck: {
     position: 'absolute',
@@ -462,7 +491,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#018ABE',
+    backgroundColor: '#FF6A00',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -474,7 +503,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
     marginBottom: 16,
   },
   urgentContent: {
@@ -497,11 +526,11 @@ const styles = StyleSheet.create({
   urgentTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#001B48',
+    color: '#041E42',
   },
   urgentDescription: {
     fontSize: 13,
-    color: '#5B7A91',
+    color: '#5F6B7E',
     marginTop: 2,
   },
   breakdownCard: {
@@ -509,13 +538,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#DCEAF1',
+    borderColor: '#E6EBF2',
     marginTop: 8,
   },
   breakdownTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#001B48',
+    color: '#041E42',
     marginBottom: 12,
   },
   breakdownRow: {
@@ -526,11 +555,11 @@ const styles = StyleSheet.create({
   },
   breakdownLabel: {
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   breakdownValue: {
     fontSize: 14,
-    color: '#001B48',
+    color: '#041E42',
     fontWeight: '500',
   },
   breakdownValueWarning: {
@@ -540,22 +569,22 @@ const styles = StyleSheet.create({
   },
   breakdownValueMuted: {
     fontSize: 14,
-    color: '#5B7A91',
+    color: '#5F6B7E',
   },
   breakdownDivider: {
     height: 1,
-    backgroundColor: '#EEF6FA',
+    backgroundColor: '#EEF3F9',
     marginVertical: 12,
   },
   breakdownTotalLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#001B48',
+    color: '#041E42',
   },
   breakdownTotalValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#018ABE',
+    color: '#FF6A00',
   },
   errorText: {
     color: '#E11D48',
@@ -571,7 +600,7 @@ const styles = StyleSheet.create({
   },
   bottomBlur: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(220, 234, 241, 0.5)',
+    borderTopColor: 'rgba(230, 235, 242, 0.5)',
   },
   bottomContent: {
     padding: 16,
@@ -580,7 +609,7 @@ const styles = StyleSheet.create({
   bottomAndroid: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopWidth: 1,
-    borderTopColor: '#DCEAF1',
+    borderTopColor: '#E6EBF2',
     padding: 16,
     paddingBottom: 32,
   },

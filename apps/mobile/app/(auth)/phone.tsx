@@ -5,88 +5,76 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  StyleSheet,
   Pressable,
+  ScrollView,
 } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { trpc } from '../../src/lib/trpc';
-import { GradientButton } from '../../src/components/GradientButton';
-import { GradientMesh } from '../../src/components/GradientMesh';
+import { Logo, Button, colors } from '../../src/components/ds';
 
+/** "Entrar na sua conta" — phone + SMS code (OTP). The same flow creates new accounts. */
 export default function PhoneScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [ddd, setDdd] = useState('');
   const [number, setNumber] = useState('');
   const [error, setError] = useState('');
-  const numberRef = useRef<TextInput>(null);
+  const numberRef = useRef<TextInputInstance>(null);
 
   const requestOtp = trpc.auth.requestOtp.useMutation({
     onSuccess: () => {
-      router.push({
-        pathname: '/(auth)/otp',
-        params: { phone: `+55${ddd}${number}` },
-      });
+      router.push({ pathname: '/(auth)/otp', params: { phone: `+55${ddd}${number}` } });
     },
-    onError: (err) => {
-      setError(err.message);
-    },
+    onError: (err) => setError(err.message),
   });
 
-  const phone = `+55${ddd}${number}`;
   const isValid = ddd.length === 2 && number.length === 9;
-
   const handleSubmit = () => {
     if (!isValid) return;
     setError('');
-    requestOtp.mutate({ phone });
+    requestOtp.mutate({ phone: `+55${ddd}${number}` });
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      {/* Gradient Mesh Background */}
-      <View style={styles.meshContainer} pointerEvents="none">
-        <GradientMesh height={220} intensity="normal" animated={false} />
-      </View>
-
-      <View style={styles.content}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: '#fff' }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }} keyboardShouldPersistTaps="handled">
         {router.canGoBack() && (
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.backButton}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Voltar"
-          >
-            <Ionicons name="arrow-back" size={24} color="#001B48" />
+          <Pressable onPress={() => router.back()} hitSlop={10} accessibilityRole="button" accessibilityLabel="Voltar" style={{ alignSelf: 'flex-start', padding: 4 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.ink} />
           </Pressable>
         )}
-        <Animated.Text
-          entering={FadeInDown.delay(100).duration(420)}
-          style={styles.title}
-        >
-          Qual é o seu celular?
-        </Animated.Text>
-        <Animated.Text
-          entering={FadeInDown.delay(200).duration(420)}
-          style={styles.subtitle}
-        >
-          Vamos enviar um código SMS para confirmar
-        </Animated.Text>
 
-        {/* Phone input - original working design */}
+        <Animated.View entering={FadeInDown.duration(420)} style={{ alignItems: 'center', marginTop: 24, marginBottom: 40 }}>
+          <Logo size={52} maxWidth={300} />
+        </Animated.View>
+
+        <Animated.Text entering={FadeInDown.delay(100).duration(420)} style={{ fontSize: 22, fontWeight: '800', color: colors.ink, marginBottom: 6 }}>
+          Entrar na sua conta
+        </Animated.Text>
+        <Text style={{ fontSize: 14.5, color: colors.inkMuted, marginBottom: 20 }}>
+          Vamos enviar um código por SMS para confirmar o seu número.
+        </Text>
+
         <Animated.View
-          entering={FadeInDown.delay(300).duration(420)}
-          style={styles.phoneRow}
+          entering={FadeInDown.delay(200).duration(420)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            height: 56,
+            borderRadius: 16,
+            borderWidth: 1.5,
+            borderColor: error ? colors.danger : colors.input,
+            paddingHorizontal: 14,
+            backgroundColor: '#fff',
+            marginBottom: 8,
+          }}
         >
-          <View style={styles.prefix}>
-            <Text style={styles.prefixText}>+55</Text>
-          </View>
-
+          <Text style={{ fontSize: 18 }}>🇧🇷</Text>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.ink, marginLeft: 8 }}>+55</Text>
           <TextInput
             value={ddd}
             onChangeText={(text) => {
@@ -94,124 +82,46 @@ export default function PhoneScreen() {
               setDdd(digits);
               if (digits.length >= 2) numberRef.current?.focus();
             }}
-            placeholder="DDD"
-            placeholderTextColor="#94B2C4"
+            placeholder="(34)"
+            placeholderTextColor={colors.inkFaint}
             keyboardType="number-pad"
             maxLength={2}
-            style={styles.dddInput}
+            accessibilityLabel="DDD"
+            style={{ width: 48, fontSize: 16, color: colors.ink, textAlign: 'center', marginLeft: 8, paddingVertical: 0 }}
           />
-
           <TextInput
             ref={numberRef}
             value={number}
             onChangeText={(text) => setNumber(text.replace(/\D/g, '').slice(0, 9))}
-            placeholder="00000-0000"
-            placeholderTextColor="#94B2C4"
+            placeholder="9 9999-9999"
+            placeholderTextColor={colors.inkFaint}
             keyboardType="number-pad"
             maxLength={9}
-            style={styles.numberInput}
+            accessibilityLabel="Número do celular"
+            style={{ flex: 1, fontSize: 16, color: colors.ink, marginLeft: 4, paddingVertical: 0 }}
+            onSubmitEditing={handleSubmit}
           />
         </Animated.View>
 
-        {error ? (
-          <Text style={styles.error}>{error}</Text>
-        ) : null}
+        {error ? <Text style={{ color: colors.danger, fontSize: 13.5, marginBottom: 8 }}>{error}</Text> : null}
 
-        <Animated.View entering={FadeInDown.delay(400).duration(420)}>
-          <GradientButton
-            label="Continuar"
-            onPress={handleSubmit}
-            disabled={!isValid}
-            loading={requestOtp.isPending}
-            iconRight="arrow-forward"
-          />
-        </Animated.View>
-      </View>
+        <Button label="Continuar" onPress={handleSubmit} disabled={!isValid} loading={requestOtp.isPending} style={{ marginTop: 12 }} />
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 18 }}>
+          <Ionicons name="shield-checkmark-outline" size={16} color={colors.inkMuted} />
+          <Text style={{ flex: 1, marginLeft: 8, fontSize: 12.5, lineHeight: 18, color: colors.inkMuted }}>
+            Usamos o seu número só para entrar na conta e avisar sobre seus serviços.
+          </Text>
+        </View>
+
+        <View style={{ flex: 1 }} />
+        <Text style={{ textAlign: 'center', fontSize: 13.5, color: colors.inkMuted, marginTop: 24 }}>
+          Ainda não tem conta?{' '}
+          <Text style={{ color: colors.orange, fontWeight: '700' }} onPress={() => numberRef.current?.focus()}>
+            Criar agora
+          </Text>
+        </Text>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F8FB',
-  },
-  meshContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#001B48',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#5B7A91',
-    marginBottom: 32,
-  },
-  phoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 24,
-  },
-  prefix: {
-    backgroundColor: '#EEF6FA',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: '#DCEAF1',
-  },
-  prefixText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#5B7A91',
-  },
-  dddInput: {
-    width: 72,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1.5,
-    borderColor: '#DCEAF1',
-    fontSize: 16,
-    color: '#001B48',
-    textAlign: 'center',
-  },
-  numberInput: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1.5,
-    borderColor: '#DCEAF1',
-    fontSize: 16,
-    color: '#001B48',
-  },
-  error: {
-    color: '#E11D48',
-    fontSize: 14,
-    marginBottom: 16,
-  },
-});

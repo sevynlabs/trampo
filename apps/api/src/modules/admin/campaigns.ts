@@ -216,6 +216,17 @@ export const campaignsRouter = router({
         select: { id: true, name: true, email: true },
       });
 
+      // Don't "send" to nobody: keep the campaign as a draft and explain why.
+      if (users.length === 0) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            c.channel === 'PUSH'
+              ? 'Nenhum usuário deste público tem notificações ativadas no app (push token). Peça para abrirem o app num build com push e aceitarem as notificações.'
+              : 'Nenhum usuário deste público tem e-mail cadastrado.',
+        });
+      }
+
       await prisma.campaign.update({
         where: { id: c.id },
         data: { status: 'SENDING', recipientCount: users.length },
@@ -284,7 +295,8 @@ export const campaignsRouter = router({
       const updated = await prisma.campaign.update({
         where: { id: c.id },
         data: {
-          status: 'SENT',
+          // Every delivery failed → FAILED (not a misleading "SENT").
+          status: sent === 0 && failed > 0 ? 'FAILED' : 'SENT',
           sentAt: new Date(),
           sentCount: sent,
           failedCount: failed,

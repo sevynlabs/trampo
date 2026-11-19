@@ -86,7 +86,7 @@ export const reviewsRouter = router({
       // escrow release, not here.)
       if (isClient) {
         const avgRating = await prisma.review.aggregate({
-          where: { revieweeId, task: { assignment: { taskerId: revieweeId } } },
+          where: { revieweeId, hiddenAt: null, task: { assignment: { taskerId: revieweeId } } },
           _avg: { rating: true },
         });
 
@@ -115,7 +115,7 @@ export const reviewsRouter = router({
 
       const [reviews, total] = await Promise.all([
         prisma.review.findMany({
-          where: { revieweeId: userId },
+          where: { revieweeId: userId, hiddenAt: null },
           include: {
             reviewer: {
               select: { id: true, name: true, avatarUrl: true },
@@ -128,7 +128,7 @@ export const reviewsRouter = router({
           take: limit,
           skip: offset,
         }),
-        prisma.review.count({ where: { revieweeId: userId } }),
+        prisma.review.count({ where: { revieweeId: userId, hiddenAt: null } }),
       ]);
 
       return { reviews, total };

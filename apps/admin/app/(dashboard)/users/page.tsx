@@ -1,15 +1,13 @@
-import { UsersTable } from "@/components/users-table";
+"use client";
+
+import { Suspense } from "react";
+import { LoadingState } from "@/components/ds";
+import { UsersList } from "@/features/users/components/users-list";
 
 export default function UsersPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
-        <p className="text-muted-foreground">
-          Gerencie clientes e profissionais da plataforma
-        </p>
-      </div>
-      <UsersTable />
-    </div>
+    <Suspense fallback={<LoadingState rows={8} />}>
+      <UsersList />
+    </Suspense>
   );
 }

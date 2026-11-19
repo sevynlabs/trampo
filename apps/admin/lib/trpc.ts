@@ -1,4 +1,5 @@
 import { createTRPCReact } from "@trpc/react-query";
+import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@trampo/api/src/router";
 
 /**
@@ -10,3 +11,7 @@ import type { AppRouter } from "@trampo/api/src/router";
  * the token out of client-side JS.
  */
 export const trpc = createTRPCReact<AppRouter>();
+
+/** Typed inputs/outputs of every procedure, e.g. RouterOutputs["admin"]["requests"]["list"]. */
+export type RouterInputs = inferRouterInputs<AppRouter>;
+export type RouterOutputs = inferRouterOutputs<AppRouter>;

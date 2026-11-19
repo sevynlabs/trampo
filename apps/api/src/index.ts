@@ -1,3 +1,4 @@
+import './lib/monitoring'; // first: initializes Sentry before anything else
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
@@ -6,6 +7,7 @@ import { serve } from '@hono/node-server';
 import { appRouter } from './router';
 import { createContext } from './trpc';
 import { env } from './lib/env';
+import { captureError } from './lib/monitoring';
 import { webhookHandler } from './modules/webhooks';
 import { startEscrowProcessor } from './jobs/escrow-processor';
 import { startReconciler } from './jobs/reconciler';
@@ -40,6 +42,10 @@ app.use(
   '/trpc/*',
   trpcServer({
     router: appRouter,
+    onError: ({ error, path }) => {
+      // Expected errors (validation, auth, not found) are part of normal use
+      if (error.code === 'INTERNAL_SERVER_ERROR') captureError(error.cause ?? error, { path });
+    },
     createContext: ({ req }) => {
       // Create a minimal Hono context for tRPC
       const honoContext = {
@@ -62,6 +68,7 @@ app.notFound((c) => {
 // Error handler
 app.onError((err, c) => {
   console.error('Server error:', err);
+  captureError(err, { path: c.req.path });
   return c.json(
     {
       error: 'Internal server error',
@@ -72,7 +79,8 @@ app.onError((err, c) => {
 });
 
 // Start server
-const port = parseInt(env.API_PORT);
+// Railway (and most hosts) inject PORT; API_PORT is the local default
+const port = parseInt(process.env.PORT ?? env.API_PORT);
 
 console.log(`
 ╔══════════════════════════════════════════════════╗
