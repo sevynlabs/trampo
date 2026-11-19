@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { trpc } from '../../src/lib/trpc';
-import { Logo, Button, colors, shadow } from '../../src/components/ds';
+import { Logo, Button, colors, shadow, Touchable } from '../../src/components/ds';
 
 /** "Entrar na sua conta" — phone + SMS code (OTP). The same flow creates new accounts. */
 export default function PhoneScreen() {
@@ -133,10 +133,10 @@ export default function PhoneScreen() {
 
 function SocialButton({ icon, iconColor, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; iconColor: string; label: string; onPress: () => void }) {
   return (
-    <Pressable
+    <Touchable
       onPress={onPress}
       accessibilityRole="button"
-      style={({ pressed }) => [
+      style={({ pressed }: { pressed: boolean }) => [
         {
           height: 52,
           borderRadius: 16,
@@ -154,6 +154,6 @@ function SocialButton({ icon, iconColor, label, onPress }: { icon: keyof typeof 
     >
       <Ionicons name={icon} size={20} color={iconColor} />
       <Text style={{ marginLeft: 10, fontSize: 15, fontWeight: '600', color: colors.ink }}>{label}</Text>
-    </Pressable>
+    </Touchable>
   );
 }

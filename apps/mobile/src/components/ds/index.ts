@@ -1,6 +1,7 @@
 // TRAMPO 2.0 design system
 export { Logo, LogoMark } from './Logo';
 export { BrandHero } from './Hero';
+export { Touchable } from './Touchable';
 export {
   Button,
   Card,

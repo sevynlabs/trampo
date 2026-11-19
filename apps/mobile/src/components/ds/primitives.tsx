@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { colors, radius, shadow } from '../../theme/tokens';
+import { Touchable } from './Touchable';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -64,12 +65,12 @@ export function Button({
   const fontSize = size === 'sm' ? 13 : 16;
 
   return (
-    <Pressable
+    <Touchable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!inactive, busy: !!loading }}
       onPress={inactive ? undefined : onPress}
-      style={({ pressed }) => [
+      style={({ pressed }: { pressed: boolean }) => [
         {
           height,
           borderRadius: size === 'sm' ? 10 : 16,
@@ -99,7 +100,7 @@ export function Button({
           )}
         </>
       )}
-    </Pressable>
+    </Touchable>
   );
 }
 
@@ -119,13 +120,13 @@ export function Card({
   const base = [styles.card, padded && { padding: 16 }, style];
   if (!onPress) return <View style={base}>{children}</View>;
   return (
-    <Pressable
+    <Touchable
       onPress={onPress}
       accessibilityRole="button"
-      style={({ pressed }) => [...base, pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] }]}
+      style={({ pressed }: { pressed: boolean }) => [...base, pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] }]}
     >
       {children}
-    </Pressable>
+    </Touchable>
   );
 }
 
@@ -221,12 +222,12 @@ export function CategoryTile({
   onPress?: () => void;
 }) {
   return (
-    <Pressable
+    <Touchable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected: !!active }}
-      style={({ pressed }) => [
+      style={({ pressed }: { pressed: boolean }) => [
         styles.catTile,
         active && { backgroundColor: colors.orange },
         pressed && { opacity: 0.85 },
@@ -245,7 +246,7 @@ export function CategoryTile({
       >
         {label}
       </Text>
-    </Pressable>
+    </Touchable>
   );
 }
 
@@ -452,16 +453,16 @@ export function IconCircle({ icon, color = colors.orange, bg = colors.orangeTint
 
 export function ListRow({ icon, label, value, onPress, danger }: { icon: IconName; label: string; value?: string; onPress?: () => void; danger?: boolean }) {
   return (
-    <Pressable
+    <Touchable
       onPress={onPress}
       accessibilityRole="button"
-      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4 }, pressed && { opacity: 0.6 }]}
+      style={({ pressed }: { pressed: boolean }) => [{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4 }, pressed && { opacity: 0.6 }]}
     >
       <Ionicons name={icon} size={20} color={danger ? colors.danger : colors.navy} />
       <Text style={{ flex: 1, marginLeft: 14, fontSize: 15, fontWeight: '600', color: danger ? colors.danger : colors.ink }}>{label}</Text>
       {value && <Text style={{ fontSize: 14, color: colors.inkMuted, marginRight: 6 }}>{value}</Text>}
       {!danger && <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />}
-    </Pressable>
+    </Touchable>
   );
 }
 

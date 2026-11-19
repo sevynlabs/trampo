@@ -105,7 +105,7 @@ function Onboarding() {
       >
         {SLIDES.map((s) => (
           <View key={s.title} style={{ width, paddingTop: 12 }}>
-            <BrandHero icon={s.icon} image={s.image} height={300} />
+            <BrandHero icon={s.icon} image={s.image} height={360} />
             <View style={{ paddingHorizontal: 28, marginTop: 18 }}>
               <Text style={{ fontSize: 30, lineHeight: 34, fontWeight: '900', color: colors.ink, letterSpacing: -0.8 }}>
                 {s.title}

@@ -27,6 +27,27 @@ export function BrandHero({
   chips?: { icon: IconName; label: string }[];
 }) {
   const medal = height * 0.62;
+  if (image) {
+    // Full-bleed photo with a white curved bottom edge and the orange swoosh (reference 01)
+    return (
+      <View style={{ height, overflow: 'hidden' }}>
+        <Image source={image} contentFit="cover" contentPosition="top" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} accessibilityIgnoresInvertColors />
+        <Svg width="100%" height={height * 0.32} viewBox="0 0 400 100" preserveAspectRatio="none" style={{ position: 'absolute', left: 0, right: 0, bottom: -1 }}>
+          <Path d="M0 70 C 120 30, 260 30, 400 55 L 400 101 L 0 101 Z" fill="#FFFFFF" />
+          <Path d="M210 44 C 290 30, 350 34, 400 46" stroke={colors.orange} strokeWidth={9} strokeLinecap="round" fill="none" />
+        </Svg>
+        <View style={{ position: 'absolute', right: 16, top: height * 0.12, alignItems: 'flex-end', gap: 10 }}>
+          {chips.map((c) => (
+            <View key={c.label} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 14, ...shadow.card }}>
+              <Ionicons name={c.icon} size={18} color={colors.orange} />
+              <Text style={{ marginLeft: 6, fontSize: 14, fontWeight: '800', color: colors.ink }}>{c.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={{ height, justifyContent: 'flex-end', overflow: 'hidden' }}>
       <Svg width="100%" height={height} viewBox="0 0 400 320" preserveAspectRatio="none" style={{ position: 'absolute' }}>

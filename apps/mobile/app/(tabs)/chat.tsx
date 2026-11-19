@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trpc } from '../../src/lib/trpc';
 import { SkeletonCard } from '../../src/components/Skeleton';
 import { EmptyState, EmptyInboxIllustration } from '../../src/components/illustrations';
-import { Avatar, StatusBadge, colors } from '../../src/components/ds';
+import { Avatar, StatusBadge, colors, Touchable } from '../../src/components/ds';
 
 function when(iso: string) {
   const d = new Date(iso);
@@ -42,10 +42,10 @@ export default function ChatInbox() {
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />}
           ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: colors.hairline, marginLeft: 88 }} />}
           renderItem={({ item }) => (
-            <Pressable
+            <Touchable
               onPress={() => router.push(`/task/${item.taskId}/chat`)}
               accessibilityRole="button"
-              style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, backgroundColor: pressed ? '#fff' : 'transparent' }]}
+              style={({ pressed }: { pressed: boolean }) => [{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, backgroundColor: pressed ? '#fff' : 'transparent' }]}
             >
               <Avatar name={item.other?.name} uri={item.other?.avatarUrl} size={54} />
               <View style={{ flex: 1, marginLeft: 14 }}>
@@ -65,7 +65,7 @@ export default function ChatInbox() {
               <View style={{ marginLeft: 8 }}>
                 <StatusBadge status={item.status} />
               </View>
-            </Pressable>
+            </Touchable>
           )}
           ListEmptyComponent={
             <EmptyState
