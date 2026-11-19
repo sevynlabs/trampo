@@ -25,6 +25,12 @@ import { financeRouter } from './finance';
 import { campaignsRouter } from './campaigns';
 import { bannersAdminRouter } from './banners';
 import { identityAdminRouter } from './identity';
+import { servicesAdminRouter } from './services';
+import { requestsAdminRouter } from './requests';
+import { reviewsAdminRouter } from './reviews';
+import { disputesAdminRouter } from './disputes';
+import { reportsAdminRouter } from './reports';
+import { settingsAdminRouter } from './settings';
 
 /** Supabase Storage bucket holding KYC documents. */
 const KYC_BUCKET = 'kyc-documents';
@@ -713,4 +719,10 @@ export const adminRouter = router({
   campaigns: campaignsRouter,
   banners: bannersAdminRouter,
   identity: identityAdminRouter,
+  services: servicesAdminRouter,
+  requests: requestsAdminRouter,
+  reviews: reviewsAdminRouter,
+  disputes: disputesAdminRouter,
+  reports: reportsAdminRouter,
+  settings: settingsAdminRouter,
 });

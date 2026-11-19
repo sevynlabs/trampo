@@ -213,7 +213,7 @@ export const profilesRouter = router({
               categories: { select: { category: { select: { id: true, name: true, slug: true } } } },
             },
           },
-          _count: { select: { reviewsReceived: true } },
+          _count: { select: { reviewsReceived: { where: { hiddenAt: null } } } },
         },
       });
 
@@ -295,7 +295,7 @@ export const profilesRouter = router({
           rating: true,
           totalTasks: true,
           bio: true,
-          user: { select: { id: true, name: true, avatarUrl: true, _count: { select: { reviewsReceived: true } } } },
+          user: { select: { id: true, name: true, avatarUrl: true, _count: { select: { reviewsReceived: { where: { hiddenAt: null } } } } } },
           categories: { select: { category: { select: { id: true, name: true, slug: true } } } },
         },
       });

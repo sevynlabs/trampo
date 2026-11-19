@@ -484,12 +484,18 @@ model Review {
   tags       String[] // ["Pontual", "Caprichoso", etc]
   createdAt  DateTime @default(now()) @map("created_at")
 
+  // Moderation: hidden reviews are kept but excluded from public listings
+  // and from the reviewee's rating.
+  hiddenAt     DateTime? @map("hidden_at")
+  hiddenReason String?   @map("hidden_reason")
+
   task     Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   reviewer User @relation("ReviewsGiven", fields: [reviewerId], references: [id])
   reviewee User @relation("ReviewsReceived", fields: [revieweeId], references: [id])
 
   @@unique([taskId, reviewerId]) // One review per user per task
   @@index([revieweeId])
+  @@index([createdAt])
   @@map("reviews")
 }
 
