@@ -55,8 +55,8 @@ enum DisputeStatus {
 
 enum AdminRole {
   SUPER_ADMIN // Full access, can manage other admins
-  OPERATOR    // Day-to-day ops: KYC review, user management
-  VIEWER      // Read-only access
+  OPERATOR // Day-to-day ops: KYC review, user management
+  VIEWER // Read-only access
 }
 
 enum CampaignChannel {
@@ -83,30 +83,30 @@ enum RecipientStatus {
 // ============================================
 
 model User {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  phone         String    @unique
-  cpfEncrypted  Bytes?    @map("cpf_encrypted") // Encrypted with pgcrypto
-  cpfHash       String?   @unique @map("cpf_hash") // For lookups
-  name          String?
-  email         String?
-  avatarUrl     String?   @map("avatar_url")
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phone        String   @unique
+  cpfEncrypted Bytes?   @map("cpf_encrypted") // Encrypted with pgcrypto
+  cpfHash      String?  @unique @map("cpf_hash") // For lookups
+  name         String?
+  email        String?
+  avatarUrl    String?  @map("avatar_url")
   /// Public in-app ID shown on the shareable profile card (e.g. "TR4F9A2C",
   /// displayed as "TR-4F9A2C"). Never a contact — just a handle to search for.
-  publicCode    String    @unique @default(dbgenerated("('TR'::text || upper(substr(md5(((random())::text || (clock_timestamp())::text)), 1, 6)))")) @map("public_code")
-  role          UserRole  @default(CLIENT)
-  pushToken     String?   @map("push_token") // Expo push token
-  isActive      Boolean   @default(true) @map("is_active")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  publicCode   String   @unique @default(dbgenerated("('TR'::text || upper(substr(md5(((random())::text || (clock_timestamp())::text)), 1, 6)))")) @map("public_code")
+  role         UserRole @default(CLIENT)
+  pushToken    String?  @map("push_token") // Expo push token
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
   taskerProfile   TaskerProfile?
   identity        IdentityVerification?
-  tasksAsClient   Task[]          @relation("ClientTasks")
+  tasksAsClient   Task[]                @relation("ClientTasks")
   assignments     TaskAssignment[]
-  sentMessages    Message[]       @relation("SentMessages")
-  reviewsGiven    Review[]        @relation("ReviewsGiven")
-  reviewsReceived Review[]        @relation("ReviewsReceived")
+  sentMessages    Message[]             @relation("SentMessages")
+  reviewsGiven    Review[]              @relation("ReviewsGiven")
+  reviewsReceived Review[]              @relation("ReviewsReceived")
   payments        Payment[]
   notifications   Notification[]
 
@@ -116,10 +116,10 @@ model User {
 model Notification {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId    String    @map("user_id") @db.Uuid
-  type      String    // e.g. task_accepted, payment_confirmed, new_message
+  type      String // e.g. task_accepted, payment_confirmed, new_message
   title     String
   body      String
-  data      Json?     // arbitrary payload for deep-linking
+  data      Json? // arbitrary payload for deep-linking
   readAt    DateTime? @map("read_at")
   createdAt DateTime  @default(now()) @map("created_at")
 
@@ -144,31 +144,31 @@ model TaskerProfile {
   // The identity documents moved to IdentityVerification (all users); the
   // three columns below are legacy and no longer written.
   // KYC Documents (stored in Supabase Storage, only paths here)
-  documentFrontPath String?  @map("document_front_path")
-  documentBackPath  String?  @map("document_back_path")
-  selfiePath        String?  @map("selfie_path")
+  documentFrontPath  String? @map("document_front_path")
+  documentBackPath   String? @map("document_back_path")
+  selfiePath         String? @map("selfie_path")
   /// Certidão de antecedentes criminais (PDF do gov.br ou foto)
   criminalRecordPath String? @map("criminal_record_path")
 
   // Asaas integration
-  asaasAccountId  String?   @unique @map("asaas_account_id")
-  asaasWalletId   String?   @unique @map("asaas_wallet_id")
-  pixKey          String?   @map("pix_key") // Tasker's Pix key for withdrawals
+  asaasAccountId String? @unique @map("asaas_account_id")
+  asaasWalletId  String? @unique @map("asaas_wallet_id")
+  pixKey         String? @map("pix_key") // Tasker's Pix key for withdrawals
 
   // Stats
-  rating          Float     @default(0)
-  totalTasks      Int       @default(0) @map("total_tasks")
-  totalEarnings   Int       @default(0) @map("total_earnings") // In centavos
+  rating        Float @default(0)
+  totalTasks    Int   @default(0) @map("total_tasks")
+  totalEarnings Int   @default(0) @map("total_earnings") // In centavos
 
   // Location for feed
   currentLocation Unsupported("geography(Point, 4326)")? @map("current_location")
-  serviceRadius   Int       @default(10000) @map("service_radius") // In meters
+  serviceRadius   Int                                    @default(10000) @map("service_radius") // In meters
   // Base city (reverse-geocoded from currentLocation in the app's "Área de atuação")
   city            String?
-  state           String?   // UF, e.g. "MG"
+  state           String? // UF, e.g. "MG"
 
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
   user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -205,27 +205,28 @@ model AdminUser {
 
 /// A push or email campaign targeted at a dynamic user segment.
 model Campaign {
-  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name           String
-  channel        CampaignChannel
-  status         CampaignStatus  @default(DRAFT)
-  segment        Json            // dynamic filter descriptor (role, kycStatus, activeWithinDays, ...)
-  title          String          // push title / email subject
-  body           String          // push body / email html
-  emailTemplateId String?        @map("email_template_id") @db.Uuid
-  scheduledAt    DateTime?       @map("scheduled_at")
-  sentAt         DateTime?       @map("sent_at")
-  recipientCount Int             @default(0) @map("recipient_count")
-  sentCount      Int             @default(0) @map("sent_count")
-  failedCount    Int             @default(0) @map("failed_count")
-  createdById    String          @map("created_by_id") @db.Uuid
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String
+  channel         CampaignChannel
+  status          CampaignStatus  @default(DRAFT)
+  segment         Json // dynamic filter descriptor (role, kycStatus, activeWithinDays, ...)
+  title           String // push title / email subject
+  body            String // push body / email html
+  emailTemplateId String?         @map("email_template_id") @db.Uuid
+  scheduledAt     DateTime?       @map("scheduled_at")
+  sentAt          DateTime?       @map("sent_at")
+  recipientCount  Int             @default(0) @map("recipient_count")
+  sentCount       Int             @default(0) @map("sent_count")
+  failedCount     Int             @default(0) @map("failed_count")
+  createdById     String          @map("created_by_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
 
   createdBy  AdminUser           @relation(fields: [createdById], references: [id])
   recipients CampaignRecipient[]
 
   @@index([status, createdAt])
+  @@index([createdById])
   @@map("campaigns")
 }
 
@@ -255,7 +256,7 @@ model Coupon {
   id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   code       String     @unique
   kind       CouponKind
-  value      Int        // percent (0-100) or centavos, per kind
+  value      Int // percent (0-100) or centavos, per kind
   maxUses    Int?       @map("max_uses")
   usedCount  Int        @default(0) @map("used_count")
   validFrom  DateTime?  @map("valid_from")
@@ -270,8 +271,8 @@ model Coupon {
 /// Advertiser banner shown in the carousel at the top of the app's home.
 model AdBanner {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  advertiser  String    // who is paying for the slot
-  title       String    // internal name + accessibility label
+  advertiser  String // who is paying for the slot
+  title       String // internal name + accessibility label
   imageUrl    String    @map("image_url") // ~2.4:1 landscape image
   linkUrl     String?   @map("link_url") // opened when the banner is tapped
   isActive    Boolean   @default(true) @map("is_active")
@@ -316,10 +317,10 @@ model EmailTemplate {
 model AuditLog {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   actorId    String   @map("actor_id") @db.Uuid
-  action     String   // e.g. withdrawal.pay, user.block, campaign.send
+  action     String // e.g. withdrawal.pay, user.block, campaign.send
   targetType String   @map("target_type") // e.g. withdrawal, user, payment
   targetId   String?  @map("target_id")
-  metadata   Json?    // arbitrary before/after or context payload
+  metadata   Json? // arbitrary before/after or context payload
   createdAt  DateTime @default(now()) @map("created_at")
 
   actor AdminUser @relation(fields: [actorId], references: [id])
@@ -336,7 +337,7 @@ model KycDecision {
   taskerProfileId String    @map("tasker_profile_id") @db.Uuid
   adminId         String    @map("admin_id") @db.Uuid
   decision        KycStatus // APPROVED or REJECTED
-  reason          String?   // Required when rejecting
+  reason          String? // Required when rejecting
   createdAt       DateTime  @default(now()) @map("created_at")
 
   taskerProfile TaskerProfile @relation(fields: [taskerProfileId], references: [id], onDelete: Cascade)
@@ -356,7 +357,7 @@ enum WithdrawalStatus {
 model Withdrawal {
   id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   taskerProfileId String           @map("tasker_profile_id") @db.Uuid
-  amount          Int              // centavos
+  amount          Int // centavos
   pixKey          String           @map("pix_key")
   status          WithdrawalStatus @default(PENDING)
   asaasTransferId String?          @map("asaas_transfer_id")
@@ -371,13 +372,13 @@ model Withdrawal {
 }
 
 model Category {
-  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  slug        String  @unique
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug        String   @unique
   name        String
   icon        String? // Icon name for mobile app
   description String?
-  isActive    Boolean @default(true) @map("is_active")
-  sortOrder   Int     @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at")
 
   // Relations
@@ -396,57 +397,59 @@ model TaskerProfileCategory {
   category      Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([taskerProfileId, categoryId])
+  @@index([categoryId])
   @@map("tasker_profile_categories")
 }
 
 model Task {
-  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clientId      String     @map("client_id") @db.Uuid
-  categoryId    String     @map("category_id") @db.Uuid
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId   String @map("client_id") @db.Uuid
+  categoryId String @map("category_id") @db.Uuid
 
-  title         String
-  description   String?
+  title       String
+  description String?
 
   // Location
-  address       String
-  location      Unsupported("geography(Point, 4326)")
+  address  String
+  location Unsupported("geography(Point, 4326)")
 
   // Scheduling
-  scheduledAt   DateTime?  @map("scheduled_at")
-  isUrgent      Boolean    @default(false) @map("is_urgent") // <1h = +30%
+  scheduledAt DateTime? @map("scheduled_at")
+  isUrgent    Boolean   @default(false) @map("is_urgent") // <1h = +30%
 
   // Pricing (all in centavos)
-  baseValue     Int        @map("base_value")      // Original value
-  urgencyFee    Int        @default(0) @map("urgency_fee")  // +30% if urgent
-  serviceFee    Int        @map("service_fee")     // 5% client fee
-  totalValue    Int        @map("total_value")     // What client pays
-  taskerValue   Int        @map("tasker_value")    // What tasker receives (after 15%)
+  baseValue   Int @map("base_value") // Original value
+  urgencyFee  Int @default(0) @map("urgency_fee") // +30% if urgent
+  serviceFee  Int @map("service_fee") // 5% client fee
+  totalValue  Int @map("total_value") // What client pays
+  taskerValue Int @map("tasker_value") // What tasker receives (after 15%)
 
-  status        TaskStatus @default(OPEN)
+  status TaskStatus @default(OPEN)
 
   // Timestamps
-  acceptedAt    DateTime?  @map("accepted_at")
-  startedAt     DateTime?  @map("started_at")
-  completedAt   DateTime?  @map("completed_at")
-  releasedAt    DateTime?  @map("released_at")
-  cancelledAt   DateTime?  @map("cancelled_at")
-  disputedAt    DateTime?  @map("disputed_at")
+  acceptedAt  DateTime? @map("accepted_at")
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  releasedAt  DateTime? @map("released_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  disputedAt  DateTime? @map("disputed_at")
 
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  client      User            @relation("ClientTasks", fields: [clientId], references: [id])
-  category    Category        @relation(fields: [categoryId], references: [id])
-  assignment  TaskAssignment?
-  messages    Message[]
-  reviews     Review[]
-  payment     Payment?
-  dispute     Dispute?
+  client     User            @relation("ClientTasks", fields: [clientId], references: [id])
+  category   Category        @relation(fields: [categoryId], references: [id])
+  assignment TaskAssignment?
+  messages   Message[]
+  reviews    Review[]
+  payment    Payment?
+  dispute    Dispute?
 
   @@index([location], type: Gist)
   @@index([status, createdAt])
   @@index([clientId])
+  @@index([categoryId])
   @@map("tasks")
 }
 
@@ -474,6 +477,7 @@ model Message {
   sender User @relation("SentMessages", fields: [senderId], references: [id])
 
   @@index([taskId, createdAt])
+  @@index([senderId])
   @@map("messages")
 }
 
@@ -482,7 +486,7 @@ model Review {
   taskId     String   @map("task_id") @db.Uuid
   reviewerId String   @map("reviewer_id") @db.Uuid
   revieweeId String   @map("reviewee_id") @db.Uuid
-  rating     Int      // 1-5
+  rating     Int // 1-5
   comment    String?
   tags       String[] // ["Pontual", "Caprichoso", etc]
   createdAt  DateTime @default(now()) @map("created_at")
@@ -499,72 +503,74 @@ model Review {
   @@unique([taskId, reviewerId]) // One review per user per task
   @@index([revieweeId])
   @@index([createdAt])
+  @@index([reviewerId])
   @@map("reviews")
 }
 
 model Payment {
-  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  taskId          String        @unique @map("task_id") @db.Uuid
-  userId          String        @map("user_id") @db.Uuid // The payer (client)
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskId String @unique @map("task_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid // The payer (client)
 
   // Asaas
-  asaasId         String?       @unique @map("asaas_id") // For idempotency
-  asaasPaymentId  String?       @map("asaas_payment_id")
-  asaasTransferId String?       @unique @map("asaas_transfer_id") // Set once escrow is transferred to the tasker
-  pixCode         String?       @map("pix_code")
-  pixQrCode       String?       @map("pix_qr_code")
+  asaasId         String? @unique @map("asaas_id") // For idempotency
+  asaasPaymentId  String? @map("asaas_payment_id")
+  asaasTransferId String? @unique @map("asaas_transfer_id") // Set once escrow is transferred to the tasker
+  pixCode         String? @map("pix_code")
+  pixQrCode       String? @map("pix_qr_code")
 
   // Values (centavos)
-  amount          Int           // Total charged
-  platformFee     Int           @map("platform_fee") // 20% total (15% tasker + 5% client)
-  taskerAmount    Int           @map("tasker_amount") // What tasker receives
+  amount       Int // Total charged
+  platformFee  Int @map("platform_fee") // 20% total (15% tasker + 5% client)
+  taskerAmount Int @map("tasker_amount") // What tasker receives
 
-  status          PaymentStatus @default(PENDING)
+  status PaymentStatus @default(PENDING)
 
-  paidAt          DateTime?     @map("paid_at")
-  heldAt          DateTime?     @map("held_at")
-  releasedAt      DateTime?     @map("released_at")
-  refundedAt      DateTime?     @map("refunded_at")
+  paidAt     DateTime? @map("paid_at")
+  heldAt     DateTime? @map("held_at")
+  releasedAt DateTime? @map("released_at")
+  refundedAt DateTime? @map("refunded_at")
 
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id])
 
   @@index([status])
+  @@index([userId])
   @@map("payments")
 }
 
 model Cancellation {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  taskId        String   @map("task_id") @db.Uuid
-  cancelledById String   @map("cancelled_by_id") @db.Uuid
+  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskId        String  @map("task_id") @db.Uuid
+  cancelledById String  @map("cancelled_by_id") @db.Uuid
   reason        String?
 
   // Penalty (centavos)
-  penaltyAmount Int      @default(0) @map("penalty_amount")
-  wasPenalized  Boolean  @default(false) @map("was_penalized")
+  penaltyAmount Int     @default(0) @map("penalty_amount")
+  wasPenalized  Boolean @default(false) @map("was_penalized")
 
-  createdAt     DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("cancellations")
 }
 
 model Dispute {
-  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  taskId       String        @unique @map("task_id") @db.Uuid
-  openedById   String        @map("opened_by_id") @db.Uuid
-  reason       String
-  status       DisputeStatus @default(OPEN)
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskId     String        @unique @map("task_id") @db.Uuid
+  openedById String        @map("opened_by_id") @db.Uuid
+  reason     String
+  status     DisputeStatus @default(OPEN)
 
   // Admin resolution
-  resolution   String?       // Free-text notes from the admin
-  resolvedById String?       @map("resolved_by_id") @db.Uuid
-  resolvedAt   DateTime?     @map("resolved_at")
+  resolution   String? // Free-text notes from the admin
+  resolvedById String?   @map("resolved_by_id") @db.Uuid
+  resolvedAt   DateTime? @map("resolved_at")
 
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
@@ -577,13 +583,13 @@ model Dispute {
 // ============================================
 
 model ServiceArea {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String   // Uberlandia, Uberaba, Araguari
-  slug      String   @unique
-  isActive  Boolean  @default(true) @map("is_active")
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name     String // Uberlandia, Uberaba, Araguari
+  slug     String  @unique
+  isActive Boolean @default(true) @map("is_active")
 
   // Polygon for the service area
-  boundary  Unsupported("geography(Polygon, 4326)")
+  boundary Unsupported("geography(Polygon, 4326)")
 
   createdAt DateTime @default(now()) @map("created_at")
 
