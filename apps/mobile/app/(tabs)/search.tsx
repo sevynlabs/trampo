@@ -83,13 +83,13 @@ export default function SearchScreen() {
           data={list.data ?? []}
           keyExtractor={(p) => p.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
-          refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={() => list.refetch()} />}
+          refreshControl={<RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} />}
           ListHeaderComponent={
             (list.data?.length ?? 0) > 0 ? (
               <Text style={{ fontSize: 13, color: colors.inkMuted, marginBottom: 10 }}>
                 {list.data!.length} {list.data!.length === 1 ? 'profissional encontrado' : 'profissionais encontrados'}
               </Text>
-            ) : null
+            ) : undefined
           }
           renderItem={({ item }) => (
             <ProfessionalCard

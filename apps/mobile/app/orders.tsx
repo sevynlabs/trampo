@@ -42,7 +42,7 @@ export default function OrdersScreen() {
           data={list}
           keyExtractor={(t) => t.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
           renderItem={({ item }) => (
             <TaskRow
               title={item.title}

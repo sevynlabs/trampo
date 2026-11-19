@@ -7,8 +7,8 @@ import {
   useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  ImageSourcePropType,
 } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,7 +20,7 @@ import { photos } from '../src/theme/photos';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const SLIDES: { icon: IconName; image: ImageSourcePropType; title: string; highlight: string; text: string }[] = [
+const SLIDES: { icon: IconName; image: number; title: string; highlight: string; text: string }[] = [
   {
     icon: 'people',
     image: photos.heroCrossedArms,
@@ -74,7 +74,7 @@ function Onboarding() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const [page, setPage] = useState(0);
   const last = page === SLIDES.length - 1;
 

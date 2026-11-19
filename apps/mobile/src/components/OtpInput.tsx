@@ -6,6 +6,7 @@ import {
   Text,
   StyleSheet,
 } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -118,7 +119,7 @@ export function OtpInput({
   success,
   disabled,
 }: OtpInputProps) {
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const shakeAnimation = useSharedValue(0);
   const prevError = useRef<string | undefined>(undefined);
 

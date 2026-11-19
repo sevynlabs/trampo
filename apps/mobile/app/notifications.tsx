@@ -91,7 +91,7 @@ export default function NotificationsScreen() {
         <ScrollView
           className="flex-1 bg-background"
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         >
           {items.map((n) => {
             const cfg = ICON_BY_TYPE[n.type] ?? ICON_BY_TYPE.generic;

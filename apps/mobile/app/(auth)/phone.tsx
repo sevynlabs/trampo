@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,7 +24,7 @@ export default function PhoneScreen() {
   const [ddd, setDdd] = useState('');
   const [number, setNumber] = useState('');
   const [error, setError] = useState('');
-  const numberRef = useRef<TextInput>(null);
+  const numberRef = useRef<TextInputInstance>(null);
 
   const requestOtp = trpc.auth.requestOtp.useMutation({
     onSuccess: () => {

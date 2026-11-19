@@ -73,7 +73,7 @@ export default function AdminDisputesScreen() {
         className="flex-1 bg-background"
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+          <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
         }
       >
         {isLoading && (

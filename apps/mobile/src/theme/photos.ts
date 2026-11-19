@@ -1,4 +1,5 @@
-import type { ImageSourcePropType } from 'react-native';
+/** require() of a bundled image returns its asset id. */
+type AssetId = number;
 
 /** Official brand photography (docs/marca). */
 export const photos = {
@@ -8,9 +9,9 @@ export const photos = {
   plumber: require('../../assets/brand/foto-profissional-encanador.webp'),
   drill: require('../../assets/brand/foto-profissional-instalacao-furadeira.webp'),
   cleaning: require('../../assets/brand/foto-profissional-limpeza.webp'),
-} satisfies Record<string, ImageSourcePropType>;
+} satisfies Record<string, AssetId>;
 
-const BY_CATEGORY: Array<[RegExp, ImageSourcePropType]> = [
+const BY_CATEGORY: Array<[RegExp, AssetId]> = [
   [/el[eé]tr/i, photos.electrician],
   [/hidr|encan|bomb/i, photos.plumber],
   [/limp|faxin|diar/i, photos.cleaning],
@@ -19,7 +20,7 @@ const BY_CATEGORY: Array<[RegExp, ImageSourcePropType]> = [
 ];
 
 /** Cover photo for a service category; falls back to the brand hero photo. */
-export function categoryPhoto(cat: { name?: string | null; slug?: string | null }): ImageSourcePropType {
+export function categoryPhoto(cat: { name?: string | null; slug?: string | null }): AssetId {
   const key = `${cat.slug ?? ''} ${cat.name ?? ''}`;
   for (const [re, img] of BY_CATEGORY) if (re.test(key)) return img;
   return photos.heroCrossedArms;

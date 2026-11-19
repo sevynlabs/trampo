@@ -7,6 +7,7 @@ import {
   TextInputProps,
   Pressable,
 } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -43,7 +44,7 @@ export function Input({
   ...textInputProps
 }: InputProps) {
   const [isFocused, setIsFocused] = useState(false);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   const labelPosition = useSharedValue(value ? 1 : 0);
   const focusAnimation = useSharedValue(0);
@@ -196,8 +197,8 @@ export function PhoneInput({
   error?: string;
 }) {
   const [focusedField, setFocusedField] = useState<'ddd' | 'number' | null>(null);
-  const dddRef = useRef<TextInput>(null);
-  const numberRef = useRef<TextInput>(null);
+  const dddRef = useRef<TextInputInstance>(null);
+  const numberRef = useRef<TextInputInstance>(null);
   const shakeAnimation = useSharedValue(0);
   const prevError = useRef<string | undefined>(undefined);
 

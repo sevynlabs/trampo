@@ -1,4 +1,4 @@
-import { View, Text, ImageSourcePropType } from 'react-native';
+import { View, Text } from 'react-native';
 import { Image } from 'expo-image';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +22,7 @@ export function BrandHero({
   ],
 }: {
   icon?: IconName;
-  image?: ImageSourcePropType;
+  image?: number;
   height?: number;
   chips?: { icon: IconName; label: string }[];
 }) {

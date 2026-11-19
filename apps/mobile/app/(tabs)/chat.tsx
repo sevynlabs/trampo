@@ -39,7 +39,7 @@ export default function ChatInbox() {
           data={data ?? []}
           keyExtractor={(c) => c.taskId}
           contentContainerStyle={{ paddingBottom: 120 }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
           ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: colors.hairline, marginLeft: 88 }} />}
           renderItem={({ item }) => (
             <Touchable

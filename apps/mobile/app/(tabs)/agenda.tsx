@@ -55,7 +55,7 @@ export default function AgendaScreen() {
           sections={sections}
           keyExtractor={(t) => t.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
           renderSectionHeader={({ section }) => (
             <Text style={{ fontSize: 14, fontWeight: '800', color: colors.ink, marginTop: 14, marginBottom: 8 }}>{section.title}</Text>
           )}
