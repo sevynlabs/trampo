@@ -74,7 +74,12 @@ export default function ProfileScreen() {
       </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }} style={{ marginTop: -44 }}>
         <Card style={{ alignItems: 'center', paddingTop: 20 }}>
-          <Avatar name={user?.name} uri={user?.avatarUrl} size={84} verified={kycStatus === 'APPROVED'} />
+          <Pressable onPress={() => router.push('/profile/edit')} accessibilityRole="button" accessibilityLabel="Alterar foto do perfil">
+            <Avatar name={user?.name} uri={user?.avatarUrl} size={84} verified={kycStatus === 'APPROVED'} />
+            <View style={{ position: 'absolute', left: -2, bottom: -2, width: 28, height: 28, borderRadius: 14, backgroundColor: colors.orange, borderWidth: 2, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="camera" size={14} color="#fff" />
+            </View>
+          </Pressable>
           <Text style={{ fontSize: 21, fontWeight: '900', color: colors.ink, marginTop: 10 }}>{user?.name || 'Usuário'}</Text>
           <Text style={{ color: colors.inkMuted, marginTop: 2 }}>{user?.phone}</Text>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>

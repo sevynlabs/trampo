@@ -14,6 +14,7 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { trpc } from '../../src/lib/trpc';
 import { GradientButton } from '../../src/components/GradientButton';
+import { AvatarPicker } from '../../src/components/AvatarPicker';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -74,6 +75,11 @@ export default function EditProfileScreen() {
           </View>
         ) : (
           <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }}>
+            {/* Photo */}
+            <View style={{ marginBottom: 24 }}>
+              <AvatarPicker name={user?.name} uri={user?.avatarUrl} verified={user?.taskerProfile?.kycStatus === 'APPROVED'} />
+            </View>
+
             {/* Name */}
             <Text className="text-ink font-medium mb-2">Nome completo</Text>
             <TextInput

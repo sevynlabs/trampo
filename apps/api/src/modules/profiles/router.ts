@@ -1,11 +1,13 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure } from '../../trpc';
+import { router, protectedProcedure, withRateLimit } from '../../trpc';
 import { registerProfileInput, updateProfileInput } from '@trampo/contracts';
 import { prisma, Prisma } from '@trampo/db';
 import { storeEncryptedCpf } from '../../lib/pii';
 import { isAdminUser } from '../../lib/admin';
 import crypto from 'crypto';
+import { AVATAR_BUCKET, ensureAvatarBucket, avatarPublicUrl, removeOldAvatars } from '../../lib/avatars';
+import { supabase } from '../../lib/supabase';
 
 const isTaskerRole = (role: string) => role === 'TASKER' || role === 'BOTH';
 
@@ -129,6 +131,55 @@ export const profilesRouter = router({
 
       return { id: user.id, name: user.name, email: user.email };
     }),
+
+  /**
+   * Profile photo, step 1: signed upload URL for the public "avatars" bucket.
+   */
+  getAvatarUploadUrl: protectedProcedure
+    .use(withRateLimit(10, 60))
+    .input(z.object({ contentType: z.enum(['image/jpeg', 'image/png', 'image/webp']) }))
+    .mutation(async ({ ctx, input }) => {
+      await ensureAvatarBucket();
+      const ext = input.contentType === 'image/png' ? 'png' : input.contentType === 'image/webp' ? 'webp' : 'jpg';
+      const path = `${ctx.user.id}/avatar_${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage.from(AVATAR_BUCKET).createSignedUploadUrl(path);
+      if (error || !data) {
+        console.error('[AVATAR] Upload URL error:', error);
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Não foi possível preparar o envio da foto' });
+      }
+      return { uploadUrl: data.signedUrl, path };
+    }),
+
+  /**
+   * Profile photo, step 2: the app uploaded the file; save its public URL.
+   */
+  confirmAvatar: protectedProcedure
+    .input(z.object({ path: z.string().max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      const expected = new RegExp(`^${ctx.user.id}/avatar_[0-9]+[.](jpg|png|webp)$`);
+      if (!expected.test(input.path)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Caminho de foto inválido' });
+      }
+      // The file must really be there (the signed URL may have been unused).
+      const name = input.path.split('/')[1];
+      const { data: files } = await supabase.storage.from(AVATAR_BUCKET).list(ctx.user.id, { search: name });
+      if (!files?.some((f) => f.name === name)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'A foto não chegou. Tente de novo.' });
+      }
+      const avatarUrl = avatarPublicUrl(input.path);
+      await prisma.user.update({ where: { id: ctx.user.id }, data: { avatarUrl } });
+      await removeOldAvatars(ctx.user.id, input.path).catch((e) => console.warn('[AVATAR] cleanup', e));
+      return { avatarUrl };
+    }),
+
+  /**
+   * Remove the profile photo.
+   */
+  removeAvatar: protectedProcedure.mutation(async ({ ctx }) => {
+    await prisma.user.update({ where: { id: ctx.user.id }, data: { avatarUrl: null } });
+    await removeOldAvatars(ctx.user.id).catch((e) => console.warn('[AVATAR] cleanup', e));
+    return { ok: true };
+  }),
 
   /**
    * Public profile of any user (name, avatar, rating, stats) for profile pages.
