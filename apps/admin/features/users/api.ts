@@ -19,6 +19,11 @@ export function useUsersList(params: UsersListInput) {
   return trpc.admin.listUsers.useQuery(params, { placeholderData: keepPreviousData });
 }
 
+/** Counts for the quick tabs (Todos · Clientes · Profissionais · Ambos) and identity filter. */
+export function useUserCounts() {
+  return trpc.admin.userCounts.useQuery(undefined, { staleTime: 30_000 });
+}
+
 export function useUser(id: string | null | undefined) {
   return trpc.admin.getUser.useQuery({ id: id ?? "" }, { enabled: !!id });
 }

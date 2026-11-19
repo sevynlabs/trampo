@@ -61,6 +61,14 @@ export const KYC_STATUS: Record<string, StatusDef> = {
   REJECTED: { label: "Rejeitado", tone: "danger" },
 };
 
+/** Identity (minimum) verification — every user; mirrors IdentityVerification.status. */
+export const IDENTITY_STATUS: Record<string, StatusDef> = {
+  PENDING: { label: "Identidade não enviada", tone: "neutral" },
+  SUBMITTED: { label: "Identidade em análise", tone: "warning" },
+  APPROVED: { label: "Identidade verificada", tone: "info" },
+  REJECTED: { label: "Identidade rejeitada", tone: "danger" },
+};
+
 /** Dispute — mirrors Prisma DisputeStatus. */
 export const DISPUTE_STATUS: Record<string, StatusDef> = {
   OPEN: { label: "Aberta", tone: "danger" },

@@ -1,5 +1,5 @@
 import { StatusBadge, Tag } from "@/components/ds";
-import { KYC_STATUS } from "@/constants/status";
+import { IDENTITY_STATUS, KYC_STATUS } from "@/constants/status";
 
 const ROLE_TAG: Record<string, { label: string; tone: "navy" | "brand" | "info" }> = {
   CLIENT: { label: "Cliente", tone: "navy" },
@@ -24,8 +24,14 @@ export function ActiveBadge({ active }: { active: boolean }) {
   return active ? <StatusBadge tone="success" label="Ativo" /> : <StatusBadge tone="danger" label="Bloqueado" />;
 }
 
-/** Professional verification pill (KYC); renders nothing for non-professionals. */
-export function KycBadge({ status }: { status: string | null | undefined }) {
+/** Professional verification pill (criminal record review); renders nothing for non-professionals. */
+export function KycBadge({ status, prefix = "Profissional" }: { status: string | null | undefined; prefix?: string }) {
   if (!status) return null;
-  return <StatusBadge map={KYC_STATUS} status={status} />;
+  const def = KYC_STATUS[status] ?? { label: status, tone: "neutral" as const };
+  return <StatusBadge tone={def.tone} label={prefix ? `${prefix}: ${def.label.toLowerCase()}` : def.label} />;
+}
+
+/** Identity (minimum) verification — shown for EVERY user, clients included. */
+export function IdentityBadge({ status }: { status: string | null | undefined }) {
+  return <StatusBadge map={IDENTITY_STATUS} status={status ?? "PENDING"} />;
 }

@@ -17,7 +17,8 @@ import {
 import { useUrlState } from "@/hooks/use-url-state";
 import { useAdminRole } from "@/hooks/use-admin-role";
 import { formatNumber } from "@/lib/format";
-import { USER_SORT_KEYS, useSetUserActive, useUsersList, type UserRow, type UserSortBy } from "../api";
+import { USER_SORT_KEYS, useSetUserActive, useUserCounts, useUsersList, type UserRow, type UserSortBy } from "../api";
+import { cn } from "@/lib/utils";
 import { userColumns } from "./users-columns";
 import { UserDrawer } from "./user-summary";
 import { RoleDialog, type RoleTarget } from "./role-dialog";
@@ -34,10 +35,19 @@ const STATUS_OPTIONS = [
 
 const ROLE_FILTER_OPTIONS = [
   { value: "ALL", label: "Todos" },
-  { value: "CLIENT", label: "Cliente" },
-  { value: "TASKER", label: "Profissional" },
+  { value: "CLIENT", label: "Clientes" },
+  { value: "TASKER", label: "Profissionais" },
   { value: "BOTH", label: "Ambos" },
 ];
+
+const IDENTITY_OPTIONS = [
+  { value: "all", label: "Todas" },
+  { value: "PENDING", label: "Não enviada" },
+  { value: "SUBMITTED", label: "Em análise" },
+  { value: "APPROVED", label: "Verificada" },
+  { value: "REJECTED", label: "Rejeitada" },
+];
+type IdentityFilter = "all" | "PENDING" | "SUBMITTED" | "APPROVED" | "REJECTED";
 
 export const USER_INVITE_TEXT =
   "Oi! Estou te convidando para o TRAMPO, o app para contratar profissionais de confiança perto de você. " +
@@ -46,15 +56,17 @@ export const USER_INVITE_TEXT =
 
 /** Usuários: header + filters + server-paginated table + drawers/dialogs. */
 export function UsersList() {
-  const [s, set] = useUrlState({ q: "", page: "1", status: "all", role: "ALL", sortBy: "createdAt", sortDir: "desc" });
+  const [s, set] = useUrlState({ q: "", page: "1", status: "all", role: "ALL", identity: "all", sortBy: "createdAt", sortDir: "desc" });
+  const counts = useUserCounts();
   const { canEdit, readOnlyReason } = useAdminRole();
   const sortBy: UserSortBy = (USER_SORT_KEYS as readonly string[]).includes(s.sortBy) ? (s.sortBy as UserSortBy) : "createdAt";
   const sortDir = s.sortDir === "asc" ? "asc" : "desc";
   const page = Math.max(1, Number(s.page) || 1);
   const status = STATUS_OPTIONS.some((o) => o.value === s.status) ? (s.status as "all" | "active" | "blocked") : "all";
   const role = ROLE_FILTER_OPTIONS.some((o) => o.value === s.role) ? (s.role as "ALL" | "CLIENT" | "TASKER" | "BOTH") : "ALL";
+  const identity = IDENTITY_OPTIONS.some((o) => o.value === s.identity) ? (s.identity as IdentityFilter) : "all";
 
-  const query = useUsersList({ page, pageSize: PAGE_SIZE, search: s.q.trim() || undefined, status, role, sortBy, sortDir });
+  const query = useUsersList({ page, pageSize: PAGE_SIZE, search: s.q.trim() || undefined, status, role, identity, sortBy, sortDir });
 
   const [viewId, setViewId] = useState<string | null>(null);
   const [roleTarget, setRoleTarget] = useState<RoleTarget | null>(null);
@@ -63,7 +75,7 @@ export function UsersList() {
 
   // Selection is per page/filter: the table remounts (and clears) when this key changes.
   const [bulkRound, setBulkRound] = useState(0);
-  const tableKey = `${page}|${s.q}|${status}|${role}|${sortBy}|${sortDir}|${bulkRound}`;
+  const tableKey = `${page}|${s.q}|${status}|${role}|${identity}|${sortBy}|${sortDir}|${bulkRound}`;
   const [selection, setSelection] = useState<{ key: string; rows: UserRow[] }>({ key: "", rows: [] });
   const selected = selection.key === tableKey ? selection.rows : [];
   const [bulk, setBulk] = useState<null | "block" | "unblock">(null);
@@ -97,7 +109,9 @@ export function UsersList() {
   }
 
   const data = query.data;
-  const hasFilters = !!s.q || status !== "all" || role !== "ALL";
+  const hasFilters = !!s.q || status !== "all" || role !== "ALL" || identity !== "all";
+  const roleCount = (v: string) =>
+    counts.data ? (v === "ALL" ? counts.data.all : counts.data[v as "CLIENT" | "TASKER" | "BOTH"]) : undefined;
   const toBlock = selected.filter((u) => u.isActive).length;
   const toUnblock = selected.filter((u) => !u.isActive).length;
 
@@ -116,6 +130,31 @@ export function UsersList() {
       />
 
       <SectionCard contentClassName="space-y-4">
+        {/* Quick tabs by account type */}
+        <div role="tablist" aria-label="Tipo de conta" className="flex flex-wrap gap-2">
+          {ROLE_FILTER_OPTIONS.map((o) => {
+            const active = role === o.value;
+            const n = roleCount(o.value);
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => set({ role: o.value })}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  active ? "border-navy bg-navy text-white" : "border-border bg-card text-muted-foreground hover:border-navy/30 hover:text-navy"
+                )}
+              >
+                {o.label}
+                {n !== undefined && (
+                  <span className={cn("rounded-full px-1.5 text-xs tabular-nums", active ? "bg-white/20" : "bg-muted")}>{formatNumber(n)}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
         <FilterBar>
           <SearchInput
             value={s.q}
@@ -123,7 +162,7 @@ export function UsersList() {
             placeholder="Buscar por ID (TR-…), nome, e-mail ou telefone…"
           />
           <FilterSelect label="Status" value={status} onChange={(v) => set({ status: v })} options={STATUS_OPTIONS} />
-          <FilterSelect label="Tipo" value={role} onChange={(v) => set({ role: v })} options={ROLE_FILTER_OPTIONS} />
+          <FilterSelect label="Identidade" value={identity} onChange={(v) => set({ identity: v })} options={IDENTITY_OPTIONS} />
         </FilterBar>
 
         {selected.length > 0 && (

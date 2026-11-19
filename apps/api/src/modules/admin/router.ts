@@ -169,14 +169,21 @@ export const adminRouter = router({
         search: z.string().trim().optional(),
         role: z.enum(['ALL', 'CLIENT', 'TASKER', 'BOTH']).default('ALL'),
         status: z.enum(['all', 'active', 'blocked']).default('all'),
+        /** Identity verification (every user). PENDING also matches users who never sent anything. */
+        identity: z.enum(['all', 'PENDING', 'SUBMITTED', 'APPROVED', 'REJECTED']).default('all'),
         sortBy: z.enum(['createdAt', 'name']).default('createdAt'),
         sortDir: z.enum(['asc', 'desc']).default('desc'),
       })
     )
     .query(async ({ input }) => {
-      const { page, pageSize, search, role, status, sortBy, sortDir } = input;
+      const { page, pageSize, search, role, status, identity, sortBy, sortDir } = input;
 
       const where: Prisma.UserWhereInput = {};
+      if (identity === 'PENDING') {
+        where.AND = [{ OR: [{ identity: null }, { identity: { status: 'PENDING' } }] }];
+      } else if (identity !== 'all') {
+        where.identity = { status: identity };
+      }
 
       if (search) {
         const code = parsePublicCode(search);
@@ -212,6 +219,7 @@ export const adminRouter = router({
             createdAt: true,
             publicCode: true,
             taskerProfile: { select: { kycStatus: true } },
+            identity: { select: { status: true } },
           },
         }),
       ]);
@@ -229,6 +237,8 @@ export const adminRouter = router({
           createdAt: u.createdAt.toISOString(),
           /** In-app ID shown to users ("TR-4F9A2C") */
           publicCode: formatPublicCode(u.publicCode),
+          /** Minimum (identity) verification — applies to clients AND professionals */
+          identityStatus: u.identity?.status ?? 'PENDING',
         })),
         total,
         page,
@@ -236,6 +246,33 @@ export const adminRouter = router({
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
       };
     }),
+
+  /**
+   * Counts for the Usuários quick tabs (Todos · Clientes · Profissionais · Ambos)
+   * plus identity verification breakdown.
+   */
+  userCounts: adminAuthProcedure.query(async () => {
+    const [byRole, byIdentity, total] = await Promise.all([
+      prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
+      prisma.identityVerification.groupBy({ by: ['status'], _count: { _all: true } }),
+      prisma.user.count(),
+    ]);
+    const role = (r: string) => byRole.find((x) => x.role === r)?._count._all ?? 0;
+    const idc = (st: string) => byIdentity.find((x) => x.status === st)?._count._all ?? 0;
+    const withRecord = byIdentity.reduce((sum, x) => sum + x._count._all, 0);
+    return {
+      all: total,
+      CLIENT: role('CLIENT'),
+      TASKER: role('TASKER'),
+      BOTH: role('BOTH'),
+      identity: {
+        PENDING: idc('PENDING') + (total - withRecord),
+        SUBMITTED: idc('SUBMITTED'),
+        APPROVED: idc('APPROVED'),
+        REJECTED: idc('REJECTED'),
+      },
+    };
+  }),
 
   /**
    * Professionals directory for the admin panel: tasker profiles with
@@ -345,7 +382,7 @@ export const adminRouter = router({
     .query(async ({ input }) => {
       const user = await prisma.user.findUnique({
         where: { id: input.id },
-        include: { taskerProfile: true },
+        include: { taskerProfile: true, identity: true },
       });
 
       if (!user) {
@@ -405,6 +442,23 @@ export const adminRouter = router({
 
       const withdrawn = withdrawnAgg?._sum.amount ?? 0;
 
+      // Client-side summary (every user can hire)
+      const [clientTaskCount, clientCompleted, spentAgg, lastClientTask, clientRatingAgg] = await Promise.all([
+        prisma.task.count({ where: { clientId: user.id } }),
+        prisma.task.count({ where: { clientId: user.id, status: { in: ['COMPLETED', 'RELEASED'] } } }),
+        prisma.payment.aggregate({
+          where: { userId: user.id, status: { in: ['CONFIRMED', 'HELD', 'RELEASED'] } },
+          _sum: { amount: true },
+        }),
+        prisma.task.findFirst({ where: { clientId: user.id }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } }),
+        // Reviews the user received AS A CLIENT (written by the professional)
+        prisma.review.aggregate({
+          where: { revieweeId: user.id, hiddenAt: null, task: { clientId: user.id } },
+          _avg: { rating: true },
+          _count: { _all: true },
+        }),
+      ]);
+
       return {
         user: {
           id: user.id,
@@ -417,6 +471,22 @@ export const adminRouter = router({
           role: user.role,
           isActive: user.isActive,
           createdAt: user.createdAt.toISOString(),
+        },
+        /** Minimum verification (document + selfie) — clients and professionals */
+        identity: {
+          status: user.identity?.status ?? 'PENDING',
+          submittedAt: user.identity?.submittedAt?.toISOString() ?? null,
+          approvedAt: user.identity?.approvedAt?.toISOString() ?? null,
+          rejectReason: user.identity?.rejectReason ?? null,
+          hasDocuments: !!(user.identity?.documentFrontPath && user.identity?.selfiePath),
+        },
+        clientSummary: {
+          tasksCount: clientTaskCount,
+          completedCount: clientCompleted,
+          totalSpent: spentAgg._sum.amount ?? 0,
+          lastTaskAt: lastClientTask?.createdAt.toISOString() ?? null,
+          ratingAsClient: clientRatingAgg._avg.rating ?? 0,
+          ratingAsClientCount: clientRatingAgg._count._all,
         },
         taskerProfile: profile
           ? {

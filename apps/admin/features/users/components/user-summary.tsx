@@ -18,7 +18,56 @@ import { ErrorState, LoadingState, RatingStars, StatusBadge, UserAvatar } from "
 import { TASK_STATUS } from "@/constants/status";
 import { formatBRL, formatDate } from "@/lib/format";
 import { useUser, type UserDetail } from "../api";
-import { ActiveBadge, KycBadge, RoleTag } from "./user-badges";
+import { ActiveBadge, IdentityBadge, KycBadge, RoleTag } from "./user-badges";
+
+/**
+ * Shortcuts to the verification reviews: identity (every user) and, for
+ * professionals, the criminal-record review. Highlighted when waiting.
+ */
+export function VerificationLinks({ data }: { data: UserDetail }) {
+  const { identity, taskerProfile: pro, user } = data;
+  const idWaiting = identity.status === "SUBMITTED";
+  const proWaiting = pro?.kycStatus === "SUBMITTED";
+  return (
+    <div className="space-y-2 rounded-xl border border-border/70 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-navy">Identidade (documento + selfie)</div>
+          <div className="text-xs text-muted-foreground">
+            {identity.status === "PENDING"
+              ? "Ainda não enviou. Sem isso não publica nem contrata."
+              : identity.submittedAt
+                ? `Enviada em ${formatDate(identity.submittedAt)}`
+                : "—"}
+            {identity.rejectReason ? ` · Motivo: ${identity.rejectReason}` : ""}
+          </div>
+        </div>
+        {identity.hasDocuments ? (
+          <Button asChild size="xs" variant={idWaiting ? "default" : "outline"}>
+            <Link href={proWaiting && pro ? `/kyc/${pro.id}` : `/kyc/identidade/${user.id}`}>
+              {idWaiting ? "Analisar" : "Ver documentos"}
+            </Link>
+          </Button>
+        ) : (
+          <IdentityBadge status={identity.status} />
+        )}
+      </div>
+      {pro && (
+        <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-2">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-navy">Conta profissional (antecedentes)</div>
+            <div className="text-xs text-muted-foreground">
+              {pro.kycSubmittedAt ? `Enviada em ${formatDate(pro.kycSubmittedAt)}` : "Certidão ainda não enviada."}
+            </div>
+          </div>
+          <Button asChild size="xs" variant={proWaiting ? "default" : "outline"}>
+            <Link href={`/kyc/${pro.id}`}>{proWaiting ? "Analisar" : "Ver"}</Link>
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Label/value line used in detail cards and drawers. */
 export function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -55,6 +104,7 @@ function SummaryBody({ data, extra }: { data: UserDetail; extra?: React.ReactNod
           <div className="flex flex-wrap items-center gap-1.5">
             <RoleTag role={user.role} />
             <ActiveBadge active={user.isActive} />
+            <IdentityBadge status={data.identity.status} />
             <KycBadge status={pro?.kycStatus} />
           </div>
         </div>
@@ -62,6 +112,23 @@ function SummaryBody({ data, extra }: { data: UserDetail; extra?: React.ReactNod
 
       {extra}
 
+      <VerificationLinks data={data} />
+
+      <div>
+        <h3 className="mb-2 text-sm font-bold text-navy">Como cliente</h3>
+        <div className="grid grid-cols-3 gap-2">
+          <MiniStat label="Solicitações" value={`${data.clientSummary.tasksCount} (${data.clientSummary.completedCount} concl.)`} />
+          <MiniStat label="Total gasto" value={formatBRL(data.clientSummary.totalSpent)} />
+          <MiniStat
+            label={`Avaliação (${data.clientSummary.ratingAsClientCount})`}
+            value={<RatingStars value={data.clientSummary.ratingAsClient} />}
+          />
+        </div>
+      </div>
+
+      {pro && (
+        <h3 className="-mb-3 text-sm font-bold text-navy">Como profissional</h3>
+      )}
       {pro && (
         <div className="grid grid-cols-3 gap-2">
           <MiniStat label="Avaliação" value={<RatingStars value={pro.rating} />} />
@@ -75,6 +142,7 @@ function SummaryBody({ data, extra }: { data: UserDetail; extra?: React.ReactNod
         <InfoRow label="Telefone" value={user.phone} />
         <InfoRow label="E-mail" value={user.email || "—"} />
         <InfoRow label="Cadastro" value={formatDate(user.createdAt)} />
+        <InfoRow label="Última solicitação" value={formatDate(data.clientSummary.lastTaskAt)} />
         {pro && <InfoRow label="Saldo disponível" value={formatBRL(pro.balance.available)} />}
       </div>
 

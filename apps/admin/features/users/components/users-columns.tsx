@@ -5,7 +5,7 @@ import { Ban, Eye, Pencil, ShieldCheck } from "lucide-react";
 import { IconButton, RowActions, UserCell } from "@/components/ds";
 import { formatDate } from "@/lib/format";
 import type { UserRow } from "../api";
-import { ActiveBadge, KycBadge, RoleTag } from "./user-badges";
+import { ActiveBadge, IdentityBadge, KycBadge, RoleTag } from "./user-badges";
 
 export type UserRowHandlers = {
   onView: (row: UserRow) => void;
@@ -36,17 +36,23 @@ export function userColumns(h: UserRowHandlers): ColumnDef<UserRow, unknown>[] {
     {
       id: "role",
       header: "Tipo",
-      cell: ({ row }) => <RoleTag role={row.original.role} />,
+      cell: ({ row }) => (
+        <div className="flex flex-col items-start gap-1">
+          <RoleTag role={row.original.role} />
+          {/* Professional review (criminal record) — only for professional accounts */}
+          <KycBadge status={row.original.kycStatus} prefix="Prof." />
+        </div>
+      ),
+    },
+    {
+      id: "identity",
+      header: "Identidade",
+      cell: ({ row }) => <IdentityBadge status={row.original.identityStatus} />,
     },
     {
       id: "status",
       header: "Status",
-      cell: ({ row }) => (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <ActiveBadge active={row.original.isActive} />
-          <KycBadge status={row.original.kycStatus} />
-        </div>
-      ),
+      cell: ({ row }) => <ActiveBadge active={row.original.isActive} />,
     },
     {
       id: "createdAt",

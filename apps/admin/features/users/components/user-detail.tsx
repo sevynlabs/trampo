@@ -22,8 +22,8 @@ import { useAdminRole } from "@/hooks/use-admin-role";
 import { TASK_STATUS } from "@/constants/status";
 import { formatBRL, formatDate, formatDateTime } from "@/lib/format";
 import { useUser, type UserDetail } from "../api";
-import { ActiveBadge, KycBadge, RoleTag } from "./user-badges";
-import { InfoRow } from "./user-summary";
+import { ActiveBadge, IdentityBadge, KycBadge, RoleTag } from "./user-badges";
+import { InfoRow, VerificationLinks } from "./user-summary";
 import { RoleDialog, type RoleTarget } from "./role-dialog";
 import { UserActiveDialog, type ActiveTarget } from "./user-active-dialog";
 
@@ -113,12 +113,20 @@ export function UserDetailView({ id }: { id: string }) {
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
             <RoleTag role={user.role} />
             <ActiveBadge active={user.isActive} />
+            <IdentityBadge status={data.identity.status} />
             <KycBadge status={pro?.kycStatus} />
             <span className="text-xs text-muted-foreground">· cadastro em {formatDate(user.createdAt)}</span>
           </span>
         }
         actions={
           <>
+            {data.identity.status === "SUBMITTED" && pro?.kycStatus !== "SUBMITTED" && (
+              <Button asChild variant="soft">
+                <Link href={`/kyc/identidade/${user.id}`}>
+                  <BadgeCheck /> Analisar identidade
+                </Link>
+              </Button>
+            )}
             {pro?.kycStatus === "SUBMITTED" && (
               <Button asChild variant="soft">
                 <Link href={`/kyc/${pro.id}`}>
@@ -149,6 +157,18 @@ export function UserDetailView({ id }: { id: string }) {
         }
       />
 
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={CalendarClock} tone="navy" label="Solicitações como cliente" value={`${data.clientSummary.tasksCount} (${data.clientSummary.completedCount} concluídas)`} />
+        <StatCard icon={Banknote} tone="brand" label="Total gasto" value={formatBRL(data.clientSummary.totalSpent)} />
+        <StatCard
+          icon={Star}
+          tone="warning"
+          label={`Avaliação como cliente (${data.clientSummary.ratingAsClientCount})`}
+          value={data.clientSummary.ratingAsClient > 0 ? data.clientSummary.ratingAsClient.toFixed(1).replace(".", ",") : "—"}
+        />
+        <StatCard icon={CalendarClock} tone="sky" label="Última solicitação" value={formatDate(data.clientSummary.lastTaskAt)} />
+      </div>
+
       {pro && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard icon={Star} tone="warning" label="Avaliação média" value={pro.rating > 0 ? pro.rating.toFixed(1).replace(".", ",") : "Novo"} />
@@ -163,7 +183,11 @@ export function UserDetailView({ id }: { id: string }) {
           <InfoRow label="Telefone" value={user.phone} />
           <InfoRow label="E-mail" value={user.email || "—"} />
           <InfoRow label="Cadastro" value={formatDateTime(user.createdAt)} />
-          <InfoRow label="ID" value={<span className="font-mono text-xs">{user.id}</span>} />
+          <InfoRow label="ID no app" value={<PublicId code={user.publicCode} />} />
+          <InfoRow label="ID interno" value={<span className="font-mono text-xs">{user.id}</span>} />
+          <div className="pt-3">
+            <VerificationLinks data={data} />
+          </div>
         </SectionCard>
 
         {pro ? (
