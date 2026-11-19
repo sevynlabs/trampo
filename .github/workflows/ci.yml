@@ -1,0 +1,57 @@
+# Verificação: roda em todo pull request e a cada mudança na main.
+# Nada é publicado aqui — só confere que tudo compila e os testes passam.
+name: Verificação
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Tipos, testes e builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4 # versão vem de "packageManager" no package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Gerar cliente do banco (Prisma)
+        run: pnpm --filter @trampo/db generate
+
+      - name: Tipos — pacotes compartilhados
+        run: |
+          pnpm --filter @trampo/contracts typecheck
+          pnpm --filter @trampo/db typecheck
+
+      - name: API — tipos
+        run: pnpm --filter @trampo/api typecheck
+
+      - name: API — testes (preço, cancelamento, status do pedido)
+        run: pnpm --filter @trampo/api test
+
+      - name: API — build de produção
+        run: pnpm --filter @trampo/api build
+
+      - name: App — tipos
+        run: pnpm --filter @trampo/mobile typecheck
+
+      - name: App — expo-doctor
+        working-directory: apps/mobile
+        run: npx expo-doctor@latest
+
+      - name: Painel — build (inclui checagem de tipos)
+        run: pnpm --filter @trampo/admin build

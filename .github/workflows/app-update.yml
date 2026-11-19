@@ -1,0 +1,74 @@
+# Atualização rápida do app (EAS Update): só código JavaScript, sem loja.
+#
+# - Toda mudança no app que entra na main vai sozinha para o canal "preview"
+#   (o build de teste no celular do dono).
+# - Produção é manual: Actions → "App — atualização rápida" → Run workflow →
+#   canal "production". O ambiente "production" do GitHub pode exigir aprovação.
+#
+# Só chega a quem tem um build com a mesma "impressão digital" nativa
+# (runtimeVersion por fingerprint). Se a mudança for nativa, use "App — build".
+name: App — atualização rápida
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/mobile/**
+      - packages/contracts/**
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Canal
+        type: choice
+        options: [preview, production]
+        default: preview
+      message:
+        description: O que mudou (aparece no painel da Expo)
+        type: string
+        required: false
+
+concurrency:
+  group: app-update-${{ github.event_name == 'workflow_dispatch' && inputs.channel || 'preview' }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Publicar em ${{ github.event_name == 'workflow_dispatch' && inputs.channel || 'preview' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.channel || 'preview' }}
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      CHANNEL: ${{ github.event_name == 'workflow_dispatch' && inputs.channel || 'preview' }}
+      MESSAGE: ${{ inputs.message || github.event.head_commit.message }}
+    steps:
+      - name: Sem EXPO_TOKEN configurado
+        if: env.EXPO_TOKEN == ''
+        run: echo "::notice::Configure o segredo EXPO_TOKEN no GitHub para publicar atualizações. Nada foi publicado."
+
+      - uses: actions/checkout@v4
+        if: env.EXPO_TOKEN != ''
+
+      - uses: pnpm/action-setup@v4
+        if: env.EXPO_TOKEN != ''
+
+      - uses: actions/setup-node@v4
+        if: env.EXPO_TOKEN != ''
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Instalar dependências
+        if: env.EXPO_TOKEN != ''
+        run: pnpm install --frozen-lockfile
+
+      - uses: expo/expo-github-action@v8
+        if: env.EXPO_TOKEN != ''
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Publicar atualização
+        if: env.EXPO_TOKEN != ''
+        working-directory: apps/mobile
+        run: eas update --channel "$CHANNEL" --environment "$CHANNEL" --message "$(echo "$MESSAGE" | head -n1)" --non-interactive

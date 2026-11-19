@@ -8,12 +8,13 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "build": "eas build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node scripts/typegen.cjs && tsc --noEmit",
     "build:preview": "eas build --profile preview --platform all",
     "build:production": "eas build --profile production --platform all",
     "submit:production": "eas submit --profile production --platform all",
     "update:preview": "eas update --channel preview --environment preview",
-    "update:production": "eas update --channel production --environment production"
+    "update:production": "eas update --channel production --environment production",
+    "typegen": "node scripts/typegen.cjs"
   },
   "dependencies": {
     "@babel/runtime": "^8.0.0",
