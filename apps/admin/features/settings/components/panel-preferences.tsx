@@ -7,40 +7,19 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/toaster";
-import { DEFAULT_PERIOD, PERIODS, isPeriod, type Period } from "@/constants/period";
+import { PERIODS, type Period } from "@/constants/period";
 import { cn } from "@/lib/utils";
+import {
+  DEFAULT_PANEL_PREFS,
+  PANEL_PREFS_KEY,
+  readPanelPrefs,
+  writePanelPrefs,
+  type PanelPrefs,
+} from "@/hooks/use-panel-prefs";
 
-/**
- * Browser-only panel preferences (localStorage). Nothing here is sent to the
- * API — each admin/browser keeps its own choices.
- */
-export const PANEL_PREFS_KEY = "trampo-admin:panel-prefs";
-
-export type PanelPrefs = { density: "comfortable" | "compact"; defaultPeriod: Period };
-const DEFAULT_PREFS: PanelPrefs = { density: "comfortable", defaultPeriod: DEFAULT_PERIOD };
-
-export function readPanelPrefs(): PanelPrefs {
-  try {
-    const raw = window.localStorage.getItem(PANEL_PREFS_KEY);
-    if (!raw) return DEFAULT_PREFS;
-    const p = JSON.parse(raw) as Partial<PanelPrefs>;
-    return {
-      density: p.density === "compact" ? "compact" : "comfortable",
-      defaultPeriod: isPeriod(p.defaultPeriod) ? p.defaultPeriod : DEFAULT_PERIOD,
-    };
-  } catch {
-    return DEFAULT_PREFS;
-  }
-}
-
-function writePanelPrefs(p: PanelPrefs): boolean {
-  try {
-    window.localStorage.setItem(PANEL_PREFS_KEY, JSON.stringify(p));
-    return true;
-  } catch {
-    return false;
-  }
-}
+/** Storage + live hook live in `hooks/use-panel-prefs.ts`; re-exported for existing imports. */
+export { PANEL_PREFS_KEY, readPanelPrefs, type PanelPrefs };
+const DEFAULT_PREFS = DEFAULT_PANEL_PREFS;
 
 const DENSITY = [
   { value: "comfortable" as const, title: "Confortável", description: "Linhas mais altas, leitura tranquila." },

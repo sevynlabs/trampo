@@ -56,14 +56,19 @@ export type ProfessionalRowHandlers = {
   /** taskerProfile id when the row awaits KYC review (link to /kyc/[id]). */
   reviewProfileId: (row: ProfessionalRow) => string | undefined;
   onReview: (profileId: string) => void;
+  /** Set for read-only admins: mutating actions render disabled with this tooltip. */
+  readOnlyReason?: string;
 };
+
+/** Sortable columns (server): `name`, `rating`, `totalTasks` (column id = sortBy). */
 
 export function professionalColumns(h: ProfessionalRowHandlers): ColumnDef<ProfessionalRow, unknown>[] {
   return [
     {
-      id: "professional",
+      id: "name",
       header: "Profissional",
-      cell: ({ row }) => <UserCell name={row.original.name} subtitle={row.original.phone} />,
+      enableSorting: true,
+      cell: ({ row }) => <UserCell name={row.original.name} avatarUrl={row.original.avatarUrl} subtitle={row.original.phone} />,
       meta: { className: "min-w-[220px]" },
     },
     {
@@ -75,11 +80,13 @@ export function professionalColumns(h: ProfessionalRowHandlers): ColumnDef<Profe
     {
       id: "rating",
       header: "Avaliação",
+      enableSorting: true,
       cell: ({ row }) => <RatingStars value={row.original.rating} count={row.original.reviewCount} />,
     },
     {
       id: "totalTasks",
       header: "Trampos",
+      enableSorting: true,
       meta: { align: "right" },
       cell: ({ row }) => (
         <div className="text-right">
@@ -103,7 +110,7 @@ export function professionalColumns(h: ProfessionalRowHandlers): ColumnDef<Profe
         return (
           <RowActions>
             <IconButton icon={Eye} label="Ver perfil" onClick={() => h.onView(p)} />
-            <IconButton icon={Pencil} label="Editar" onClick={() => h.onEdit(p)} />
+            <IconButton icon={Pencil} label="Editar" disabledReason={h.readOnlyReason} onClick={() => h.onEdit(p)} />
             {p.kycStatus === "SUBMITTED" &&
               (reviewId ? (
                 <IconButton
@@ -116,9 +123,20 @@ export function professionalColumns(h: ProfessionalRowHandlers): ColumnDef<Profe
                 <IconButton icon={BadgeCheck} label="Analisar verificação" disabled />
               ))}
             {p.isActive ? (
-              <IconButton icon={Ban} label="Suspender" tone="danger" onClick={() => h.onToggleActive(p)} />
+              <IconButton
+                icon={Ban}
+                label="Suspender"
+                tone="danger"
+                disabledReason={h.readOnlyReason}
+                onClick={() => h.onToggleActive(p)}
+              />
             ) : (
-              <IconButton icon={ShieldCheck} label="Reativar" onClick={() => h.onToggleActive(p)} />
+              <IconButton
+                icon={ShieldCheck}
+                label="Reativar"
+                disabledReason={h.readOnlyReason}
+                onClick={() => h.onToggleActive(p)}
+              />
             )}
           </RowActions>
         );

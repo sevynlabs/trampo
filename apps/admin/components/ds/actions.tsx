@@ -15,29 +15,67 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
-/** Icon-only button with tooltip + accessible label (table row actions). */
+/**
+ * Icon-only button with tooltip + accessible label (table row actions).
+ * `disabledReason` disables it and shows the reason in the tooltip instead
+ * (e.g. READ_ONLY_HINT for VIEWER admins).
+ */
 export const IconButton = forwardRef<
   HTMLButtonElement,
-  Omit<ButtonProps, "children"> & { icon: LucideIcon; label: string; tone?: "default" | "danger" }
->(function IconButton({ icon: Icon, label, tone = "default", className, ...props }, ref) {
+  Omit<ButtonProps, "children"> & {
+    icon: LucideIcon;
+    label: string;
+    tone?: "default" | "danger";
+    disabledReason?: string;
+  }
+>(function IconButton({ icon: Icon, label, tone = "default", className, disabledReason, disabled, ...props }, ref) {
+  const button = (
+    <Button
+      ref={ref}
+      variant="ghost"
+      size="icon-sm"
+      aria-label={disabledReason ? `${label} — ${disabledReason}` : label}
+      className={tone === "danger" ? `text-rose-600 hover:bg-rose-50 hover:text-rose-700 ${className ?? ""}` : className}
+      disabled={disabled || !!disabledReason}
+      {...props}
+    >
+      <Icon />
+    </Button>
+  );
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button
-          ref={ref}
-          variant="ghost"
-          size="icon-sm"
-          aria-label={label}
-          className={tone === "danger" ? `text-rose-600 hover:bg-rose-50 hover:text-rose-700 ${className ?? ""}` : className}
-          {...props}
-        >
-          <Icon />
-        </Button>
+        {/* Disabled buttons don't fire pointer events: a focusable wrapper keeps the tooltip working. */}
+        {disabledReason ? (
+          <span tabIndex={0} className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {button}
+          </span>
+        ) : (
+          button
+        )}
       </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent>{disabledReason ?? label}</TooltipContent>
     </Tooltip>
   );
 });
+
+/**
+ * Wraps a (disabled) control with a tooltip explaining why — use with
+ * `disabled={!!hint}`. Without `hint` it renders the child untouched.
+ */
+export function DisabledHint({ hint, children, className }: { hint?: string; children: React.ReactNode; className?: string }) {
+  if (!hint) return <>{children}</>;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={0} className={className ?? "inline-flex rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"}>
+          {children}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{hint}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 /**
  * Confirmation modal for irreversible / sensitive actions.

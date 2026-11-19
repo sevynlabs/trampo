@@ -5,7 +5,8 @@ import { ErrorState, InfoCard, LoadingState, PageHeader, SectionCard } from "@/c
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUrlState } from "@/hooks/use-url-state";
 import { ADMIN_ROLE_LABEL } from "@/constants/status";
-import { useMe, useSettings } from "../api";
+import { useAdminRole } from "@/hooks/use-admin-role";
+import { useSettings } from "../api";
 import { FinanceForm, NotificationsForm, PlatformForm } from "./settings-forms";
 import { PanelPreferences } from "./panel-preferences";
 import { AdminsTab } from "./admins-tab";
@@ -21,7 +22,7 @@ const TABS = [
 export function SettingsView() {
   const [s, set] = useUrlState({ tab: "platform" });
   const tab = TABS.some((t) => t.value === s.tab) ? s.tab : "platform";
-  const me = useMe();
+  const me = useAdminRole();
   const settings = useSettings();
   const readOnly = !me.isSuperAdmin;
 
@@ -42,9 +43,9 @@ export function SettingsView() {
     <div className="space-y-6">
       <PageHeader title="Configurações" description="Parâmetros da plataforma, notificações e acesso ao painel." />
 
-      {me.data && readOnly && (
+      {me.role && readOnly && (
         <InfoCard icon={Lock} tone="warning" title="Somente leitura">
-          Seu papel é {ADMIN_ROLE_LABEL[me.data.role] ?? me.data.role}. Apenas Super Admins podem alterar configurações e
+          Seu papel é {ADMIN_ROLE_LABEL[me.role] ?? me.role}. Apenas Super Admins podem alterar configurações e
           administradores.
         </InfoCard>
       )}
@@ -68,7 +69,7 @@ export function SettingsView() {
           <PanelPreferences />
         </TabsContent>
         <TabsContent value="admins">
-          <AdminsTab meId={me.data?.id} readOnly={readOnly} />
+          <AdminsTab meId={me.me?.id} readOnly={readOnly} />
         </TabsContent>
       </Tabs>
     </div>

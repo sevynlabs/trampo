@@ -5,7 +5,8 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Gavel, Undo2, Wallet } from "lucide-react";
-import { ConfirmDialog, Field } from "@/components/ds";
+import { ConfirmDialog, DisabledHint, Field } from "@/components/ds";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,6 +42,7 @@ const OPTIONS = [
 /** Administrative decision for an OPEN dispute (RELEASE vs REFUND + notes). */
 export function ResolveDisputeForm({ dispute }: { dispute: DisputeDetail }) {
   const [confirming, setConfirming] = useState<Values | null>(null);
+  const { canEdit, readOnlyReason } = useAdminRole();
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { notes: "" } });
   const resolve = useResolveDispute(() => {
     setConfirming(null);
@@ -53,7 +55,7 @@ export function ResolveDisputeForm({ dispute }: { dispute: DisputeDetail }) {
   return (
     <>
     <form
-      onSubmit={form.handleSubmit((v) => setConfirming(v))}
+      onSubmit={form.handleSubmit((v) => canEdit && setConfirming(v))}
       className="space-y-4 rounded-2xl border border-brand/30 bg-brand-soft/30 p-4"
       noValidate
     >
@@ -67,7 +69,7 @@ export function ResolveDisputeForm({ dispute }: { dispute: DisputeDetail }) {
           control={form.control}
           name="outcome"
           render={({ field }) => (
-            <RadioGroup value={field.value} onValueChange={field.onChange} aria-label="Resultado da disputa" className="gap-2">
+            <RadioGroup value={field.value} onValueChange={field.onChange} disabled={!canEdit} aria-label="Resultado da disputa" className="gap-2">
               {OPTIONS.map((o) => (
                 <label
                   key={o.value}
@@ -104,14 +106,17 @@ export function ResolveDisputeForm({ dispute }: { dispute: DisputeDetail }) {
           rows={4}
           placeholder="Descreva as evidências analisadas e o motivo da decisão…"
           aria-invalid={!!errors.notes}
+          disabled={!canEdit}
           {...form.register("notes")}
         />
       </Field>
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={resolve.isPending}>
-          <Gavel /> Registrar decisão
-        </Button>
+        <DisabledHint hint={readOnlyReason}>
+          <Button type="submit" disabled={resolve.isPending || !canEdit}>
+            <Gavel /> Registrar decisão
+          </Button>
+        </DisabledHint>
       </div>
     </form>
 

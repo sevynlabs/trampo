@@ -70,6 +70,24 @@ servidor o `id` da coluna vira `sortBy`), paginação servidor ou cliente, sele�
 opcional (`selectable`), cabeçalho fixo, linhas clicáveis acessíveis (Enter),
 estados de carregando / vazio / erro embutidos. Alinhamento por `meta.align`.
 Ações de linha: `<RowActions><IconButton icon={Eye} label="Ver" /></RowActions>`.
+Densidade: segue a preferência do painel (`comfortable` padrão · `compact` com
+linhas mais baixas), lida por `usePanelPrefs()`; a prop `density` força um valor.
+
+## Preferências do painel
+`hooks/use-panel-prefs.ts` guarda em `localStorage` (`trampo-admin:panel-prefs`)
+densidade das tabelas e período padrão. `usePanelPrefs()` usa `useSyncExternalStore`:
+no SSR/hidratação devolve os padrões (sem mismatch) e aplica o salvo logo após montar;
+`writePanelPrefs()` dispara um evento, então a mudança vale na hora (e em outras abas
+via `storage`). `usePeriod()` usa o período preferido quando a URL não tem `?period=`
+(listas que leem `period` direto usam `usePreferredPeriod()`).
+
+## Permissões (papel do admin)
+`useAdminRole()` (`hooks/use-admin-role.ts`) → `{ role, canEdit, isSuperAdmin, readOnlyReason }`
+a partir de `admin.me` (cache compartilhado). Para VIEWER: esconda botões primários de
+criação (`canEdit && <Button…>`) e desabilite ações de linha com
+`<IconButton disabledReason={readOnlyReason} />` ou, para `Button` comum,
+`<DisabledHint hint={readOnlyReason}><Button disabled={!canEdit}>…</Button></DisabledHint>`
+(tooltip "Seu perfil é somente leitura"). A API continua sendo quem garante a permissão.
 
 ## Formulários
 react-hook-form + zod (`zodResolver`). `FormSection` agrupa, `Field` dá label,

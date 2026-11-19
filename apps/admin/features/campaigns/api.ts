@@ -93,3 +93,60 @@ export function useDeleteTemplate(onDone?: () => void) {
     onError: (e) => toast.error("Não foi possível excluir o template", { description: e.message }),
   });
 }
+
+// ---- Cupons (admin.marketing.*) --------------------------------------------
+
+export type CouponRow = RouterOutputs["admin"]["marketing"]["listCoupons"][number];
+export type CouponCreateInput = RouterInputs["admin"]["marketing"]["createCoupon"];
+export type CouponKind = CouponCreateInput["kind"];
+
+export const COUPON_KIND_LABEL: Record<CouponKind, string> = { PERCENT: "Percentual", FIXED: "Valor fixo" };
+
+/** active | scheduled | inactive | expired | exhausted — key of COUPON_STATUS. */
+export function couponState(c: CouponRow, now = Date.now()): string {
+  if (!c.isActive) return "inactive";
+  if (c.validUntil && new Date(c.validUntil).getTime() < now) return "expired";
+  if (c.maxUses !== null && c.usedCount >= c.maxUses) return "exhausted";
+  if (c.validFrom && new Date(c.validFrom).getTime() > now) return "scheduled";
+  return "active";
+}
+
+export function useCoupons() {
+  return trpc.admin.marketing.listCoupons.useQuery();
+}
+
+export function useCreateCoupon(onDone?: () => void) {
+  const utils = trpc.useUtils();
+  return trpc.admin.marketing.createCoupon.useMutation({
+    onSuccess: async (_r, vars) => {
+      await utils.admin.marketing.listCoupons.invalidate();
+      toast.success("Cupom criado", { description: vars.code.toUpperCase() });
+      onDone?.();
+    },
+    onError: (e) => toast.error("Não foi possível criar o cupom", { description: e.message }),
+  });
+}
+
+export function useToggleCoupon(onDone?: () => void) {
+  const utils = trpc.useUtils();
+  return trpc.admin.marketing.toggleCoupon.useMutation({
+    onSuccess: async (_r, vars) => {
+      await utils.admin.marketing.listCoupons.invalidate();
+      toast.success(vars.isActive ? "Cupom ativado" : "Cupom desativado");
+      onDone?.();
+    },
+    onError: (e) => toast.error("Não foi possível alterar o cupom", { description: e.message }),
+  });
+}
+
+export function useDeleteCoupon(onDone?: () => void) {
+  const utils = trpc.useUtils();
+  return trpc.admin.marketing.deleteCoupon.useMutation({
+    onSuccess: async () => {
+      await utils.admin.marketing.listCoupons.invalidate();
+      toast.success("Cupom excluído");
+      onDone?.();
+    },
+    onError: (e) => toast.error("Não foi possível excluir o cupom", { description: e.message }),
+  });
+}

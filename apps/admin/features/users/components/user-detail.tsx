@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Ban, BadgeCheck, Banknote, CalendarClock, Pencil, ShieldCheck, Star, UserX, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  DisabledHint,
   EmptyState,
   ErrorState,
   LoadingState,
@@ -15,6 +16,7 @@ import {
   StatusBadge,
   UserAvatar,
 } from "@/components/ds";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { TASK_STATUS } from "@/constants/status";
 import { formatBRL, formatDate, formatDateTime } from "@/lib/format";
 import { useUser, type UserDetail } from "../api";
@@ -53,6 +55,7 @@ function TaskList({ title, tasks, empty }: { title: string; tasks: TaskItem[]; e
 /** Full user page (/users/[id]): profile, professional data, tasks and reviews. */
 export function UserDetailView({ id }: { id: string }) {
   const query = useUser(id);
+  const { canEdit, readOnlyReason } = useAdminRole();
   const [roleTarget, setRoleTarget] = useState<RoleTarget | null>(null);
   const [activeTarget, setActiveTarget] = useState<ActiveTarget | null>(null);
   const data = query.data;
@@ -120,16 +123,25 @@ export function UserDetailView({ id }: { id: string }) {
                 </Link>
               </Button>
             )}
-            <Button variant="outline" onClick={() => setRoleTarget({ id: user.id, name: user.name, role: user.role })}>
-              <Pencil /> Editar tipo
-            </Button>
-            <Button
-              variant={user.isActive ? "destructive" : "default"}
-              onClick={() => setActiveTarget({ id: user.id, name: user.name, isActive: user.isActive })}
-            >
-              {user.isActive ? <Ban /> : <ShieldCheck />}
-              {user.isActive ? "Bloquear" : "Desbloquear"}
-            </Button>
+            <DisabledHint hint={readOnlyReason}>
+              <Button
+                variant="outline"
+                disabled={!canEdit}
+                onClick={() => setRoleTarget({ id: user.id, name: user.name, role: user.role })}
+              >
+                <Pencil /> Editar tipo
+              </Button>
+            </DisabledHint>
+            <DisabledHint hint={readOnlyReason}>
+              <Button
+                variant={user.isActive ? "destructive" : "default"}
+                disabled={!canEdit}
+                onClick={() => setActiveTarget({ id: user.id, name: user.name, isActive: user.isActive })}
+              >
+                {user.isActive ? <Ban /> : <ShieldCheck />}
+                {user.isActive ? "Bloquear" : "Desbloquear"}
+              </Button>
+            </DisabledHint>
           </>
         }
       />

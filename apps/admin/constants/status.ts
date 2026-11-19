@@ -77,6 +77,15 @@ export const CAMPAIGN_STATUS: Record<string, StatusDef> = {
   CANCELLED: { label: "Cancelada", tone: "neutral" },
 };
 
+/** Coupon state derived on the client (isActive + validity + usage). */
+export const COUPON_STATUS: Record<string, StatusDef> = {
+  active: { label: "Ativo", tone: "success" },
+  scheduled: { label: "Agendado", tone: "info" },
+  inactive: { label: "Inativo", tone: "neutral" },
+  expired: { label: "Expirado", tone: "neutral" },
+  exhausted: { label: "Esgotado", tone: "warning" },
+};
+
 export const ROLE_LABEL: Record<string, string> = {
   CLIENT: "Cliente",
   TASKER: "Profissional",

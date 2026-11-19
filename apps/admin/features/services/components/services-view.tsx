@@ -14,6 +14,7 @@ import {
 } from "@/components/ds";
 import { Button } from "@/components/ui/button";
 import { useUrlState } from "@/hooks/use-url-state";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { formatBRL, formatNumber } from "@/lib/format";
 import { useRemoveService, useServices, useToggleService, type ServiceRow } from "../api";
 import { serviceColumns } from "./service-columns";
@@ -31,6 +32,7 @@ function normalize(s: string) {
 
 export function ServicesView() {
   const [url, setUrl] = useUrlState({ q: "", status: "all" });
+  const { canEdit, readOnlyReason } = useAdminRole();
 
   // The endpoint isn't paginated: load every category once (KPIs need the
   // whole set) and filter/sort on the client — search also covers description.
@@ -78,9 +80,10 @@ export function ServicesView() {
         onToggle: (s) => (s.isActive ? setToToggle(s) : toggle.mutate({ id: s.id, isActive: true })),
         onRemove: setToRemove,
         togglingId: toggle.isPending ? toggle.variables?.id : null,
+        readOnlyReason,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [toggle.isPending, toggle.variables?.id]
+    [toggle.isPending, toggle.variables?.id, readOnlyReason]
   );
 
   const filtered = !!url.q || url.status !== "all";
@@ -91,14 +94,16 @@ export function ServicesView() {
         title="Serviços"
         description="Gerencie as categorias de serviço da plataforma"
         actions={
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
-          >
-            <Plus /> Novo serviço
-          </Button>
+          canEdit && (
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
+            >
+              <Plus /> Novo serviço
+            </Button>
+          )
         }
       />
 
@@ -157,10 +162,14 @@ export function ServicesView() {
             onRetry={() => query.refetch()}
             getRowId={(r) => r.id}
             rowLabel={(r) => r.name}
-            onRowClick={(s) => {
-              setEditing(s);
-              setFormOpen(true);
-            }}
+            onRowClick={
+              canEdit
+                ? (s) => {
+                    setEditing(s);
+                    setFormOpen(true);
+                  }
+                : undefined
+            }
             clientPageSize={20}
             empty={
               filtered
@@ -169,7 +178,7 @@ export function ServicesView() {
                     icon: Wrench,
                     title: "Nenhum serviço cadastrado",
                     description: "Crie a primeira categoria de serviço da plataforma.",
-                    action: (
+                    action: canEdit && (
                       <Button
                         size="sm"
                         onClick={() => {

@@ -3,14 +3,16 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, FileText, FlaskConical, Megaphone, PencilLine, Plus, Send } from "lucide-react";
+import { CheckCircle2, FlaskConical, Megaphone, PencilLine, Plus, Send } from "lucide-react";
 import { DataTable, FilterBar, FilterSelect, InfoCard, PageHeader, SearchInput, SectionCard, StatCard } from "@/components/ds";
 import { Button } from "@/components/ui/button";
 import { useUrlState } from "@/hooks/use-url-state";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { CAMPAIGN_STATUS } from "@/constants/status";
 import { formatNumber } from "@/lib/format";
 import { useCampaigns, useEmailStatus } from "../api";
 import { buildCampaignColumns } from "./campaign-columns";
+import { CampaignsNav } from "./campaigns-nav";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "Todos" },
@@ -27,6 +29,7 @@ export function CampaignsView() {
   const [s, set] = useUrlState({ q: "", status: "all", channel: "all" });
   const list = useCampaigns();
   const emailStatus = useEmailStatus();
+  const { canEdit } = useAdminRole();
 
   const columns = useMemo(() => buildCampaignColumns({ onOpen: (c) => router.push(`/campaigns/${c.id}`) }), [router]);
 
@@ -51,16 +54,14 @@ export function CampaignsView() {
         description="Notificações push e e-mail marketing para segmentos de usuários."
         actions={
           <>
-            <Button asChild variant="outline">
-              <Link href="/campaigns/templates">
-                <FileText /> Templates de e-mail
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href="/campaigns/new">
-                <Plus /> Nova campanha
-              </Link>
-            </Button>
+            <CampaignsNav />
+            {canEdit && (
+              <Button asChild>
+                <Link href="/campaigns/new">
+                  <Plus /> Nova campanha
+                </Link>
+              </Button>
+            )}
           </>
         }
       />
@@ -99,7 +100,7 @@ export function CampaignsView() {
               icon: Megaphone,
               title: all?.length ? "Nenhuma campanha com esses filtros" : "Nenhuma campanha ainda",
               description: all?.length ? "Ajuste a busca ou os filtros." : "Crie a primeira campanha para falar com seus usuários.",
-              action: all?.length ? undefined : (
+              action: all?.length || !canEdit ? undefined : (
                 <Button asChild size="sm">
                   <Link href="/campaigns/new">
                     <Plus /> Nova campanha

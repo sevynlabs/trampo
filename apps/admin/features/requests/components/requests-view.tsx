@@ -4,8 +4,8 @@ import { useMemo } from "react";
 import { CalendarClock, Download, Loader2 } from "lucide-react";
 import { DataTable, FilterBar, FilterSelect, PageHeader, PeriodSelect, SearchInput, SectionCard } from "@/components/ds";
 import { Button } from "@/components/ui/button";
-import { DEFAULT_PERIOD, isPeriod } from "@/constants/period";
-import { useUrlState } from "@/hooks/use-url-state";
+import { isPeriod } from "@/constants/period";
+import { usePreferredPeriod, useUrlState } from "@/hooks/use-url-state";
 import {
   REQUEST_SORT_KEYS,
   useExportRequestsCsv,
@@ -16,7 +16,7 @@ import {
 } from "../api";
 import { requestColumns } from "./request-columns";
 import { RequestDetailSheet } from "./request-detail-sheet";
-import { StatusChips, isRequestStatusChip } from "./status-chips";
+import { StatusChips, chipStatuses, parseRequestStatusChip } from "./status-chips";
 
 const PAGE_SIZE = 20;
 
@@ -26,14 +26,15 @@ export function RequestsView() {
     page: "1",
     status: "all",
     category: "all",
-    period: DEFAULT_PERIOD as string,
+    period: "",
     sortBy: "createdAt",
     sortDir: "desc",
     id: "",
   });
 
-  const period = isPeriod(url.period) ? url.period : DEFAULT_PERIOD;
-  const status = isRequestStatusChip(url.status) ? url.status : "all";
+  const preferredPeriod = usePreferredPeriod();
+  const period = isPeriod(url.period) ? url.period : preferredPeriod;
+  const status = parseRequestStatusChip(url.status);
   const sortBy: RequestSortBy = (REQUEST_SORT_KEYS as readonly string[]).includes(url.sortBy)
     ? (url.sortBy as RequestSortBy)
     : "createdAt";
@@ -44,7 +45,7 @@ export function RequestsView() {
     page,
     pageSize: PAGE_SIZE,
     search: url.q.trim() || undefined,
-    status,
+    statuses: chipStatuses(status),
     categoryId: url.category !== "all" ? url.category : undefined,
     period,
     sortBy,

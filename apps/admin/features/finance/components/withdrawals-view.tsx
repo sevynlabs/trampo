@@ -6,6 +6,7 @@ import { Banknote, Check, CheckCircle2, Clock, X } from "lucide-react";
 import {
   ConfirmDialog,
   DataTable,
+  DisabledHint,
   FilterBar,
   FilterSelect,
   InfoCard,
@@ -19,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { WITHDRAWAL_STATUS } from "@/constants/status";
 import { useUrlState } from "@/hooks/use-url-state";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { formatBRL, formatDate, formatDateTime, formatNumber } from "@/lib/format";
 import {
   usePayWithdrawal,
@@ -54,6 +56,9 @@ export function WithdrawalsView() {
   const pay = usePayWithdrawal({ onSuccess: () => setToPay(null) });
   const reject = useRejectWithdrawal({ onSuccess: () => setToReject(null) });
   const busy = pay.isPending || reject.isPending;
+  // Paying moves money: SUPER_ADMIN only (API: payWithdrawal). Rejecting: SUPER_ADMIN or OPERATOR.
+  const { isSuperAdmin, readOnlyReason } = useAdminRole();
+  const payHint = readOnlyReason ?? (isSuperAdmin ? undefined : "Apenas Super Admins podem marcar saques como pagos");
 
   const columns = useMemo<ColumnDef<WithdrawalRow, any>[]>(
     () => [
@@ -107,12 +112,21 @@ export function WithdrawalsView() {
           row.original.status === "PENDING" ? (
             <RowActions>
               <div className="flex gap-2">
-                <Button size="xs" variant="navy" disabled={busy} onClick={() => setToPay(row.original)}>
-                  <Check /> Pagar
-                </Button>
-                <Button size="xs" variant="outline" disabled={busy} onClick={() => setToReject(row.original)}>
-                  <X /> Rejeitar
-                </Button>
+                <DisabledHint hint={payHint}>
+                  <Button size="xs" variant="navy" disabled={busy || !!payHint} onClick={() => setToPay(row.original)}>
+                    <Check /> Pagar
+                  </Button>
+                </DisabledHint>
+                <DisabledHint hint={readOnlyReason}>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    disabled={busy || !!readOnlyReason}
+                    onClick={() => setToReject(row.original)}
+                  >
+                    <X /> Rejeitar
+                  </Button>
+                </DisabledHint>
               </div>
             </RowActions>
           ) : (
@@ -120,7 +134,7 @@ export function WithdrawalsView() {
           ),
       },
     ],
-    [busy]
+    [busy, payHint, readOnlyReason]
   );
 
   return (

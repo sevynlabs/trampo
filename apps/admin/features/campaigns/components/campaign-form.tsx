@@ -6,7 +6,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Bell, Loader2, Mail, Users } from "lucide-react";
-import { Field, FormSection, SectionCard, SettingRow } from "@/components/ds";
+import { DisabledHint, Field, FormSection, SectionCard, SettingRow } from "@/components/ds";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useDebouncedValue } from "@/hooks/use-url-state";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { useCreateCampaign, useSegmentPreview, useTemplates, type CampaignChannel, type Segment } from "../api";
 
 const schema = z.object({
@@ -121,6 +122,7 @@ export function CampaignForm() {
   const templates = useTemplates(channel === "EMAIL");
   const activeTemplates = templates.data?.filter((t) => t.isActive) ?? [];
   const create = useCreateCampaign((id) => router.push(`/campaigns/${id}`));
+  const { canEdit, readOnlyReason } = useAdminRole();
 
   const onSubmit = form.handleSubmit((v) => {
     const seg = toSegment(v);
@@ -312,10 +314,12 @@ export function CampaignForm() {
                 </ul>
               </div>
             )}
-            <Button type="submit" className="w-full" disabled={create.isPending}>
-              {create.isPending && <Loader2 className="animate-spin" />}
-              Criar rascunho
-            </Button>
+            <DisabledHint hint={readOnlyReason} className="flex w-full rounded-xl">
+              <Button type="submit" className="w-full" disabled={create.isPending || !canEdit}>
+                {create.isPending && <Loader2 className="animate-spin" />}
+                Criar rascunho
+              </Button>
+            </DisabledHint>
             <p className="text-center text-xs text-muted-foreground">Você revisa e envia na próxima tela.</p>
           </div>
         </SectionCard>

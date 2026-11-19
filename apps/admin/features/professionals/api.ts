@@ -11,6 +11,8 @@ export type ProfessionalsListInput = RouterInputs["admin"]["listProfessionals"];
 export type ProfessionalsList = RouterOutputs["admin"]["listProfessionals"];
 export type ProfessionalRow = ProfessionalsList["professionals"][number];
 export type ProfessionalStatusFilter = NonNullable<ProfessionalsListInput["status"]>;
+export type ProfessionalSortBy = NonNullable<ProfessionalsListInput["sortBy"]>;
+export const PROFESSIONAL_SORT_KEYS: readonly ProfessionalSortBy[] = ["createdAt", "name", "rating", "totalTasks"];
 export type ServiceCategory = RouterOutputs["admin"]["services"]["list"][number];
 
 export function useProfessionalsList(params: ProfessionalsListInput) {

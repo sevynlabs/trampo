@@ -5,17 +5,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BadgeCheck, HardHat, Pencil, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DataTable, FilterBar, FilterSelect, PageHeader, SearchInput, SectionCard } from "@/components/ds";
+import { DataTable, DisabledHint, FilterBar, FilterSelect, PageHeader, SearchInput, SectionCard } from "@/components/ds";
 import { useUrlState } from "@/hooks/use-url-state";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { formatNumber } from "@/lib/format";
 import { UserDrawer } from "@/features/users/components/user-summary";
 import { UserActiveDialog, type ActiveTarget } from "@/features/users/components/user-active-dialog";
 import { InviteDialog } from "@/features/users/components/invite-dialog";
 import {
+  PROFESSIONAL_SORT_KEYS,
   usePendingKycProfileIds,
   useProfessionalsList,
   useServiceCategories,
   type ProfessionalRow,
+  type ProfessionalSortBy,
   type ProfessionalStatusFilter,
 } from "../api";
 import { CategoryTags, professionalColumns } from "./professional-columns";
@@ -38,28 +41,22 @@ const PRO_INVITE_TEXT =
 /** Profissionais: filters + server-paginated table + profile drawer. */
 export function ProfessionalsList() {
   const router = useRouter();
-  const [s, set] = useUrlState({ q: "", page: "1", status: "all", category: "" });
+  const [s, set] = useUrlState({ q: "", page: "1", status: "all", category: "", sortBy: "createdAt", sortDir: "desc" });
   const page = Math.max(1, Number(s.page) || 1);
   const status = (STATUS_OPTIONS.some((o) => o.value === s.status) ? s.status : "all") as ProfessionalStatusFilter;
+  const sortBy: ProfessionalSortBy = (PROFESSIONAL_SORT_KEYS as readonly string[]).includes(s.sortBy)
+    ? (s.sortBy as ProfessionalSortBy)
+    : "createdAt";
+  const sortDir = s.sortDir === "asc" ? "asc" : "desc";
+  const { canEdit, readOnlyReason } = useAdminRole();
 
   const categories = useServiceCategories();
-  const category = categories.data?.find((c) => c.id === s.category);
   const q = s.q.trim();
+  // Only a uuid reaches the API (its input is z.string().uuid()).
+  const categoryId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.category) ? s.category : undefined;
 
-  // The API has no category filter: its search also matches category names, so the
-  // category goes as the search term. With both a text search and a category, the
-  // text goes to the API and the category is applied to the returned page.
-  const search = q || category?.name || undefined;
-  const pageCategoryFilter = !!q && !!category;
-
-  const query = useProfessionalsList({ page, pageSize: PAGE_SIZE, search, status });
+  const query = useProfessionalsList({ page, pageSize: PAGE_SIZE, search: q || undefined, status, categoryId, sortBy, sortDir });
   const pending = usePendingKycProfileIds();
-
-  const rows = useMemo(() => {
-    const list = query.data?.professionals;
-    if (!list || !pageCategoryFilter || !category) return list;
-    return list.filter((p) => p.categories.includes(category.name));
-  }, [query.data, pageCategoryFilter, category]);
 
   const [view, setView] = useState<ProfessionalRow | null>(null);
   const [activeTarget, setActiveTarget] = useState<ActiveTarget | null>(null);
@@ -73,8 +70,9 @@ export function ProfessionalsList() {
         onToggleActive: (p) => setActiveTarget({ id: p.id, name: p.name, isActive: p.isActive }),
         reviewProfileId: (p) => pending.map.get(p.id),
         onReview: (profileId) => router.push(`/kyc/${profileId}`),
+        readOnlyReason,
       }),
-    [router, pending.map]
+    [router, pending.map, readOnlyReason]
   );
 
   const categoryOptions = [
@@ -83,7 +81,7 @@ export function ProfessionalsList() {
   ];
 
   const data = query.data;
-  const hasFilters = !!q || status !== "all" || !!category;
+  const hasFilters = !!q || status !== "all" || !!categoryId;
   const viewReviewId = view && view.kycStatus === "SUBMITTED" ? pending.map.get(view.id) : undefined;
 
   return (
@@ -98,9 +96,11 @@ export function ProfessionalsList() {
                 <BadgeCheck /> Fila de verificação
               </Link>
             </Button>
-            <Button onClick={() => setInviteOpen(true)}>
-              <UserPlus /> Cadastrar profissional
-            </Button>
+            {canEdit && (
+              <Button onClick={() => setInviteOpen(true)}>
+                <UserPlus /> Cadastrar profissional
+              </Button>
+            )}
           </>
         }
       />
@@ -110,22 +110,16 @@ export function ProfessionalsList() {
           <SearchInput value={s.q} onChange={(v) => set({ q: v })} placeholder="Buscar por nome, telefone ou serviço…" />
           <FilterSelect
             label="Categoria"
-            value={category ? category.id : "all"}
+            value={categoryId ?? "all"}
             onChange={(v) => set({ category: v === "all" ? "" : v })}
             options={categoryOptions}
           />
           <FilterSelect label="Status" value={status} onChange={(v) => set({ status: v })} options={STATUS_OPTIONS} />
         </FilterBar>
 
-        {pageCategoryFilter && (
-          <p className="text-xs text-muted-foreground">
-            Busca por texto combinada com categoria: a categoria <b>{category?.name}</b> é aplicada aos resultados desta página.
-          </p>
-        )}
-
         <DataTable
           columns={columns}
-          data={rows}
+          data={query.data?.professionals}
           loading={query.isLoading}
           error={query.error?.message}
           onRetry={() => query.refetch()}
@@ -149,6 +143,7 @@ export function ProfessionalsList() {
                 }
               : undefined
           }
+          sorting={{ sortBy, sortDir, onChange: (by, dir) => set({ sortBy: by, sortDir: dir }) }}
         />
       </SectionCard>
 
@@ -173,17 +168,22 @@ export function ProfessionalsList() {
                 </Link>
               </Button>
             )}
-            <Button asChild variant="outline">
-              <Link href={`/users/${d.user.id}`}>
-                <Pencil /> Editar
-              </Link>
-            </Button>
-            <Button
-              variant={d.user.isActive ? "destructive" : "outline"}
-              onClick={() => setActiveTarget({ id: d.user.id, name: d.user.name, isActive: d.user.isActive })}
-            >
-              {d.user.isActive ? "Suspender" : "Reativar"}
-            </Button>
+            {canEdit && (
+              <Button asChild variant="outline">
+                <Link href={`/users/${d.user.id}`}>
+                  <Pencil /> Editar
+                </Link>
+              </Button>
+            )}
+            <DisabledHint hint={readOnlyReason}>
+              <Button
+                variant={d.user.isActive ? "destructive" : "outline"}
+                disabled={!canEdit}
+                onClick={() => setActiveTarget({ id: d.user.id, name: d.user.name, isActive: d.user.isActive })}
+              >
+                {d.user.isActive ? "Suspender" : "Reativar"}
+              </Button>
+            </DisabledHint>
           </>
         )}
       />

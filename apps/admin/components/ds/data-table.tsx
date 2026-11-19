@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "./states";
 import { Pagination } from "./pagination";
+import { usePanelPrefs, type TableDensity } from "@/hooks/use-panel-prefs";
 
 /** Per-column presentation hints (set in `columnDef.meta`). */
 export type ColumnMeta = {
@@ -54,6 +55,8 @@ export type ServerSorting = {
  *  - client: omit them — TanStack sorts and pages the given array.
  * Columns opt into sorting with `enableSorting: true` (server: column `id`
  * is sent as `sortBy`). Selection is opt-in via `selectable`.
+ * Row density follows the admin's panel preference (Configurações → Painel)
+ * unless `density` is passed.
  */
 export function DataTable<T>({
   columns,
@@ -72,6 +75,7 @@ export function DataTable<T>({
   stickyHeader = true,
   className,
   rowLabel,
+  density: densityProp,
 }: {
   columns: ColumnDef<T, any>[];
   data: T[] | undefined;
@@ -90,7 +94,11 @@ export function DataTable<T>({
   className?: string;
   /** Accessible name for a row (screen readers), e.g. row => row.name */
   rowLabel?: (row: T) => string;
+  /** Overrides the panel preference: `comfortable` (default) or `compact`. */
+  density?: TableDensity;
 }) {
+  const prefs = usePanelPrefs();
+  const compact = (densityProp ?? prefs.density) === "compact";
   const [clientSorting, setClientSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
@@ -162,7 +170,7 @@ export function DataTable<T>({
   const alignClass = (a?: string) => (a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left");
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-4", className)} data-density={compact ? "compact" : "comfortable"}>
       <div className="overflow-hidden rounded-xl border border-border/70">
         <div className={cn("overflow-x-auto", stickyHeader && "max-h-[70vh] overflow-y-auto")}>
           <table className="w-full caption-bottom text-sm">
@@ -179,7 +187,8 @@ export function DataTable<T>({
                         scope="col"
                         aria-sort={dir === "asc" ? "ascending" : dir === "desc" ? "descending" : undefined}
                         className={cn(
-                          "h-11 whitespace-nowrap px-4 font-semibold text-muted-foreground",
+                          "whitespace-nowrap px-4 font-semibold text-muted-foreground",
+                          compact ? "h-9" : "h-11",
                           alignClass(meta?.align),
                           meta?.headerClassName
                         )}
@@ -216,8 +225,8 @@ export function DataTable<T>({
                 Array.from({ length: Math.min(pagination?.pageSize ?? clientPageSize, 8) }).map((_, i) => (
                   <tr key={i} className="border-b border-border/60 last:border-0">
                     {Array.from({ length: colCount }).map((__, j) => (
-                      <td key={j} className="px-4 py-3.5">
-                        <Skeleton className="h-5 w-full" />
+                      <td key={j} className={cn("px-4", compact ? "py-2" : "py-3.5")}>
+                        <Skeleton className={cn("w-full", compact ? "h-4" : "h-5")} />
                       </td>
                     ))}
                   </tr>
@@ -257,7 +266,7 @@ export function DataTable<T>({
                     {row.getVisibleCells().map((cell) => (
                       <td
                         key={cell.id}
-                        className={cn("px-4 py-3 align-middle", alignClass(cell.column.columnDef.meta?.align), cell.column.columnDef.meta?.className)}
+                        className={cn("px-4 align-middle", compact ? "py-1.5" : "py-3", alignClass(cell.column.columnDef.meta?.align), cell.column.columnDef.meta?.className)}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>

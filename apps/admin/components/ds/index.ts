@@ -14,6 +14,6 @@ export { Pagination } from "./pagination";
 export { SearchInput, FilterSelect, FilterBar, PeriodSelect, type FilterOption } from "./filters";
 export { StatusBadge, Tag } from "./status-badge";
 export { UserAvatar, UserCell, RatingStars, StarRow, initials } from "./people";
-export { IconButton, ConfirmDialog } from "./actions";
+export { IconButton, ConfirmDialog, DisabledHint } from "./actions";
 export { FormSection, Field, SettingRow } from "./form";
 export { EmptyState, ErrorState, LoadingState } from "./states";

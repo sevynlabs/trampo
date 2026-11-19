@@ -7,6 +7,7 @@ import { toast } from "@/components/ui/toaster";
 import {
   ConfirmDialog,
   DataTable,
+  DisabledHint,
   FilterBar,
   FilterSelect,
   PageHeader,
@@ -14,8 +15,9 @@ import {
   SectionCard,
 } from "@/components/ds";
 import { useUrlState } from "@/hooks/use-url-state";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { formatNumber } from "@/lib/format";
-import { useSetUserActive, useUsersList, type UserRow } from "../api";
+import { USER_SORT_KEYS, useSetUserActive, useUsersList, type UserRow, type UserSortBy } from "../api";
 import { userColumns } from "./users-columns";
 import { UserDrawer } from "./user-summary";
 import { RoleDialog, type RoleTarget } from "./role-dialog";
@@ -44,12 +46,15 @@ export const USER_INVITE_TEXT =
 
 /** Usuários: header + filters + server-paginated table + drawers/dialogs. */
 export function UsersList() {
-  const [s, set] = useUrlState({ q: "", page: "1", status: "all", role: "ALL" });
+  const [s, set] = useUrlState({ q: "", page: "1", status: "all", role: "ALL", sortBy: "createdAt", sortDir: "desc" });
+  const { canEdit, readOnlyReason } = useAdminRole();
+  const sortBy: UserSortBy = (USER_SORT_KEYS as readonly string[]).includes(s.sortBy) ? (s.sortBy as UserSortBy) : "createdAt";
+  const sortDir = s.sortDir === "asc" ? "asc" : "desc";
   const page = Math.max(1, Number(s.page) || 1);
   const status = STATUS_OPTIONS.some((o) => o.value === s.status) ? (s.status as "all" | "active" | "blocked") : "all";
   const role = ROLE_FILTER_OPTIONS.some((o) => o.value === s.role) ? (s.role as "ALL" | "CLIENT" | "TASKER" | "BOTH") : "ALL";
 
-  const query = useUsersList({ page, pageSize: PAGE_SIZE, search: s.q.trim() || undefined, status, role });
+  const query = useUsersList({ page, pageSize: PAGE_SIZE, search: s.q.trim() || undefined, status, role, sortBy, sortDir });
 
   const [viewId, setViewId] = useState<string | null>(null);
   const [roleTarget, setRoleTarget] = useState<RoleTarget | null>(null);
@@ -58,7 +63,7 @@ export function UsersList() {
 
   // Selection is per page/filter: the table remounts (and clears) when this key changes.
   const [bulkRound, setBulkRound] = useState(0);
-  const tableKey = `${page}|${s.q}|${status}|${role}|${bulkRound}`;
+  const tableKey = `${page}|${s.q}|${status}|${role}|${sortBy}|${sortDir}|${bulkRound}`;
   const [selection, setSelection] = useState<{ key: string; rows: UserRow[] }>({ key: "", rows: [] });
   const selected = selection.key === tableKey ? selection.rows : [];
   const [bulk, setBulk] = useState<null | "block" | "unblock">(null);
@@ -71,8 +76,9 @@ export function UsersList() {
         onView: (u) => setViewId(u.id),
         onEdit: (u) => setRoleTarget({ id: u.id, name: u.name, role: u.role }),
         onToggleActive: (u) => setActiveTarget({ id: u.id, name: u.name, isActive: u.isActive }),
+        readOnlyReason,
       }),
-    []
+    [readOnlyReason]
   );
 
   async function runBulk(kind: "block" | "unblock") {
@@ -101,9 +107,11 @@ export function UsersList() {
         title="Usuários"
         description={data ? `${formatNumber(data.total)} usuário(s) · clientes e profissionais da plataforma` : "Clientes e profissionais da plataforma"}
         actions={
-          <Button onClick={() => setInviteOpen(true)}>
-            <UserPlus /> Novo usuário
-          </Button>
+          canEdit && (
+            <Button onClick={() => setInviteOpen(true)}>
+              <UserPlus /> Novo usuário
+            </Button>
+          )
         }
       />
 
@@ -152,7 +160,7 @@ export function UsersList() {
           getRowId={(r) => r.id}
           rowLabel={(r) => r.name ?? r.phone}
           onRowClick={(r) => setViewId(r.id)}
-          selectable
+          selectable={canEdit}
           onSelectionChange={(rows) => setSelection({ key: tableKey, rows })}
           empty={{
             icon: Users,
@@ -171,6 +179,7 @@ export function UsersList() {
                 }
               : undefined
           }
+          sorting={{ sortBy, sortDir, onChange: (by, dir) => set({ sortBy: by, sortDir: dir }) }}
         />
       </SectionCard>
 
@@ -179,15 +188,24 @@ export function UsersList() {
         onOpenChange={(o) => !o && setViewId(null)}
         actions={(d) => (
           <>
-            <Button variant="outline" onClick={() => setRoleTarget({ id: d.user.id, name: d.user.name, role: d.user.role })}>
-              Editar
-            </Button>
-            <Button
-              variant={d.user.isActive ? "destructive" : "outline"}
-              onClick={() => setActiveTarget({ id: d.user.id, name: d.user.name, isActive: d.user.isActive })}
-            >
-              {d.user.isActive ? "Bloquear" : "Desbloquear"}
-            </Button>
+            <DisabledHint hint={readOnlyReason}>
+              <Button
+                variant="outline"
+                disabled={!canEdit}
+                onClick={() => setRoleTarget({ id: d.user.id, name: d.user.name, role: d.user.role })}
+              >
+                Editar
+              </Button>
+            </DisabledHint>
+            <DisabledHint hint={readOnlyReason}>
+              <Button
+                variant={d.user.isActive ? "destructive" : "outline"}
+                disabled={!canEdit}
+                onClick={() => setActiveTarget({ id: d.user.id, name: d.user.name, isActive: d.user.isActive })}
+              >
+                {d.user.isActive ? "Bloquear" : "Desbloquear"}
+              </Button>
+            </DisabledHint>
           </>
         )}
       />

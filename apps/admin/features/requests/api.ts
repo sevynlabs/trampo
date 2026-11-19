@@ -14,6 +14,7 @@ export type RequestDetail = RouterOutputs["admin"]["requests"]["get"];
 export type RequestStatusCounts = RouterOutputs["admin"]["requests"]["statusCounts"];
 export type RequestSortBy = NonNullable<RequestListInput["sortBy"]>;
 export type TaskStatusFilter = NonNullable<RequestListInput["status"]>;
+export type TaskStatus = NonNullable<RequestListInput["statuses"]>[number];
 
 export const REQUEST_SORT_KEYS: readonly RequestSortBy[] = ["createdAt", "totalValue", "scheduledAt"];
 

@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate, formatNumber, formatPercent } from "@/lib/format";
+import { DisabledHint } from "@/components/ds";
+import { useAdminRole } from "@/hooks/use-admin-role";
 
 type Editing = {
   id?: string;
@@ -66,6 +68,7 @@ export default function BannersPage() {
   const remove = trpc.admin.banners.remove.useMutation({ onSuccess: invalidate });
 
   const saving = create.isPending || update.isPending;
+  const { canEdit, readOnlyReason } = useAdminRole();
   const valid =
     !!editing &&
     editing.advertiser.trim().length >= 2 &&
@@ -103,9 +106,11 @@ export default function BannersPage() {
             Banners do carrossel no topo do app. Imagem horizontal na proporção 2,4:1 (ex.: 1200×500).
           </p>
         </div>
-        <Button onClick={() => open({ ...EMPTY })}>
-          <Plus className="mr-2 h-4 w-4" /> Novo banner
-        </Button>
+        {canEdit && (
+          <Button onClick={() => open({ ...EMPTY })}>
+            <Plus className="mr-2 h-4 w-4" /> Novo banner
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -175,11 +180,12 @@ export default function BannersPage() {
                       <Badge variant={st.variant}>{st.label}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
+                      <DisabledHint hint={readOnlyReason} className="inline-flex rounded-xl">
                       <div className="flex justify-end gap-1">
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={toggle.isPending}
+                          disabled={toggle.isPending || !canEdit}
                           onClick={() => toggle.mutate({ id: b.id, isActive: !b.isActive })}
                         >
                           {b.isActive ? "Pausar" : "Ativar"}
@@ -195,6 +201,7 @@ export default function BannersPage() {
                           size="sm"
                           variant="ghost"
                           aria-label="Editar"
+                          disabled={!canEdit}
                           onClick={() =>
                             open({
                               id: b.id,
@@ -215,7 +222,7 @@ export default function BannersPage() {
                           size="sm"
                           variant="ghost"
                           aria-label="Excluir"
-                          disabled={remove.isPending}
+                          disabled={remove.isPending || !canEdit}
                           onClick={() => {
                             if (window.confirm(`Excluir o banner "${b.title}" de ${b.advertiser}?`)) remove.mutate({ id: b.id });
                           }}
@@ -223,6 +230,7 @@ export default function BannersPage() {
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
+                      </DisabledHint>
                     </TableCell>
                   </TableRow>
                 );

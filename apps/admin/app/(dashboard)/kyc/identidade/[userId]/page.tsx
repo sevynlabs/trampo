@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, ExternalLink, Loader2, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { DisabledHint } from "@/components/ds";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -94,6 +96,7 @@ export default function IdentityReviewPage({ params }: { params: Promise<{ userI
   const data = query.data;
   const isPending = data?.status === "SUBMITTED";
   const busy = approve.isPending || reject.isPending;
+  const { canEdit, readOnlyReason } = useAdminRole();
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -122,10 +125,11 @@ export default function IdentityReviewPage({ params }: { params: Promise<{ userI
             </div>
 
             {isPending && (
+              <DisabledHint hint={readOnlyReason} className="inline-flex self-start rounded-xl">
               <div className="flex items-center gap-2">
                 <Button
                   variant="destructive"
-                  disabled={busy}
+                  disabled={busy || !canEdit}
                   onClick={() => {
                     setActionError(null);
                     setReason("");
@@ -136,7 +140,7 @@ export default function IdentityReviewPage({ params }: { params: Promise<{ userI
                   Reprovar
                 </Button>
                 <Button
-                  disabled={busy}
+                  disabled={busy || !canEdit}
                   onClick={() => {
                     setActionError(null);
                     approve.mutate({ userId });
@@ -146,6 +150,7 @@ export default function IdentityReviewPage({ params }: { params: Promise<{ userI
                   Aprovar
                 </Button>
               </div>
+              </DisabledHint>
             )}
           </div>
 

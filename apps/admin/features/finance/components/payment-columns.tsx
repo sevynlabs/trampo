@@ -7,7 +7,7 @@ import { PAYMENT_STATUS } from "@/constants/status";
 import { formatBRL, formatDate, formatDateTime } from "@/lib/format";
 import { shortId, type PaymentRow } from "../api";
 
-/** listPayments has no server sorting, so no column is sortable. */
+/** Sortable columns (server): `amount`, `createdAt`, `paidAt` — the column id is sent as `sortBy`. */
 export function paymentColumns({ onOpen }: { onOpen: (row: PaymentRow) => void }): ColumnDef<PaymentRow, any>[] {
   return [
     {
@@ -34,11 +34,20 @@ export function paymentColumns({ onOpen }: { onOpen: (row: PaymentRow) => void }
     {
       id: "payer",
       header: "Usuário",
-      cell: ({ row }) => <UserCell name={row.original.payerName} size="sm" subtitle="Cliente" className="min-w-[150px]" />,
+      cell: ({ row }) => (
+        <UserCell
+          name={row.original.payerName}
+          avatarUrl={row.original.avatarUrl}
+          size="sm"
+          subtitle="Cliente"
+          className="min-w-[150px]"
+        />
+      ),
     },
     {
       id: "amount",
       header: "Valor",
+      enableSorting: true,
       meta: { align: "right" },
       cell: ({ row }) => (
         <div className="whitespace-nowrap tabular-nums">
@@ -54,15 +63,20 @@ export function paymentColumns({ onOpen }: { onOpen: (row: PaymentRow) => void }
     },
     {
       id: "createdAt",
-      header: "Data",
-      cell: ({ row }) => (
-        <div className="whitespace-nowrap">
-          <div>{formatDate(row.original.createdAt)}</div>
-          {row.original.paidAt && (
-            <div className="text-2xs text-muted-foreground">Pago {formatDateTime(row.original.paidAt)}</div>
-          )}
-        </div>
-      ),
+      header: "Criado em",
+      enableSorting: true,
+      cell: ({ row }) => <span className="whitespace-nowrap">{formatDate(row.original.createdAt)}</span>,
+    },
+    {
+      id: "paidAt",
+      header: "Pago em",
+      enableSorting: true,
+      cell: ({ row }) =>
+        row.original.paidAt ? (
+          <span className="whitespace-nowrap">{formatDateTime(row.original.paidAt)}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
     },
     {
       id: "actions",

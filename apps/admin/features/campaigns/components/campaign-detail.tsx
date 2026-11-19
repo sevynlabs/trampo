@@ -6,6 +6,7 @@ import { ConfirmDialog, ErrorState, LoadingState, PageHeader, SectionCard, StatC
 import { Button } from "@/components/ui/button";
 import { CAMPAIGN_STATUS } from "@/constants/status";
 import { formatDateTime, formatNumber } from "@/lib/format";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { useCampaign, useSendCampaign } from "../api";
 import { ChannelLabel } from "./campaign-columns";
 
@@ -24,6 +25,7 @@ export function CampaignDetail({ id }: { id: string }) {
   const q = useCampaign(id);
   const [confirm, setConfirm] = useState(false);
   const send = useSendCampaign(id, () => setConfirm(false));
+  const { canEdit } = useAdminRole();
   const c = q.data;
 
   if (q.isLoading) {
@@ -45,7 +47,7 @@ export function CampaignDetail({ id }: { id: string }) {
     );
   }
 
-  const canSend = c.status === "DRAFT" || c.status === "FAILED";
+  const canSend = canEdit && (c.status === "DRAFT" || c.status === "FAILED");
 
   return (
     <div className="space-y-6">

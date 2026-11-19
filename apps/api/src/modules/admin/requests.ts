@@ -105,6 +105,8 @@ export const requestsAdminRouter = router({
       z.object({
         ...paginationShape,
         status: z.union([z.literal('all'), taskStatusSchema]).default('all'),
+        /** Grouped filter (e.g. ACCEPTED+IN_PROGRESS). When set, takes precedence over `status`. */
+        statuses: z.array(taskStatusSchema).min(1).max(TASK_STATUSES.length).optional(),
         categoryId: z.string().uuid().optional(),
         period: periodSchema,
         sortBy: z.enum(['createdAt', 'totalValue', 'scheduledAt']).default('createdAt'),
@@ -113,7 +115,8 @@ export const requestsAdminRouter = router({
     .query(async ({ input }) => {
       const where: Prisma.TaskWhereInput = {};
       if (input.search) Object.assign(where, taskSearchWhere(input.search));
-      if (input.status !== 'all') where.status = input.status;
+      if (input.statuses?.length) where.status = { in: input.statuses };
+      else if (input.status !== 'all') where.status = input.status;
       if (input.categoryId) where.categoryId = input.categoryId;
       const created = sinceFilter(input.period);
       if (created) where.createdAt = created;

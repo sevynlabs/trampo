@@ -17,6 +17,7 @@ import {
 import { useUrlState } from "@/hooks/use-url-state";
 import { isPeriod, type Period } from "@/constants/period";
 import { formatNumber } from "@/lib/format";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { useHideReview, useReviewStats, useReviews, useUnhideReview, type ReviewListInput, type ReviewRow } from "../api";
 import { buildReviewColumns } from "./review-columns";
 import { ReviewSheet } from "./review-sheet";
@@ -71,6 +72,7 @@ export function ReviewsView() {
     setPending(null);
     setSelected(null);
   };
+  const { readOnlyReason } = useAdminRole();
   const hide = useHideReview(close);
   const unhide = useUnhideReview(close);
 
@@ -80,8 +82,9 @@ export function ReviewsView() {
         onView: setSelected,
         onHide: (review) => setPending({ mode: "hide", review }),
         onUnhide: (review) => setPending({ mode: "unhide", review }),
+        readOnlyReason,
       }),
-    []
+    [readOnlyReason]
   );
 
   const st = stats.data;
@@ -161,6 +164,7 @@ export function ReviewsView() {
         onOpenChange={(o) => !o && setSelected(null)}
         onHide={(review) => setPending({ mode: "hide", review })}
         onUnhide={(review) => setPending({ mode: "unhide", review })}
+        readOnlyReason={readOnlyReason}
       />
 
       <ConfirmDialog

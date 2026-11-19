@@ -13,7 +13,8 @@ import {
   Star,
   Zap,
 } from "lucide-react";
-import { ConfirmDialog, ErrorState, LoadingState, StarRow, StatusBadge, Tag, UserAvatar } from "@/components/ds";
+import { ConfirmDialog, DisabledHint, ErrorState, LoadingState, StarRow, StatusBadge, Tag, UserAvatar } from "@/components/ds";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -112,7 +113,7 @@ function Timeline({ items }: { items: RequestDetail["timeline"] }) {
   );
 }
 
-function DetailBody({ t, onCancel }: { t: RequestDetail; onCancel: () => void }) {
+function DetailBody({ t, onCancel, readOnlyReason }: { t: RequestDetail; onCancel: () => void; readOnlyReason?: string }) {
   return (
     <div className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -261,9 +262,11 @@ function DetailBody({ t, onCancel }: { t: RequestDetail; onCancel: () => void })
           <p className="mt-0.5 text-sm text-muted-foreground">
             Disponível enquanto a solicitação está aguardando ou aceita e sem pagamento retido.
           </p>
-          <Button variant="destructive" size="sm" className="mt-3" onClick={onCancel}>
-            <Ban /> Cancelar solicitação
-          </Button>
+          <DisabledHint hint={readOnlyReason} className="mt-3 inline-flex rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Button variant="destructive" size="sm" className={readOnlyReason ? undefined : "mt-3"} disabled={!!readOnlyReason} onClick={onCancel}>
+              <Ban /> Cancelar solicitação
+            </Button>
+          </DisabledHint>
         </div>
       )}
     </div>
@@ -279,6 +282,7 @@ export function RequestDetailSheet({ id, onOpenChange }: { id: string | null; on
   const q = useRequest(shownId);
   const t = q.data;
   const [confirm, setConfirm] = useState(false);
+  const { readOnlyReason } = useAdminRole();
   const cancel = useCancelRequest({ onSuccess: () => setConfirm(false) });
 
   return (
@@ -307,7 +311,7 @@ export function RequestDetailSheet({ id, onOpenChange }: { id: string | null; on
             ) : q.error ? (
               <ErrorState description={q.error.message} onRetry={() => q.refetch()} />
             ) : t ? (
-              <DetailBody t={t} onCancel={() => setConfirm(true)} />
+              <DetailBody t={t} onCancel={() => setConfirm(true)} readOnlyReason={readOnlyReason} />
             ) : null}
           </SheetBody>
           <SheetFooter>

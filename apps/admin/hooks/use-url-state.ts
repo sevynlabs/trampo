@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { DEFAULT_PERIOD, isPeriod, type Period } from "@/constants/period";
+import { isPeriod, type Period } from "@/constants/period";
+import { usePanelPrefs } from "@/hooks/use-panel-prefs";
 
 /**
  * List/page state kept in the URL (?q=&page=&status=…) so filters survive
@@ -41,10 +42,22 @@ export function useUrlState<T extends Record<string, string>>(defaults: T) {
   return [state, set] as const;
 }
 
+/**
+ * Period used when the URL has no `?period=`: the admin's preferred default
+ * (Configurações → Painel), else DEFAULT_PERIOD. Before mount it is always
+ * DEFAULT_PERIOD, so server and client markup match.
+ */
+export function usePreferredPeriod(): Period {
+  return usePanelPrefs().defaultPeriod;
+}
+
 /** Global period (?period=30d), shared by the Topbar selector and pages. */
 export function usePeriod(): [Period, (p: Period) => void] {
-  const [state, set] = useUrlState({ period: DEFAULT_PERIOD as string });
-  const period = isPeriod(state.period) ? state.period : DEFAULT_PERIOD;
+  // Default "" (not a period) so an explicit choice is always written to the URL,
+  // even when it equals the preferred default.
+  const [state, set] = useUrlState({ period: "" });
+  const preferred = usePreferredPeriod();
+  const period = isPeriod(state.period) ? state.period : preferred;
   return [period, (p: Period) => set({ period: p }, { resetPage: true })];
 }
 

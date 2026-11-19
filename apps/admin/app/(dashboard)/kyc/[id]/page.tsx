@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, ExternalLink, FileText, Loader2, ShieldCheck, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { DisabledHint } from "@/components/ds";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -115,6 +117,7 @@ export default function KycReviewPage({
   const data = query.data;
   const isPending = data?.kycStatus === "SUBMITTED";
   const busy = approve.isPending || reject.isPending;
+  const { canEdit, readOnlyReason } = useAdminRole();
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -151,10 +154,11 @@ export default function KycReviewPage({
             </div>
 
             {isPending && (
+              <DisabledHint hint={readOnlyReason} className="inline-flex self-start rounded-xl">
               <div className="flex items-center gap-2">
                 <Button
                   variant="destructive"
-                  disabled={busy}
+                  disabled={busy || !canEdit}
                   onClick={() => {
                     setActionError(null);
                     setReason("");
@@ -165,7 +169,7 @@ export default function KycReviewPage({
                   Reprovar
                 </Button>
                 <Button
-                  disabled={busy}
+                  disabled={busy || !canEdit}
                   onClick={() => {
                     setActionError(null);
                     approve.mutate({ profileId });
@@ -179,6 +183,7 @@ export default function KycReviewPage({
                   Aprovar
                 </Button>
               </div>
+              </DisabledHint>
             )}
           </div>
 

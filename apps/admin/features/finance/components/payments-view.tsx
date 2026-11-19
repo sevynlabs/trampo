@@ -2,18 +2,29 @@
 
 import { useMemo } from "react";
 import { Banknote, CreditCard, Download, HandCoins, Loader2, TrendingUp, Wallet } from "lucide-react";
-import { DataTable, FilterBar, FilterSelect, PageHeader, PeriodSelect, SectionCard, StatCard } from "@/components/ds";
+import {
+  DataTable,
+  FilterBar,
+  FilterSelect,
+  PageHeader,
+  PeriodSelect,
+  SearchInput,
+  SectionCard,
+  StatCard,
+} from "@/components/ds";
 import { Button } from "@/components/ui/button";
-import { DEFAULT_PERIOD, isPeriod, periodLabel } from "@/constants/period";
+import { isPeriod, periodLabel } from "@/constants/period";
 import { PAYMENT_STATUS } from "@/constants/status";
-import { useUrlState } from "@/hooks/use-url-state";
+import { usePreferredPeriod, useUrlState } from "@/hooks/use-url-state";
 import { formatBRL, formatNumber } from "@/lib/format";
 import {
+  PAYMENT_SORT_KEYS,
   periodToDays,
   useExportPaymentsCsv,
   usePayments,
   usePendingWithdrawals,
   useRevenueReport,
+  type PaymentSortBy,
   type PaymentStatusFilter,
 } from "../api";
 import { FinanceNav } from "./finance-nav";
@@ -29,12 +40,26 @@ const STATUS_OPTIONS = [
 const STATUS_VALUES = new Set(STATUS_OPTIONS.map((o) => o.value));
 
 export function PaymentsView() {
-  const [url, setUrl] = useUrlState({ page: "1", status: "ALL", period: DEFAULT_PERIOD as string, id: "" });
-  const period = isPeriod(url.period) ? url.period : DEFAULT_PERIOD;
+  const [url, setUrl] = useUrlState({
+    q: "",
+    page: "1",
+    status: "ALL",
+    period: "",
+    sortBy: "createdAt",
+    sortDir: "desc",
+    id: "",
+  });
+  const preferredPeriod = usePreferredPeriod();
+  const period = isPeriod(url.period) ? url.period : preferredPeriod;
   const status = (STATUS_VALUES.has(url.status) ? url.status : "ALL") as PaymentStatusFilter;
   const page = Math.max(1, Number(url.page) || 1);
+  const sortBy: PaymentSortBy = (PAYMENT_SORT_KEYS as readonly string[]).includes(url.sortBy)
+    ? (url.sortBy as PaymentSortBy)
+    : "createdAt";
+  const sortDir = url.sortDir === "asc" ? "asc" : "desc";
+  const search = url.q.trim() || undefined;
 
-  const list = usePayments({ page, pageSize: PAGE_SIZE, status, days: periodToDays(period) });
+  const list = usePayments({ page, pageSize: PAGE_SIZE, status, days: periodToDays(period), search, sortBy, sortDir });
   const report = useRevenueReport(period);
   const pending = usePendingWithdrawals();
   const exporter = useExportPaymentsCsv();
@@ -90,6 +115,11 @@ export function PaymentsView() {
       <SectionCard>
         <div className="space-y-4">
           <FilterBar>
+            <SearchInput
+              value={url.q}
+              onChange={(v) => setUrl({ q: v })}
+              placeholder="Buscar por ID, usuário ou serviço"
+            />
             <PeriodSelect value={period} onChange={(p) => setUrl({ period: p })} />
             <FilterSelect
               label="Status"
@@ -115,10 +145,18 @@ export function PaymentsView() {
               total: list.data?.total ?? 0,
               onPageChange: (p) => setUrl({ page: String(p) }, { resetPage: false }),
             }}
+            sorting={{
+              sortBy,
+              sortDir,
+              onChange: (by, dir) => setUrl({ sortBy: by, sortDir: dir }),
+            }}
             empty={{
               icon: CreditCard,
               title: "Nenhum pagamento encontrado",
-              description: status !== "ALL" ? "Tente outro status ou amplie o período." : "Tente ampliar o período.",
+              description:
+                search || status !== "ALL"
+                  ? "Ajuste a busca ou o status, ou amplie o período."
+                  : "Tente ampliar o período.",
             }}
           />
         </div>

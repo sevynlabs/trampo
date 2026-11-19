@@ -12,6 +12,8 @@ export type UsersList = RouterOutputs["admin"]["listUsers"];
 export type UserRow = UsersList["users"][number];
 export type UserDetail = RouterOutputs["admin"]["getUser"];
 export type UserRole = "CLIENT" | "TASKER" | "BOTH";
+export type UserSortBy = NonNullable<UsersListInput["sortBy"]>;
+export const USER_SORT_KEYS: readonly UserSortBy[] = ["createdAt", "name"];
 
 export function useUsersList(params: UsersListInput) {
   return trpc.admin.listUsers.useQuery(params, { placeholderData: keepPreviousData });

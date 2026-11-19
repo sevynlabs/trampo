@@ -11,16 +11,22 @@ export type UserRowHandlers = {
   onView: (row: UserRow) => void;
   onEdit: (row: UserRow) => void;
   onToggleActive: (row: UserRow) => void;
+  /** Set for read-only admins: mutating actions render disabled with this tooltip. */
+  readOnlyReason?: string;
 };
+
+/** Sortable columns (server): `name` and `createdAt` — the column id is sent as `sortBy`. */
 
 export function userColumns(h: UserRowHandlers): ColumnDef<UserRow, unknown>[] {
   return [
     {
-      id: "user",
+      id: "name",
       header: "Usuário",
+      enableSorting: true,
       cell: ({ row }) => (
         <UserCell
           name={row.original.name}
+          avatarUrl={row.original.avatarUrl}
           subtitle={row.original.email ? `${row.original.email} · ${row.original.phone}` : row.original.phone}
         />
       ),
@@ -44,6 +50,7 @@ export function userColumns(h: UserRowHandlers): ColumnDef<UserRow, unknown>[] {
     {
       id: "createdAt",
       header: "Cadastro",
+      enableSorting: true,
       cell: ({ row }) => <span className="whitespace-nowrap text-muted-foreground">{formatDate(row.original.createdAt)}</span>,
     },
     {
@@ -55,11 +62,27 @@ export function userColumns(h: UserRowHandlers): ColumnDef<UserRow, unknown>[] {
         return (
           <RowActions>
             <IconButton icon={Eye} label="Visualizar" onClick={() => h.onView(u)} />
-            <IconButton icon={Pencil} label="Editar tipo de conta" onClick={() => h.onEdit(u)} />
+            <IconButton
+              icon={Pencil}
+              label="Editar tipo de conta"
+              disabledReason={h.readOnlyReason}
+              onClick={() => h.onEdit(u)}
+            />
             {u.isActive ? (
-              <IconButton icon={Ban} label="Bloquear" tone="danger" onClick={() => h.onToggleActive(u)} />
+              <IconButton
+                icon={Ban}
+                label="Bloquear"
+                tone="danger"
+                disabledReason={h.readOnlyReason}
+                onClick={() => h.onToggleActive(u)}
+              />
             ) : (
-              <IconButton icon={ShieldCheck} label="Desbloquear" onClick={() => h.onToggleActive(u)} />
+              <IconButton
+                icon={ShieldCheck}
+                label="Desbloquear"
+                disabledReason={h.readOnlyReason}
+                onClick={() => h.onToggleActive(u)}
+              />
             )}
           </RowActions>
         );

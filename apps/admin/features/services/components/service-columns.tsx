@@ -3,8 +3,6 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Power, PowerOff, Trash2 } from "lucide-react";
 import { IconButton, RowActions, StatusBadge } from "@/components/ds";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { GENERIC_STATUS } from "@/constants/status";
 import { formatBRL, formatNumber } from "@/lib/format";
 import type { ServiceRow } from "../api";
@@ -15,6 +13,8 @@ export type ServiceActions = {
   onToggle: (row: ServiceRow) => void;
   onRemove: (row: ServiceRow) => void;
   togglingId?: string | null;
+  /** Set for read-only admins: every action renders disabled with this tooltip. */
+  readOnlyReason?: string;
 };
 
 export function serviceColumns(actions: ServiceActions): ColumnDef<ServiceRow, any>[] {
@@ -94,32 +94,28 @@ export function serviceColumns(actions: ServiceActions): ColumnDef<ServiceRow, a
         const hasTasks = s.tasksCount > 0;
         return (
           <RowActions>
-            <IconButton icon={Pencil} label={`Editar ${s.name}`} onClick={() => actions.onEdit(s)} />
+            <IconButton
+              icon={Pencil}
+              label={`Editar ${s.name}`}
+              disabledReason={actions.readOnlyReason}
+              onClick={() => actions.onEdit(s)}
+            />
             <IconButton
               icon={s.isActive ? PowerOff : Power}
               label={s.isActive ? "Desativar" : "Ativar"}
               disabled={actions.togglingId === s.id}
+              disabledReason={actions.readOnlyReason}
               onClick={() => actions.onToggle(s)}
             />
-            {/* Disabled buttons don't fire pointer events: the tooltip trigger is a focusable span. */}
-            {hasTasks ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    tabIndex={0}
-                    aria-label="Excluir indisponível: o serviço possui solicitações"
-                    className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <Button variant="ghost" size="icon-sm" disabled aria-hidden tabIndex={-1} className="text-rose-600">
-                      <Trash2 />
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>Possui solicitações — desative em vez de excluir</TooltipContent>
-              </Tooltip>
-            ) : (
-              <IconButton icon={Trash2} tone="danger" label="Excluir" onClick={() => actions.onRemove(s)} />
-            )}
+            <IconButton
+              icon={Trash2}
+              tone="danger"
+              label="Excluir"
+              disabledReason={
+                actions.readOnlyReason ?? (hasTasks ? "Possui solicitações — desative em vez de excluir" : undefined)
+              }
+              onClick={() => actions.onRemove(s)}
+            />
           </RowActions>
         );
       },

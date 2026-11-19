@@ -31,6 +31,7 @@ import { reviewsAdminRouter } from './reviews';
 import { disputesAdminRouter } from './disputes';
 import { reportsAdminRouter } from './reports';
 import { settingsAdminRouter } from './settings';
+import { marketingRouter } from './marketing';
 
 /** Supabase Storage bucket holding KYC documents. */
 const KYC_BUCKET = 'kyc-documents';
@@ -167,10 +168,12 @@ export const adminRouter = router({
         search: z.string().trim().optional(),
         role: z.enum(['ALL', 'CLIENT', 'TASKER', 'BOTH']).default('ALL'),
         status: z.enum(['all', 'active', 'blocked']).default('all'),
+        sortBy: z.enum(['createdAt', 'name']).default('createdAt'),
+        sortDir: z.enum(['asc', 'desc']).default('desc'),
       })
     )
     .query(async ({ input }) => {
-      const { page, pageSize, search, role, status } = input;
+      const { page, pageSize, search, role, status, sortBy, sortDir } = input;
 
       const where: Prisma.UserWhereInput = {};
 
@@ -189,12 +192,16 @@ export const adminRouter = router({
         prisma.user.count({ where }),
         prisma.user.findMany({
           where,
-          orderBy: { createdAt: 'desc' },
+          orderBy: [
+            sortBy === 'name' ? { name: { sort: sortDir, nulls: 'last' } } : { createdAt: sortDir },
+            { id: 'asc' },
+          ],
           skip: (page - 1) * pageSize,
           take: pageSize,
           select: {
             id: true,
             name: true,
+            avatarUrl: true,
             phone: true,
             email: true,
             role: true,
@@ -209,6 +216,7 @@ export const adminRouter = router({
         users: users.map((u) => ({
           id: u.id,
           name: u.name,
+          avatarUrl: u.avatarUrl,
           phone: u.phone,
           email: u.email,
           role: u.role,
@@ -234,10 +242,14 @@ export const adminRouter = router({
         pageSize: z.number().int().min(1).max(100).default(20),
         search: z.string().trim().optional(),
         status: z.enum(['all', 'active', 'verification', 'rejected', 'blocked']).default('all'),
+        /** Real category filter (TaskerProfileCategory). */
+        categoryId: z.string().uuid().optional(),
+        sortBy: z.enum(['createdAt', 'name', 'rating', 'totalTasks']).default('createdAt'),
+        sortDir: z.enum(['asc', 'desc']).default('desc'),
       })
     )
     .query(async ({ input }) => {
-      const { page, pageSize, search, status } = input;
+      const { page, pageSize, search, status, categoryId, sortBy, sortDir } = input;
       const where: Prisma.TaskerProfileWhereInput = {};
       if (search) {
         where.OR = [
@@ -250,12 +262,18 @@ export const adminRouter = router({
       if (status === 'verification') where.kycStatus = { in: ['PENDING', 'SUBMITTED'] };
       if (status === 'rejected') where.kycStatus = 'REJECTED';
       if (status === 'blocked') where.user = { isActive: false };
+      if (categoryId) where.categories = { some: { categoryId } };
+
+      const primaryOrder: Prisma.TaskerProfileOrderByWithRelationInput =
+        sortBy === 'name'
+          ? { user: { name: { sort: sortDir, nulls: 'last' } } }
+          : { [sortBy]: sortDir };
 
       const [total, profiles] = await Promise.all([
         prisma.taskerProfile.count({ where }),
         prisma.taskerProfile.findMany({
           where,
-          orderBy: { createdAt: 'desc' },
+          orderBy: [primaryOrder, { id: 'asc' }],
           skip: (page - 1) * pageSize,
           take: pageSize,
           select: {
@@ -268,6 +286,7 @@ export const adminRouter = router({
               select: {
                 id: true,
                 name: true,
+                avatarUrl: true,
                 phone: true,
                 isActive: true,
                 _count: { select: { reviewsReceived: true } },
@@ -282,6 +301,7 @@ export const adminRouter = router({
         professionals: profiles.map((p) => ({
           id: p.user.id,
           name: p.user.name,
+          avatarUrl: p.user.avatarUrl,
           phone: p.user.phone,
           isActive: p.user.isActive,
           categories: p.categories.map((c) => c.category.name),
@@ -725,4 +745,5 @@ export const adminRouter = router({
   disputes: disputesAdminRouter,
   reports: reportsAdminRouter,
   settings: settingsAdminRouter,
+  marketing: marketingRouter,
 });

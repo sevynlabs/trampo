@@ -14,11 +14,8 @@ export type CreateAdminInput = RouterInputs["admin"]["settings"]["createAdmin"];
 
 export const ADMIN_ROLES: AdminRole[] = ["SUPER_ADMIN", "OPERATOR", "VIEWER"];
 
-/** Current admin (role decides whether settings are editable). */
-export function useMe() {
-  const q = trpc.admin.me.useQuery(undefined, { staleTime: 5 * 60_000 });
-  return { ...q, isSuperAdmin: q.data?.role === "SUPER_ADMIN" };
-}
+/** @deprecated use `useAdminRole()` from "@/hooks/use-admin-role". */
+export { useAdminRole as useMe } from "@/hooks/use-admin-role";
 
 export function useSettings() {
   return trpc.admin.settings.get.useQuery();

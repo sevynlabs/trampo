@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ExternalLink, EyeOff, RotateCcw } from "lucide-react";
-import { StarRow, StatusBadge, Tag, UserCell } from "@/components/ds";
+import { DisabledHint, StarRow, StatusBadge, Tag, UserCell } from "@/components/ds";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatDateTime } from "@/lib/format";
@@ -23,11 +23,13 @@ export function ReviewSheet({
   onOpenChange,
   onHide,
   onUnhide,
+  readOnlyReason,
 }: {
   review: ReviewRow | null;
   onOpenChange: (open: boolean) => void;
   onHide: (r: ReviewRow) => void;
   onUnhide: (r: ReviewRow) => void;
+  readOnlyReason?: string;
 }) {
   const r = review;
   const parties = r ? reviewParties(r) : null;
@@ -119,15 +121,17 @@ export function ReviewSheet({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Fechar
               </Button>
-              {r.hiddenAt ? (
-                <Button variant="navy" onClick={() => onUnhide(r)}>
-                  <RotateCcw /> Reexibir
-                </Button>
-              ) : (
-                <Button variant="destructive" onClick={() => onHide(r)}>
-                  <EyeOff /> Ocultar
-                </Button>
-              )}
+              <DisabledHint hint={readOnlyReason}>
+                {r.hiddenAt ? (
+                  <Button variant="navy" disabled={!!readOnlyReason} onClick={() => onUnhide(r)}>
+                    <RotateCcw /> Reexibir
+                  </Button>
+                ) : (
+                  <Button variant="destructive" disabled={!!readOnlyReason} onClick={() => onHide(r)}>
+                    <EyeOff /> Ocultar
+                  </Button>
+                )}
+              </DisabledHint>
             </SheetFooter>
           </>
         )}

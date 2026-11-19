@@ -10,10 +10,13 @@ export function buildReviewColumns({
   onView,
   onHide,
   onUnhide,
+  readOnlyReason,
 }: {
   onView: (r: ReviewRow) => void;
   onHide: (r: ReviewRow) => void;
   onUnhide: (r: ReviewRow) => void;
+  /** Set for read-only admins: hide/unhide render disabled with this tooltip. */
+  readOnlyReason?: string;
 }): ColumnDef<ReviewRow, unknown>[] {
   return [
     {
@@ -92,9 +95,15 @@ export function buildReviewColumns({
         <RowActions>
           <IconButton icon={Eye} label="Ver detalhes" onClick={() => onView(r)} />
           {r.hiddenAt ? (
-            <IconButton icon={RotateCcw} label="Reexibir avaliação" onClick={() => onUnhide(r)} />
+            <IconButton icon={RotateCcw} label="Reexibir avaliação" disabledReason={readOnlyReason} onClick={() => onUnhide(r)} />
           ) : (
-            <IconButton icon={EyeOff} label="Ocultar avaliação" tone="danger" onClick={() => onHide(r)} />
+            <IconButton
+              icon={EyeOff}
+              label="Ocultar avaliação"
+              tone="danger"
+              disabledReason={readOnlyReason}
+              onClick={() => onHide(r)}
+            />
           )}
         </RowActions>
       ),

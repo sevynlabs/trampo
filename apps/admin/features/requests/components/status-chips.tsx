@@ -2,27 +2,45 @@
 
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { RequestStatusCounts } from "../api";
+import type { RequestStatusCounts, TaskStatus } from "../api";
 
 /**
- * Status filter as chips with counts (from `statusCounts`). The API filters by
- * a single TaskStatus, so each chip is exactly one status (+ "Todas").
+ * Status filter as grouped chips with counts summed from `statusCounts`.
+ * Each chip maps to one or more TaskStatus, sent to the API as `statuses`.
+ * The chip key is what goes to the URL (`?status=em_andamento`).
  */
 export const REQUEST_STATUS_CHIPS = [
-  { value: "all", label: "Todas" },
-  { value: "OPEN", label: "Aguardando" },
-  { value: "ACCEPTED", label: "Aceitas" },
-  { value: "IN_PROGRESS", label: "Em andamento" },
-  { value: "COMPLETED", label: "Concluídas" },
-  { value: "RELEASED", label: "Finalizadas" },
-  { value: "CANCELLED", label: "Canceladas" },
-  { value: "DISPUTED", label: "Em disputa" },
-] as const;
+  { value: "all", label: "Todas", statuses: [] },
+  { value: "aguardando", label: "Aguardando", statuses: ["OPEN"] },
+  { value: "em_andamento", label: "Em andamento", statuses: ["ACCEPTED", "IN_PROGRESS"] },
+  { value: "concluidas", label: "Concluídas", statuses: ["COMPLETED", "RELEASED"] },
+  { value: "canceladas", label: "Canceladas", statuses: ["CANCELLED"] },
+  { value: "em_disputa", label: "Em disputa", statuses: ["DISPUTED"] },
+] as const satisfies readonly { value: string; label: string; statuses: readonly TaskStatus[] }[];
 
-export type RequestStatusChip = (typeof REQUEST_STATUS_CHIPS)[number]["value"];
+type Chip = (typeof REQUEST_STATUS_CHIPS)[number];
+export type RequestStatusChip = Chip["value"];
 
 export function isRequestStatusChip(v: string): v is RequestStatusChip {
   return REQUEST_STATUS_CHIPS.some((c) => c.value === v);
+}
+
+/** Chip key from the URL; old links with a raw TaskStatus (`?status=OPEN`) land on its group. */
+export function parseRequestStatusChip(v: string): RequestStatusChip {
+  if (isRequestStatusChip(v)) return v;
+  const legacy = REQUEST_STATUS_CHIPS.find((c) => (c.statuses as readonly string[]).includes(v));
+  return legacy?.value ?? "all";
+}
+
+/** TaskStatus list for the API (`undefined` = no status filter). */
+export function chipStatuses(chip: RequestStatusChip): TaskStatus[] | undefined {
+  const c: Chip | undefined = REQUEST_STATUS_CHIPS.find((x) => x.value === chip);
+  return c && c.statuses.length ? [...c.statuses] : undefined;
+}
+
+function chipCount(chip: Chip, counts: RequestStatusCounts): number {
+  if (chip.value === "all") return counts.total;
+  return (chip.statuses as readonly TaskStatus[]).reduce((sum, s) => sum + (counts.counts[s] ?? 0), 0);
 }
 
 export function StatusChips({
@@ -38,8 +56,8 @@ export function StatusChips({
     <div role="radiogroup" aria-label="Filtrar por status" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
       {REQUEST_STATUS_CHIPS.map((c) => {
         const active = value === c.value;
-        const n = counts ? (c.value === "all" ? counts.total : counts.counts[c.value]) : undefined;
-        const alert = c.value === "DISPUTED" && (n ?? 0) > 0;
+        const n = counts ? chipCount(c, counts) : undefined;
+        const alert = c.value === "em_disputa" && (n ?? 0) > 0;
         return (
           <button
             key={c.value}

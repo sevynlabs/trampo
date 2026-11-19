@@ -3,11 +3,13 @@
 import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { FileText, Pencil, Plus, Trash2 } from "lucide-react";
+import { useAdminRole } from "@/hooks/use-admin-role";
 import { ConfirmDialog, DataTable, IconButton, PageHeader, RowActions, SearchInput, SectionCard, StatusBadge } from "@/components/ds";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format";
 import { useDeleteTemplate, useTemplates, type EmailTemplate } from "../api";
 import { TemplateDialog } from "./template-dialog";
+import { CampaignsNav } from "./campaigns-nav";
 
 export function TemplatesView() {
   const list = useTemplates();
@@ -15,6 +17,7 @@ export function TemplatesView() {
   const [editing, setEditing] = useState<EmailTemplate | "new" | null>(null);
   const [deleting, setDeleting] = useState<EmailTemplate | null>(null);
   const remove = useDeleteTemplate(() => setDeleting(null));
+  const { canEdit, readOnlyReason } = useAdminRole();
 
   const columns = useMemo<ColumnDef<EmailTemplate, unknown>[]>(
     () => [
@@ -50,13 +53,19 @@ export function TemplatesView() {
         meta: { align: "right" },
         cell: ({ row: { original: t } }) => (
           <RowActions>
-            <IconButton icon={Pencil} label="Editar template" onClick={() => setEditing(t)} />
-            <IconButton icon={Trash2} label="Excluir template" tone="danger" onClick={() => setDeleting(t)} />
+            <IconButton icon={Pencil} label="Editar template" disabledReason={readOnlyReason} onClick={() => setEditing(t)} />
+            <IconButton
+              icon={Trash2}
+              label="Excluir template"
+              tone="danger"
+              disabledReason={readOnlyReason}
+              onClick={() => setDeleting(t)}
+            />
           </RowActions>
         ),
       },
     ],
-    []
+    [readOnlyReason]
   );
 
   const rows = useMemo(() => {
@@ -71,9 +80,14 @@ export function TemplatesView() {
         title="Templates de e-mail"
         description="Modelos reutilizáveis para campanhas de e-mail."
         actions={
-          <Button onClick={() => setEditing("new")}>
-            <Plus /> Novo template
-          </Button>
+          <>
+            <CampaignsNav />
+            {canEdit && (
+              <Button onClick={() => setEditing("new")}>
+                <Plus /> Novo template
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -87,7 +101,7 @@ export function TemplatesView() {
             error={list.error?.message}
             onRetry={() => list.refetch()}
             getRowId={(t) => t.id}
-            onRowClick={setEditing}
+            onRowClick={canEdit ? setEditing : undefined}
             rowLabel={(t) => `Template ${t.name}`}
             empty={{
               icon: FileText,
