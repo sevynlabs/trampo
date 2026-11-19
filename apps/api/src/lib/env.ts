@@ -47,6 +47,12 @@ const envSchema = z.object({
     .regex(/^\d{6}$/)
     .optional(),
 
+  // Super admin of the panel, managed only here (no API route / panel screen).
+  // Change these and redeploy to update e-mail/password. Both or neither.
+  SUPER_ADMIN_EMAIL: z.string().email().optional(),
+  SUPER_ADMIN_PASSWORD: z.string().min(12, 'SUPER_ADMIN_PASSWORD precisa de 12+ caracteres').optional(),
+  SUPER_ADMIN_NAME: z.string().max(80).optional(),
+
   // Redis
   UPSTASH_REDIS_REST_URL: z.string().url(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1),

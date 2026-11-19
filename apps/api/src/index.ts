@@ -8,6 +8,7 @@ import { appRouter } from './router';
 import { createContext } from './trpc';
 import { env } from './lib/env';
 import { captureError } from './lib/monitoring';
+import { syncSuperAdminFromEnv } from './lib/super-admin';
 import { webhookHandler } from './modules/webhooks';
 import { startEscrowProcessor } from './jobs/escrow-processor';
 import { startReconciler } from './jobs/reconciler';
@@ -102,6 +103,12 @@ console.log(`
 serve({
   fetch: app.fetch,
   port,
+});
+
+// Super admin e-mail/password come from env vars (SUPER_ADMIN_*)
+syncSuperAdminFromEnv().catch((err) => {
+  console.error('[SUPER_ADMIN] Falha ao sincronizar:', err instanceof Error ? err.message : err);
+  captureError(err);
 });
 
 // Start background job processors
