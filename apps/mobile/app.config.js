@@ -2,6 +2,8 @@ export default {
   expo: {
     name: "TRAMPO",
     slug: "trampo",
+    // EAS project @diegonet01/trampo (needed for Expo push tokens and builds)
+    owner: "diegonet01",
     version: "0.1.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
@@ -69,7 +71,8 @@ export default {
         origin: false
       },
       eas: {
-        projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID
+        // Public identifier (not a secret). Env var still overrides it.
+        projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || "673ef4e1-aca7-4713-9e52-56f9b2b51eee"
       },
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
