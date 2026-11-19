@@ -3,7 +3,7 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, ExternalLink, Loader2, X } from "lucide-react";
+import { ArrowLeft, Check, ExternalLink, FileText, Loader2, ShieldCheck, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KycBadge } from "@/components/status-badges";
 import { formatDateTime } from "@/lib/utils";
+
+const GOV_CERTIDAO_URL =
+  "https://www.gov.br/pt-br/servicos/emitir-certidao-de-antecedentes-criminais";
 
 function DocumentPanel({
   label,
@@ -196,6 +199,63 @@ export default function KycReviewPage({
             <DocumentPanel label="Documento (verso)" url={data.documents.back} />
             <DocumentPanel label="Selfie" url={data.documents.selfie} />
           </div>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
+                <span className="inline-flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  Certidão de antecedentes criminais
+                </span>
+                <a
+                  href={GOV_CERTIDAO_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-normal text-primary hover:underline"
+                >
+                  Validar autenticidade no gov.br <ExternalLink className="h-3 w-3" />
+                </a>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!data.documents.criminalRecord ? (
+                <div className="flex h-32 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                  Não enviada
+                </div>
+              ) : data.criminalRecordIsPdf ? (
+                <div className="space-y-2">
+                  <iframe
+                    src={data.documents.criminalRecord}
+                    title="Certidão de antecedentes criminais"
+                    className="h-[520px] w-full rounded-md border bg-muted"
+                  />
+                  <a
+                    href={data.documents.criminalRecord}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                  >
+                    <FileText className="h-4 w-4" /> Abrir PDF em nova aba
+                  </a>
+                </div>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <a href={data.documents.criminalRecord} target="_blank" rel="noopener noreferrer">
+                  <img
+                    src={data.documents.criminalRecord}
+                    alt="Certidão de antecedentes criminais"
+                    className="max-h-[520px] w-full rounded-md border bg-muted object-contain"
+                  />
+                </a>
+              )}
+              <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                <li>Nome e CPF da certidão devem ser os mesmos do documento de identidade.</li>
+                <li>Data de emissão recente (recomendado: até 90 dias).</li>
+                <li>Resultado deve ser &quot;não consta&quot; condenação; em caso contrário, reprove informando o motivo.</li>
+                <li>Confirme a autenticidade com o código de validação da certidão na página do gov.br.</li>
+              </ul>
+            </CardContent>
+          </Card>
 
           {data.decisions.length > 0 && (
             <Card>

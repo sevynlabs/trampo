@@ -497,10 +497,11 @@ export const adminRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Perfil não encontrado' });
       }
 
-      const [front, back, selfie] = await Promise.all([
+      const [front, back, selfie, criminalRecord] = await Promise.all([
         signKycUrl(profile.documentFrontPath),
         signKycUrl(profile.documentBackPath),
         signKycUrl(profile.selfiePath),
+        signKycUrl(profile.criminalRecordPath),
       ]);
 
       return {
@@ -517,7 +518,8 @@ export const adminRouter = router({
           email: profile.user.email,
           createdAt: profile.user.createdAt.toISOString(),
         },
-        documents: { front, back, selfie },
+        documents: { front, back, selfie, criminalRecord },
+        criminalRecordIsPdf: !!profile.criminalRecordPath?.endsWith('.pdf'),
         decisions: profile.kycDecisions.map((d) => ({
           id: d.id,
           decision: d.decision,

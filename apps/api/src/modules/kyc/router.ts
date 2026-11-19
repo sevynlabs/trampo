@@ -6,6 +6,24 @@ import { supabase } from '../../lib/supabase';
 import { isAdminUser } from '../../lib/admin';
 
 const KYC_BUCKET = 'kyc-documents';
+const DOC_TYPES = z.enum(['document_front', 'document_back', 'selfie', 'criminal_record']);
+const KYC_MIME_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+let bucketAllowsPdf = false;
+
+/** The bucket was created for images only; the certificate also comes as PDF. */
+async function ensureKycBucketAcceptsPdf() {
+  if (bucketAllowsPdf) return;
+  const { data } = await supabase.storage.getBucket(KYC_BUCKET);
+  if (data && !(data.allowed_mime_types ?? []).includes('application/pdf')) {
+    const { error } = await supabase.storage.updateBucket(KYC_BUCKET, {
+      public: false,
+      fileSizeLimit: data.file_size_limit ?? 5 * 1024 * 1024,
+      allowedMimeTypes: KYC_MIME_TYPES,
+    });
+    if (error) throw error;
+  }
+  bucketAllowsPdf = true;
+}
 
 export const kycRouter = router({
   /**
@@ -23,13 +41,14 @@ export const kycRouter = router({
         documentFrontPath: true,
         documentBackPath: true,
         selfiePath: true,
+        criminalRecordPath: true,
       },
     });
 
     if (!profile) {
       return {
         status: 'PENDING' as const,
-        steps: { cpf: true, document: false, selfie: false },
+        steps: { cpf: true, document: false, selfie: false, criminalRecord: false },
       };
     }
 
@@ -43,6 +62,7 @@ export const kycRouter = router({
         cpf: true,
         document: !!profile.documentFrontPath,
         selfie: !!profile.selfiePath,
+        criminalRecord: !!profile.criminalRecordPath,
       },
     };
   }),
@@ -53,14 +73,20 @@ export const kycRouter = router({
   getUploadUrl: protectedProcedure
     .input(
       z.object({
-        type: z.enum(['document_front', 'document_back', 'selfie']),
-        contentType: z.enum(['image/jpeg', 'image/png']),
+        type: DOC_TYPES,
+        contentType: z.enum(['image/jpeg', 'image/png', 'application/pdf']),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const { type, contentType } = input;
-      const ext = contentType === 'image/jpeg' ? 'jpg' : 'png';
+      // Only the criminal-record certificate may be a PDF (gov.br issues it as PDF)
+      if (contentType === 'application/pdf' && type !== 'criminal_record') {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Envie uma foto (JPG ou PNG)' });
+      }
+      const ext = contentType === 'image/jpeg' ? 'jpg' : contentType === 'image/png' ? 'png' : 'pdf';
       const path = `${ctx.user.id}/${type}_${Date.now()}.${ext}`;
+
+      if (contentType === 'application/pdf') await ensureKycBucketAcceptsPdf();
 
       // Create signed upload URL (5 min expiry)
       const { data, error } = await supabase.storage
@@ -88,7 +114,7 @@ export const kycRouter = router({
   confirmUpload: protectedProcedure
     .input(
       z.object({
-        type: z.enum(['document_front', 'document_back', 'selfie']),
+        type: DOC_TYPES,
         path: z.string(),
       })
     )
@@ -96,7 +122,7 @@ export const kycRouter = router({
       const { type, path } = input;
 
       // The path must be one we issued to THIS user for THIS document type
-      const expected = new RegExp(`^${ctx.user.id}/${type}_[0-9]+[.](jpg|png)$`);
+      const expected = new RegExp(`^${ctx.user.id}/${type}_[0-9]+[.](jpg|png|pdf)$`);
       if (!expected.test(path)) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Caminho de documento inválido' });
       }
@@ -117,6 +143,7 @@ export const kycRouter = router({
         document_front: 'documentFrontPath',
         document_back: 'documentBackPath',
         selfie: 'selfiePath',
+        criminal_record: 'criminalRecordPath',
       } as const;
 
       await prisma.taskerProfile.upsert({
@@ -137,7 +164,7 @@ export const kycRouter = router({
     .input(z.object({ path: z.string() }))
     .query(async ({ ctx, input }) => {
       // SECURITY: Verify ownership - path format is "{userId}/{type}_{timestamp}.{ext}"
-      const isOwner = /^[0-9a-f-]{36}\/(document_front|document_back|selfie)_\d+\.(jpg|png)$/.test(input.path) &&
+      const isOwner = /^[0-9a-f-]{36}\/(document_front|document_back|selfie|criminal_record)_\d+\.(jpg|png|pdf)$/.test(input.path) &&
         input.path.startsWith(`${ctx.user.id}/`);
       const isAdmin = isAdminUser(ctx.user.id);
 
@@ -180,6 +207,12 @@ export const kycRouter = router({
       throw new TRPCError({
         code: 'BAD_REQUEST',
         message: 'Envie todos os documentos obrigatórios',
+      });
+    }
+    if (!profile.criminalRecordPath) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Envie a certidão de antecedentes criminais',
       });
     }
 

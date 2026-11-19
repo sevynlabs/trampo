@@ -7,10 +7,12 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { trpc } from '../src/lib/trpc';
 import { GradientButton } from '../src/components/GradientButton';
 
@@ -45,12 +47,17 @@ const STATUS_CONFIG = {
   },
 };
 
-type DocumentType = 'document_front' | 'document_back' | 'selfie';
+type DocumentType = 'document_front' | 'document_back' | 'selfie' | 'criminal_record';
+type UploadMime = 'image/jpeg' | 'image/png' | 'application/pdf';
+
+/** Official page to issue the federal criminal-record certificate (free, online). */
+const GOV_CERTIDAO_URL = 'https://www.gov.br/pt-br/servicos/emitir-certidao-de-antecedentes-criminais';
 
 interface UploadingState {
   document_front: boolean;
   document_back: boolean;
   selfie: boolean;
+  criminal_record: boolean;
 }
 
 export default function KYCScreen() {
@@ -66,13 +73,17 @@ export default function KYCScreen() {
     document_front: false,
     document_back: false,
     selfie: false,
+    criminal_record: false,
   });
 
   const [localImages, setLocalImages] = useState<Record<DocumentType, string | null>>({
     document_front: null,
     document_back: null,
     selfie: null,
+    criminal_record: null,
   });
+  /** File name of a PDF certificate picked in this session (no image preview). */
+  const [certificatePdf, setCertificatePdf] = useState<string | null>(null);
 
   const kycStatus = status?.status || 'PENDING';
   const config = STATUS_CONFIG[kycStatus as keyof typeof STATUS_CONFIG];
@@ -83,8 +94,9 @@ export default function KYCScreen() {
     if (!canEdit) return;
 
     const options: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
+      mediaTypes: ['images'],
+      // A certificate is a full page: no forced crop
+      allowsEditing: type !== 'criminal_record',
       aspect: type === 'selfie' ? [1, 1] : [4, 3],
       quality: 0.8,
     };
@@ -112,14 +124,27 @@ export default function KYCScreen() {
     await uploadDocument(type, asset.uri, asset.mimeType || 'image/jpeg');
   };
 
-  const uploadDocument = async (type: DocumentType, uri: string, mimeType: string) => {
+  const pickPdf = async () => {
+    if (!canEdit) return;
+    const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
+    if (result.canceled || !result.assets?.[0]) return;
+    const file = result.assets[0];
+    if (file.size && file.size > 5 * 1024 * 1024) {
+      Alert.alert('Arquivo muito grande', 'O PDF precisa ter até 5 MB.');
+      return;
+    }
+    const ok = await uploadDocument('criminal_record', file.uri, 'application/pdf');
+    if (ok) setCertificatePdf(file.name ?? 'certidao.pdf');
+  };
+
+  const uploadDocument = async (type: DocumentType, uri: string, mimeType: string): Promise<boolean> => {
     setUploading((prev) => ({ ...prev, [type]: true }));
 
     try {
       // Get signed upload URL
       const { uploadUrl, path } = await getUploadUrl.mutateAsync({
         type,
-        contentType: mimeType as 'image/jpeg' | 'image/png',
+        contentType: (mimeType === 'image/png' || mimeType === 'application/pdf' ? mimeType : 'image/jpeg') as UploadMime,
       });
 
       // Upload to Supabase Storage using signed URL
@@ -141,14 +166,19 @@ export default function KYCScreen() {
       // Confirm upload
       await confirmUpload.mutateAsync({ type, path });
 
-      // Update local state
-      setLocalImages((prev) => ({ ...prev, [type]: uri }));
+      // Update local state (PDFs have no image preview)
+      if (mimeType !== 'application/pdf') {
+        setLocalImages((prev) => ({ ...prev, [type]: uri }));
+        if (type === 'criminal_record') setCertificatePdf(null);
+      }
 
       // Refresh status
       utils.kyc.getStatus.invalidate();
+      return true;
     } catch (error) {
       console.error('Upload error:', error);
       Alert.alert('Erro', 'Não foi possível enviar o documento. Tente novamente.');
+      return false;
     } finally {
       setUploading((prev) => ({ ...prev, [type]: false }));
     }
@@ -161,7 +191,18 @@ export default function KYCScreen() {
       document_front: 'Frente do documento',
       document_back: 'Verso do documento',
       selfie: 'Selfie',
+      criminal_record: 'Certidão de antecedentes',
     };
+
+    if (type === 'criminal_record') {
+      Alert.alert(labels[type], 'Envie o PDF baixado do gov.br ou uma foto nítida da certidão.', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Arquivo PDF', onPress: pickPdf },
+        { text: 'Foto da galeria', onPress: () => pickImage(type, false) },
+        { text: 'Tirar foto', onPress: () => pickImage(type, true) },
+      ]);
+      return;
+    }
 
     Alert.alert(labels[type], 'Como deseja enviar?', [
       { text: 'Cancelar', style: 'cancel' },
@@ -184,7 +225,8 @@ export default function KYCScreen() {
   const canSubmit =
     canEdit &&
     (status?.steps?.document || localImages.document_front) &&
-    (status?.steps?.selfie || localImages.selfie);
+    (status?.steps?.selfie || localImages.selfie) &&
+    (status?.steps?.criminalRecord || localImages.criminal_record || certificatePdf);
 
   if (isLoading) {
     return (
@@ -270,6 +312,40 @@ export default function KYCScreen() {
           disabled={!canEdit}
         />
 
+        {/* Criminal record certificate */}
+        <Text className="text-ink font-bold text-lg mb-2 mt-2">Antecedentes criminais</Text>
+        <Text className="text-ink-muted text-sm mb-4">
+          Para a segurança de quem contrata, todo profissional precisa enviar a certidão de antecedentes criminais.
+          Ela é gratuita e sai na hora pelo gov.br.
+        </Text>
+
+        <Pressable
+          onPress={() => Linking.openURL(GOV_CERTIDAO_URL)}
+          accessibilityRole="link"
+          className="flex-row items-center bg-[#041E42] rounded-card p-4 mb-4"
+        >
+          <View className="w-10 h-10 rounded-full bg-white/15 items-center justify-center">
+            <Ionicons name="document-text-outline" size={22} color="#fff" />
+          </View>
+          <View className="flex-1 ml-3">
+            <Text className="text-white font-bold">Emitir certidão no gov.br</Text>
+            <Text className="text-white/75 text-xs mt-0.5">Polícia Federal · grátis · baixe o PDF e volte aqui</Text>
+          </View>
+          <Ionicons name="open-outline" size={20} color="#FF6A00" />
+        </Pressable>
+
+        <DocumentUploadCard
+          title="Certidão de antecedentes criminais"
+          description={certificatePdf ? `PDF enviado: ${certificatePdf}` : 'PDF do gov.br ou foto nítida, emitida há até 90 dias'}
+          required
+          completed={!!status?.steps?.criminalRecord || !!localImages.criminal_record || !!certificatePdf}
+          uploading={uploading.criminal_record}
+          imageUri={localImages.criminal_record}
+          onPress={() => showImageOptions('criminal_record')}
+          disabled={!canEdit}
+          icon="document-attach-outline"
+        />
+
         {/* Tips */}
         <View className="bg-surface border border-border rounded-card p-4 mt-6">
           <Text className="text-ink font-medium mb-3">Dicas para aprovação</Text>
@@ -277,6 +353,7 @@ export default function KYCScreen() {
           <Tip icon="scan-outline" text="Enquadre o documento inteiro na foto" />
           <Tip icon="eye-outline" text="Certifique-se que os dados estão legíveis" />
           <Tip icon="person-outline" text="Na selfie, segure o documento ao lado do rosto" />
+          <Tip icon="shield-checkmark-outline" text="A certidão precisa estar no mesmo nome e CPF do documento" />
         </View>
       </ScrollView>
 
@@ -305,6 +382,7 @@ function DocumentUploadCard({
   imageUri,
   onPress,
   disabled,
+  icon = 'camera-outline',
 }: {
   title: string;
   description: string;
@@ -314,6 +392,7 @@ function DocumentUploadCard({
   imageUri: string | null;
   onPress: () => void;
   disabled: boolean;
+  icon?: keyof typeof Ionicons.glyphMap;
 }) {
   return (
     <Pressable
@@ -341,7 +420,7 @@ function DocumentUploadCard({
             </View>
           ) : (
             <View className="w-10 h-10 bg-accent/10 rounded-full items-center justify-center">
-              <Ionicons name="camera-outline" size={24} color="#FF6A00" />
+              <Ionicons name={icon} size={24} color="#FF6A00" />
             </View>
           )}
         </View>

@@ -142,6 +142,8 @@ model TaskerProfile {
   documentFrontPath String?  @map("document_front_path")
   documentBackPath  String?  @map("document_back_path")
   selfiePath        String?  @map("selfie_path")
+  /// Certidão de antecedentes criminais (PDF do gov.br ou foto)
+  criminalRecordPath String? @map("criminal_record_path")
 
   // Asaas integration
   asaasAccountId  String?   @unique @map("asaas_account_id")
