@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { View, Pressable, useWindowDimensions, StyleSheet } from 'react-native';
+import { View, Pressable, Platform, useWindowDimensions, StyleSheet } from 'react-native';
 import Animated, {
   Easing,
   ReduceMotion,
@@ -16,6 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
 import { Logo, LogoMark } from './Logo';
+import { Pin3D } from './Pin3D';
 import { colors } from '../../theme/tokens';
 
 /** Timeline (ms). Total ≈ 3.9s before onFinish. */
@@ -29,9 +30,12 @@ const T = {
 
 const PUFFS = 22;
 
+/** expo-gl is native-only; web keeps the flat animated mark. */
+const USE_3D = Platform.OS !== 'web';
+
 /**
  * Opening animation before the onboarding:
- * 1) the pin comes from the depth spinning in 3D,
+ * 1) the pin (a real 3D model, see Pin3D) spins in from above,
  * 2) glows, 3) dissolves into a puff of smoke,
  * 4) the full "trampo" logo emerges as the smoke clears.
  * Tap anywhere to skip. Honors the OS "reduce motion" setting.
@@ -105,6 +109,21 @@ export function AnimatedIntro({ onFinish }: { onFinish: () => void }) {
     };
   });
 
+  // The 3D pin animates its own entrance; here it only dissolves into the smoke
+  const pin3DStyle = useAnimatedStyle(() => {
+    const s = smoke.value;
+    return {
+      opacity: interpolate(s, [0, 0.35], [1, 0], 'clamp'),
+      transform: [{ scale: interpolate(s, [0, 0.35], [1, 1.5], 'clamp') }],
+    };
+  });
+
+  const pin2D = (
+    <Animated.View style={pinStyle}>
+      <LogoMark size={110} />
+    </Animated.View>
+  );
+
   const glowStyle = useAnimatedStyle(() => ({
     opacity: glow.value * 0.55,
     transform: [{ scale: 0.8 + glow.value * 0.7 }],
@@ -128,7 +147,14 @@ export function AnimatedIntro({ onFinish }: { onFinish: () => void }) {
       accessibilityLabel="Trampo. Toque para pular a abertura"
     >
       <View style={styles.center} pointerEvents="none">
-        {/* Glow behind the pin */}
+        {/* Realistic 3D pin (falls back to the flat mark on web or if GL fails) */}
+        {USE_3D && (
+          <Animated.View style={[styles.pin3D, pin3DStyle]}>
+            <Pin3D size={240} entranceMs={T.pinIn} fallback={pin2D} />
+          </Animated.View>
+        )}
+
+        {/* Glow around the pin */}
         <Animated.View style={[styles.glow, glowStyle]}>
           <Svg width={260} height={260}>
             <Defs>
@@ -146,10 +172,7 @@ export function AnimatedIntro({ onFinish }: { onFinish: () => void }) {
           <Puff key={i} progress={smoke} {...p} />
         ))}
 
-        {/* 3D pin */}
-        <Animated.View style={pinStyle}>
-          <LogoMark size={110} />
-        </Animated.View>
+        {!USE_3D && pin2D}
 
         {/* Full logo */}
         <Animated.View style={[styles.logo, logoStyle]}>
@@ -210,4 +233,5 @@ const styles = StyleSheet.create({
   glow: { position: 'absolute' },
   puff: { position: 'absolute', left: '50%', top: '50%' },
   logo: { position: 'absolute' },
+  pin3D: { position: 'absolute' },
 });
