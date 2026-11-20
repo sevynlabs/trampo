@@ -16,7 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
 import { Logo, LogoMark } from './Logo';
-import { Pin3D, Pin3DBoundary } from './Pin3D';
+import { Pin3D } from './Pin3D';
 import { colors } from '../../theme/tokens';
 
 /** Timeline (ms). Total ≈ 3.9s before onFinish. */
@@ -150,9 +150,7 @@ export function AnimatedIntro({ onFinish }: { onFinish: () => void }) {
         {/* Realistic 3D pin (falls back to the flat mark on web or if GL fails) */}
         {USE_3D && (
           <Animated.View style={[styles.pin3D, pin3DStyle]}>
-            <Pin3DBoundary fallback={pin2D}>
-              <Pin3D size={240} entranceMs={T.pinIn} />
-            </Pin3DBoundary>
+            <Pin3D size={240} entranceMs={T.pinIn} fallback={pin2D} />
           </Animated.View>
         )}
 
